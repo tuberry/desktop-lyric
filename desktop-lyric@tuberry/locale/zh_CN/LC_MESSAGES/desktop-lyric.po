@@ -1,0 +1,73 @@
+# Chinese translations for Desktop Lyric package
+# Desktop Lyric 软件包的简体中文翻译.
+# Copyright (C) 2021 THE Desktop Lyric'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Desktop Lyric package.
+# Automatically generated, 2021.
+# tuberry <orzun@foxmail.com>, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Desktop Lyric \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-02-09 15:56+0800\n"
+"PO-Revision-Date: 2021-02-09 16:04+0800\n"
+"Last-Translator: tuberry <orzun@foxmail.com>\n"
+"Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
+"Language: zh_CHS\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0\n"
+"X-Generator: Gtranslator 3.38.0\n"
+
+#: extension.js:99
+msgid "Lock position"
+msgstr "锁定位置"
+
+#: extension.js:99 prefs.js:47
+msgid "Unlock position"
+msgstr "解锁位置"
+
+#: extension.js:100
+msgid "Offset: 0.5s"
+msgstr "补偿：0.5s"
+
+#: extension.js:101
+msgid "Slower"
+msgstr "减慢"
+
+#: extension.js:102
+msgid "Faster"
+msgstr "加快"
+
+#: extension.js:103
+msgid "More"
+msgstr "更多"
+
+#: extension.js:104
+msgid "Settings"
+msgstr "设置"
+
+#: prefs.js:46
+msgid "Enable systray"
+msgstr "托盘图标"
+
+#: prefs.js:49 prefs.js:65
+msgid "Active color"
+msgstr "已唱颜色"
+
+#: prefs.js:50 prefs.js:66
+msgid "Outline color"
+msgstr "轮廓颜色"
+
+#: prefs.js:51 prefs.js:67
+msgid "Inactive color"
+msgstr "未唱颜色"
+
+#: prefs.js:68
+msgid "Refresh interval (ms)"
+msgstr "刷新间隔(ms)"
+
+#: prefs.js:69
+msgid "Font name"
+msgstr "字体名称"

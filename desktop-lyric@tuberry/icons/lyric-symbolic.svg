@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="200mm"
+   height="200mm"
+   viewBox="0 0 200 200"
+   version="1.1"
+   id="svg8"
+   inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
+   sodipodi:docname="lyric-symbolic.svg">
+  <defs
+     id="defs2">
+    <rect
+       x="-84.228881"
+       y="35.449447"
+       width="79.32573"
+       height="92.048856"
+       id="rect836" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.73620568"
+     inkscape:cx="110.02097"
+     inkscape:cy="465.77731"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     inkscape:document-rotation="0"
+     showgrid="false"
+     showguides="false"
+     inkscape:window-width="1920"
+     inkscape:window-height="1020"
+     inkscape:window-x="0"
+     inkscape:window-y="28"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       id="rect833-6"
+       style="opacity:1;fill:#000000;fill-opacity:1;stroke-width:0.307322"
+       d="M 123.77232,85.655497 C 119.18867,85.630867 110,91.504349 110,99.612581 c 0,8.108229 8.40803,15.167749 12.9912,15.251929 l 43.02822,0.79033 C 170.6026,115.73904 180,109.00708 180,100.89886 180,92.790624 171.58546,85.912383 167.00179,85.887756 Z"
+       sodipodi:nodetypes="sssssss" />
+    <text
+       xml:space="preserve"
+       id="text834"
+       style="font-style:normal;font-weight:normal;font-size:10.5833px;line-height:1.25;font-family:sans-serif;white-space:pre;shape-inside:url(#rect836);fill:#000000;fill-opacity:1;stroke:none;" />
+    <path
+       id="rect833-67"
+       style="fill:#000000;fill-opacity:1;stroke-width:0.450617"
+       d="M 55.047565,150.00024 C 45.548064,150.00097 40,156.4053 40,164.81685 c 0,8.41154 4.946486,15.18419 14.445992,15.18316 l 110.827428,-0.012 C 174.77293,179.98698 180,173.69807 180,165.28653 c 0,-8.41155 -5.75751,-15.29545 -15.25702,-15.29472 z"
+       sodipodi:nodetypes="sssssss" />
+    <path
+       sodipodi:type="star"
+       style="fill:#000000;stroke-width:0.53684"
+       id="path1703"
+       sodipodi:sides="3"
+       sodipodi:cx="36.565407"
+       sodipodi:cy="94.583511"
+       sodipodi:r1="29.505619"
+       sodipodi:r2="14.75281"
+       sodipodi:arg1="-3.0536684"
+       sodipodi:arg2="-2.0064708"
+       inkscape:flatsided="true"
+       inkscape:rounded="1"
+       inkscape:randomized="0"
+       d="M 7.1737635,91.992593 C 11.661366,41.084774 11.661366,41.084774 53.50503,70.425061 95.348693,99.765348 95.348693,99.765348 49.017427,121.33288 2.6861614,142.90041 2.6861614,142.90041 7.1737635,91.992593 Z"
+       inkscape:transform-center-x="-7.4541693"
+       inkscape:transform-center-y="0.22287103"
+       transform="matrix(0.80935948,-0.09550897,0.08049613,0.96030814,6.8788436,13.260893)" />
+    <path
+       id="rect833-67-3"
+       style="fill:#000000;fill-opacity:1;stroke-width:0.450617"
+       d="M 55.047565,20.000235 C 45.548064,20.000965 40,26.405295 40,34.816845 c 0,8.41154 4.946486,15.18419 14.445992,15.18316 l 110.827428,-0.012 C 174.77293,49.987005 180,43.698065 180,35.286525 c 0,-8.41155 -5.75751,-15.295446 -15.25702,-15.294717 z"
+       sodipodi:nodetypes="sssssss" />
+  </g>
+</svg>

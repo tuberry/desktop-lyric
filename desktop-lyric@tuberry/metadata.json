@@ -1,0 +1,10 @@
+{
+  "name": "Desktop Lyric",
+  "description": "Show current lyric on the desktop",
+  "uuid": "desktop-lyric@tuberry",
+  "gettext-domain": "desktop-lyric",
+  "settings-schema": "org.gnome.shell.extensions.desktop-lyric",
+  "shell-version": [
+    "3.38"
+  ]
+}
