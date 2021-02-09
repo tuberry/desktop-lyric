@@ -1,9 +1,10 @@
 {
   "name": "Desktop Lyric",
-  "description": "Show lyric of the playing song on the desktop.",
+  "description": "Show lyric of the playing song on the desktop",
   "uuid": "desktop-lyric@tuberry",
   "gettext-domain": "desktop-lyric",
   "settings-schema": "org.gnome.shell.extensions.desktop-lyric",
+  "url": "https://github.com/tuberry/desktop-lyric",
   "shell-version": [
     "3.38"
   ]
