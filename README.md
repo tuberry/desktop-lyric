@@ -12,7 +12,7 @@ Show lyric of the playing song on the desktop.
 
 ```
 git clone https://github.com/tuberry/desktop-lyric.git
-cd desktp-lyric && make install
+cd desktop-lyric && VERSION=1 make install
 ```
 
 ## Features
@@ -26,7 +26,7 @@ cd desktp-lyric && make install
 * The lyric files ([LRC] format) are located in `~/.lyrics`;
 * The filename format is `Title-Artist1,Artist2.lrc`;
 * The missing lyrics will be downloaded from [NetEase];
-* Draw at an even pace. Exact synchronization with the song is impossible;
+* Draw at an even pace so that exact synchronization with the song is impossible;
 
 ## Acknowledgements
 
