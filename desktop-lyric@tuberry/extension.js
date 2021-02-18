@@ -94,8 +94,8 @@ const DesktopLyric = GObject.registerClass({
     _updateMenu() {
         if(!this._button) return;
         this._button.menu.removeAll();
-        this._button.menu.addMenuItem(this._menuItemMaker(() => {
-            gsettings.set_boolean(Fields.DRAG, !this._drag);
+        this._button.menu.addMenuItem(this._menuItemMaker(item => {
+            gsettings.set_boolean(Fields.DRAG, !this._drag); item._getTopMenu().close();
         }, this._drag ? _('Lock position') : _('Unlock position')));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Offset: 0.5s')));
         this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.slower(); }, _('Slower')));

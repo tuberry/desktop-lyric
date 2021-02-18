@@ -2,13 +2,17 @@
 
 Show lyric of the playing song on the desktop.
 
->天凉好个秋<br>
+>很多歌消失了。 —— *汪曾祺 《徙》*<br>
 [![license]](/LICENSE)
 <br>
 
 ![bee](https://user-images.githubusercontent.com/17917040/107332354-08111f80-6aef-11eb-9c7a-f8799c834501.png)
 
 ## Installation
+
+[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
+
+Or manually:
 
 ```
 git clone https://github.com/tuberry/desktop-lyric.git
@@ -19,7 +23,7 @@ cd desktop-lyric && VERSION=1 make install
 
 ![dl](https://user-images.githubusercontent.com/17917040/107334212-63dca800-6af1-11eb-944a-154959007dc2.png)
 
-## Notes
+## Note
 
 * High CPU usage;
 * Based on Mpris;
@@ -38,3 +42,4 @@ cd desktop-lyric && VERSION=1 make install
 [NetEase]:http://music.163.com/
 [lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
 [osdlyrics]:https://github.com/osdlyrics/osdlyrics
+[EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/

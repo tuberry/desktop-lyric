@@ -14,13 +14,14 @@ class Lyric extends GObject.Object {
     }
 
     fetch(title, artist, callback) {
-        let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist));
+        let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist.split('/')[0]));
         let request = Soup.Message.new_from_uri('GET', uri);
         this.httpSession.queue_message(request, (httpSession, message) => {
             if (message.status_code != 200) return;
             let data = JSON.parse(message.response_body.data);
             if (data.code != 200 || data.result.songCount < 1) return;
             let song = Array.from(data.result.songs)[0];
+            if(!song || !song.id) return;
             let request = Soup.Message.new('POST', 'http://music.163.com/api/song/lyric?os=pc&id=%d&lv=1'.format(song.id));
             this.httpSession.queue_message(request, (httpSession, message) => {
                 if (message.status_code != 200) return;
