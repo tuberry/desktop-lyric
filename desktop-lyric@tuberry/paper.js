@@ -23,20 +23,21 @@ var DragMove = class extends DND._Draggable {
 
 var Paper = GObject.registerClass({
     Properties: {
-        'drag':     GObject.param_spec_boolean('drag', 'drag', 'drag', false, GObject.ParamFlags.READWRITE),
-        'font':     GObject.param_spec_string('font', 'font', 'font', 'Sans 40', GObject.ParamFlags.READWRITE),
-        'xpos':     GObject.param_spec_int('xpos', 'xpos', 'xpos', -100, 65535, 10, GObject.ParamFlags.READWRITE),
-        'ypos':     GObject.param_spec_int('ypos', 'ypos', 'ypos', -100, 65535, 10, GObject.ParamFlags.READWRITE),
-        'offset':   GObject.param_spec_int('offset', 'offset', 'offset', -100000, 100000, 0, GObject.ParamFlags.READWRITE),
-        'active':   GObject.param_spec_string('active', 'active', 'active', 'rgba(100, 50, 150, 0.5)', GObject.ParamFlags.READWRITE),
-        'outline':  GObject.param_spec_string('outline', 'outline', 'outline', 'rgba(0, 0, 0, 0.2)', GObject.ParamFlags.READWRITE),
-        'inactive': GObject.param_spec_string('inactive', 'inactive', 'inactive', 'rgba(230, 230, 230, 0.5)', GObject.ParamFlags.READWRITE),
-        'position': GObject.param_spec_int64('position', 'position', 'position', 0, Number.MAX_SAFE_INTEGER, 0, GObject.ParamFlags.READWRITE),
+        'drag':     GObject.ParamSpec.boolean('drag', 'drag', 'drag', GObject.ParamFlags.READWRITE, false),
+        'font':     GObject.ParamSpec.string('font', 'font', 'font', GObject.ParamFlags.READWRITE, 'Sans 40'),
+        'xpos':     GObject.ParamSpec.int('xpos', 'xpos', 'xpos', GObject.ParamFlags.READWRITE, -100, 65535, 10),
+        'ypos':     GObject.ParamSpec.int('ypos', 'ypos', 'ypos', GObject.ParamFlags.READWRITE, -100, 65535, 10),
+        'offset':   GObject.ParamSpec.int('offset', 'offset', 'offset', GObject.ParamFlags.READWRITE, -100000, 100000, 0),
+        'active':   GObject.ParamSpec.string('active', 'active', 'active', GObject.ParamFlags.READWRITE, 'rgba(100, 50, 150, 0.5)'),
+        'outline':  GObject.ParamSpec.string('outline', 'outline', 'outline', GObject.ParamFlags.READWRITE, 'rgba(0, 0, 0, 0.2)'),
+        'inactive': GObject.ParamSpec.string('inactive', 'inactive', 'inactive', GObject.ParamFlags.READWRITE, 'rgba(230, 230, 230, 0.5)'),
+        'position': GObject.ParamSpec.int64('position', 'position', 'position', GObject.ParamFlags.READWRITE, 0, Number.MAX_SAFE_INTEGER, 0),
     },
 }, class Paper extends GObject.Object {
     _init() {
         super._init();
 
+        this.length = 0;
         this.text = '';
         let [w, h] = global.display.get_size();
         this._area = new St.DrawingArea({ reactive: false });
@@ -125,7 +126,7 @@ var Paper = GObject.registerClass({
             .map(x => x.split(/\]/))
             .map(x => [Math.round(ms(x[0])), x[1]])
             .reduce((acc, v, i, a) => {
-                acc[v[0]] = [v[0], a[i + 1] ? a[i + 1][0] : v[0], v[1]];
+                acc[v[0]] = [v[0], a[i + 1] ? a[i + 1][0] : (this.length > v[0] ? this.length : v[0]), v[1]];
                 return acc;
             }, {});
         this.offset = 0;

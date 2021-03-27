@@ -9,33 +9,33 @@ var Lyric = GObject.registerClass(
 class Lyric extends GObject.Object {
     _init() {
         super._init();
-        this.httpSession = new Soup.SessionAsync();
-        Soup.Session.prototype.add_feature.call(this.httpSession, new Soup.ProxyResolverDefault());
+        this.http = new Soup.SessionAsync();
+        Soup.Session.prototype.add_feature.call(this.http, new Soup.ProxyResolverDefault());
     }
 
     fetch(title, artist, callback) {
         let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist.split('/')[0]));
         let request = Soup.Message.new_from_uri('GET', uri);
-        this.httpSession.queue_message(request, (httpSession, message) => {
-            if (message.status_code != 200) return;
+        this.http.queue_message(request, (session, message) => {
+            if (message.status_code != Soup.KnownStatusCode.OK) return;
             let data = JSON.parse(message.response_body.data);
             if (data.code != 200 || data.result.songCount < 1) return;
             let song = Array.from(data.result.songs)[0];
             if(!song || !song.id) return;
             let request = Soup.Message.new('POST', 'http://music.163.com/api/song/lyric?os=pc&id=%d&lv=1'.format(song.id));
-            this.httpSession.queue_message(request, (httpSession, message) => {
-                if (message.status_code != 200) return;
+            this.http.queue_message(request, (session, message) => {
+                if (message.status_code != Soup.KnownStatusCode.OK) return;
                 let data = JSON.parse(message.response_body.data);
                 if (data.code != 200 || !data.lrc) return;
                 let lyric = data.lrc.lyric;
                 callback(lyric);
-                Gio.file_new_for_path(this.path(title, artist)).replace_contents(lyric, null, false, Gio.FileCreateFlags.NONE, null);
+                Gio.File.new_for_path(this.path(title, artist)).replace_contents(lyric, null, false, Gio.FileCreateFlags.NONE, null);
             });
         });
     }
 
     find(title, artist, callback) {
-        let file = Gio.file_new_for_path(this.path(title, artist));
+        let file = Gio.File.new_for_path(this.path(title, artist));
         if(file.query_exists(null)) {
             let [ok, contents] = file.load_contents(null);
             callback(ByteArray.toString(contents));
@@ -51,7 +51,7 @@ class Lyric extends GObject.Object {
     }
 
     destroy() {
-        this.httpSession = null;
+        this.http = null;
     }
 });
 

@@ -28,7 +28,7 @@ const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 
 var MprisPlayer = GObject.registerClass({
     Signals: {
-        'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
+        'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_INT64] },
         'paused': { param_types: [GObject.TYPE_BOOLEAN] },
         'seeked': { param_types: [GObject.TYPE_INT64] },
         'closed': { },
@@ -113,6 +113,7 @@ var MprisPlayer = GObject.registerClass({
 
         this._trackTitle = '';
         this._trackArtists = '';
+        this._trackLength = 0;
         this._busName = busName;
     }
 
@@ -193,14 +194,16 @@ var MprisPlayer = GObject.registerClass({
         if(!Array.isArray(artists) || !artists.every(artist => typeof artist === 'string')) {
             this._trackArtists = '';
         } else {
-            this._trackArtists = artists.join(',');
+            this._trackArtists = artists.join('/');
         }
 
         this._trackTitle = metadata['xesam:title'];
-        if(typeof this._trackTitle !== 'string')
-            this._trackTitle = '';
-        if(this._trackTitle)
-            this.emit('update', this._trackTitle, this._trackArtists);
+        if(typeof this._trackTitle !== 'string') this._trackTitle = '';
+
+        this._trackLength = metadata['mpris:length'];
+        if(typeof this._trackLength === 'undefined') this._trackLength = 0;
+
+        if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength);
     }
 
     _updateState(proxy, changed, invalidated) {

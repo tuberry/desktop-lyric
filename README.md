@@ -14,7 +14,7 @@ Show lyric of the playing song on the desktop.
 
 Or manually:
 
-```
+```bash
 git clone https://github.com/tuberry/desktop-lyric.git
 cd desktop-lyric && VERSION=1 make install
 ```

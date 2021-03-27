@@ -20,20 +20,20 @@ const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').ge
 
 const DesktopLyric = GObject.registerClass({
     Properties: {
-        'drag':     GObject.param_spec_boolean('drag', 'drag', 'drag', false, GObject.ParamFlags.READWRITE),
-        'systray':  GObject.param_spec_boolean('systray', 'systray', 'systray', false, GObject.ParamFlags.READWRITE),
-        'interval': GObject.param_spec_uint('interval', 'interval', 'interval', 50, 500, 60, GObject.ParamFlags.READWRITE),
-        'position': GObject.param_spec_int64('position', 'position', 'position', 0, Number.MAX_SAFE_INTEGER, 0, GObject.ParamFlags.READWRITE),
+        'drag':     GObject.ParamSpec.boolean('drag', 'drag', 'drag', GObject.ParamFlags.READWRITE, false),
+        'systray':  GObject.ParamSpec.boolean('systray', 'systray', 'systray', GObject.ParamFlags.READWRITE, false),
+        'interval': GObject.ParamSpec.uint('interval', 'interval', 'interval', GObject.ParamFlags.READWRITE, 50, 500, 60),
+        'position': GObject.ParamSpec.int64('position', 'position', 'position', GObject.ParamFlags.READWRITE, 0, Number.MAX_SAFE_INTEGER, 0),
     },
 }, class DesktopLyric extends GObject.Object {
     _init() {
         super._init();
 
         this._lyric = new Lyric.Lyric();
-        this._paper = new Paper.Paper(this);
+        this._paper = new Paper.Paper();
         this._mpris = new Mpris.MprisPlayer();
 
-        this.bind_property('position', this._paper, 'position', GObject.BindingFlags.DEFAULT);
+        this.bind_property('position', this._paper, 'position', GObject.BindingFlags.GET);
         this._mpris.connect('update', this._update.bind(this));
         this._mpris.connect('paused', (player, paused) => { this.playing = !paused; });
         this._mpris.connect('seeked', (player, position) => { this.position = position / 1000; });
@@ -58,6 +58,7 @@ const DesktopLyric = GObject.registerClass({
         if(this._refreshId) GLib.source_remove(this._refreshId);
         this._refreshId = play ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._interval, () => {
             this.position += this._interval + 1; // the error: 1ms;
+            // log(this.position - this.Position);
             return GLib.SOURCE_CONTINUE;
         }) : 0;
     }
@@ -66,8 +67,9 @@ const DesktopLyric = GObject.registerClass({
         return this._mpris ? this._mpris.position / 1000 : 0;
     }
 
-    _update(player, title, artist) {
+    _update(player, title, artist, length) {
         this._lyric.find(title, artist, text => {
+            this._paper.length = length / 1000;
             this._paper.text = text;
             this.position = this.Position + 50; // the error: 50ms;
             this.playing = (this._mpris.status == 'Playing') && text;
@@ -95,17 +97,16 @@ const DesktopLyric = GObject.registerClass({
         if(!this._button) return;
         this._button.menu.removeAll();
         this._button.menu.addMenuItem(this._menuItemMaker(item => {
-            gsettings.set_boolean(Fields.DRAG, !this._drag); item._getTopMenu().close();
+            item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, !this._drag);
         }, this._drag ? _('Lock position') : _('Unlock position')));
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Offset: 0.5s')));
-        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.slower(); }, _('Slower')));
-        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.faster(); }, _('Faster')));
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('More')));
-        this._button.menu.addMenuItem(this._menuItemMaker(item => { item._getTopMenu().close(); ExtensionUtils.openPrefs() }, _('Settings')));
+        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.slower(); }, _('Slower 0.5s')));
+        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.faster(); }, _('Faster 0.5s')));
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._button.menu.addMenuItem(this._menuItemMaker(item => { ExtensionUtils.openPrefs() }, _('Settings')));
     }
 
     _menuItemMaker(callback, text) {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'desktop-lyric-item' });
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'desktop-lyric-item popup-menu-item' });
         item.connect('activate', callback);
         item.add_child(new St.Label({ x_expand: true, text: text }));
 
