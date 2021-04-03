@@ -1,3 +1,7 @@
+// vim:fdm=syntax
+// by: tuberry@github
+'use strict';
+
 const Cairo = imports.cairo;
 const DND = imports.ui.dnd;
 const Main = imports.ui.main;
@@ -6,7 +10,7 @@ const { Gio, Clutter, Meta, PangoCairo, Pango, St, GObject } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
 const Me = ExtensionUtils.getCurrentExtension();
-const Fields = Me.imports.prefs.Fields;
+const Fields = Me.imports.fields.Fields;
 
 var DragMove = class extends DND._Draggable {
     _dragActorDropped(event) {

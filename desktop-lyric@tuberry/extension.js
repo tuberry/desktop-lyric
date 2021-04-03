@@ -1,5 +1,7 @@
-// vim: fdm=syntax
-// by tuberry
+// vim:fdm=syntax
+// by: tuberry@github
+'use strict';
+
 const Cairo = imports.cairo;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
@@ -9,7 +11,7 @@ const { PangoCairo, Pango, Soup, GLib, Clutter, St, Gio, GObject } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
 const Me = ExtensionUtils.getCurrentExtension();
-const Fields = Me.imports.prefs.Fields;
+const Fields = Me.imports.fields.Fields;
 
 const Mpris = Me.imports.mpris;
 const Lyric = Me.imports.lyric;

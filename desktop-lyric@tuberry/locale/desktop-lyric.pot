@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Desktop Lyric 4\n"
+"Project-Id-Version: Desktop Lyric 5\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-03-27 14:24+0800\n"
+"POT-Creation-Date: 2021-04-02 00:59+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Lock position"
 msgstr ""
 
-#: extension.js:101 prefs.js:48
+#: extension.js:101 prefs.js:45
 msgid "Unlock position"
 msgstr ""
 
@@ -37,26 +37,26 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: prefs.js:47
+#: prefs.js:44
 msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:49 prefs.js:56
+#: prefs.js:46 prefs.js:53
 msgid "Active color"
 msgstr ""
 
-#: prefs.js:50 prefs.js:57
+#: prefs.js:47 prefs.js:54
 msgid "Outline color"
 msgstr ""
 
-#: prefs.js:51 prefs.js:58
+#: prefs.js:48 prefs.js:55
 msgid "Inactive color"
 msgstr ""
 
-#: prefs.js:59
-msgid "Refresh interval (ms)"
+#: prefs.js:56
+msgid "Refresh interval"
 msgstr ""
 
-#: prefs.js:60
+#: prefs.js:57
 msgid "Font name"
 msgstr ""

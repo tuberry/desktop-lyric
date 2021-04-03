@@ -6,7 +6,7 @@
   "settings-schema": "org.gnome.shell.extensions.desktop-lyric",
   "url": "https://github.com/tuberry/desktop-lyric",
   "shell-version": [
-    "3.38"
+    "40"
   ],
   "version": 1
 }

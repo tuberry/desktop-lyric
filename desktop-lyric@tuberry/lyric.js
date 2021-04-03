@@ -2,6 +2,7 @@
 // by tuberry
 // Ref: https://github.com/TheWeirdDev/lyrics-finder-gnome-ext/blob/master/lyrics_api.js
 //
+'use strict';
 const ByteArray = imports.byteArray;
 const { Soup, GLib, Gio, GObject } = imports.gi;
 
@@ -15,21 +16,20 @@ class Lyric extends GObject.Object {
 
     fetch(title, artist, callback) {
         let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist.split('/')[0]));
-        let request = Soup.Message.new_from_uri('GET', uri);
+        let request = Soup.Message.new_from_uri('POST', uri);
         this.http.queue_message(request, (session, message) => {
             if (message.status_code != Soup.KnownStatusCode.OK) return;
             let data = JSON.parse(message.response_body.data);
             if (data.code != 200 || data.result.songCount < 1) return;
             let song = Array.from(data.result.songs)[0];
             if(!song || !song.id) return;
-            let request = Soup.Message.new('POST', 'http://music.163.com/api/song/lyric?os=pc&id=%d&lv=1'.format(song.id));
+            let request = Soup.Message.new('GET', 'http://music.163.com/api/song/media?id=%d'.format(song.id));
             this.http.queue_message(request, (session, message) => {
                 if (message.status_code != Soup.KnownStatusCode.OK) return;
                 let data = JSON.parse(message.response_body.data);
-                if (data.code != 200 || !data.lrc) return;
-                let lyric = data.lrc.lyric;
-                callback(lyric);
-                Gio.File.new_for_path(this.path(title, artist)).replace_contents(lyric, null, false, Gio.FileCreateFlags.NONE, null);
+                if (data.code != 200 || !data.lyric) return;
+                callback(data.lyric);
+                Gio.File.new_for_path(this.path(title, artist)).replace_contents(data.lyric, null, false, Gio.FileCreateFlags.NONE, null);
             });
         });
     }

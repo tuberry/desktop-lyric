@@ -1,5 +1,7 @@
 // vim:fdm=syntax
 // by tuberry, from ui.mpris, add position
+//
+'use strict';
 const Signals = imports.signals;
 const ByteArray = imports.byteArray;
 const { Shell, Gio, GLib, GObject, GMenu } = imports.gi;
@@ -71,9 +73,9 @@ var MprisPlayer = GObject.registerClass({
         this._tree.load_sync();
         let root = this._tree.get_root_directory();
         let iter = root.iter();
-        let nextType;
-        while((nextType = iter.next()) !== GMenu.TreeItemType.INVALID) {
-            if(nextType !== GMenu.TreeItemType.DIRECTORY) continue;
+        let next;
+        while((next = iter.next()) !== GMenu.TreeItemType.INVALID) {
+            if(next !== GMenu.TreeItemType.DIRECTORY) continue;
             let dir = iter.get_directory();
             if(dir.get_is_nodisplay()) continue;
             let categoryId = dir.get_menu_id();
@@ -85,9 +87,9 @@ var MprisPlayer = GObject.registerClass({
 
     _loadCategory(categoryId, dir) {
         let iter = dir.iter();
-        let nextType;
-        while((nextType = iter.next()) !== GMenu.TreeItemType.INVALID) {
-            if(nextType === GMenu.TreeItemType.ENTRY) {
+        let next;
+        while((next = iter.next()) !== GMenu.TreeItemType.INVALID) {
+            if(next === GMenu.TreeItemType.ENTRY) {
                 try {
                     let entry = iter.get_entry();
                     let id = entry.get_desktop_file_id(); // catch non-UTF8 filenames
@@ -95,9 +97,9 @@ var MprisPlayer = GObject.registerClass({
                 } catch (e) {
                     continue;
                 }
-            } else if(nextType === GMenu.TreeItemType.SEPARATOR) {
+            } else if(next === GMenu.TreeItemType.SEPARATOR) {
                 continue;
-            } else if(nextType === GMenu.TreeItemType.DIRECTORY) {
+            } else if(next === GMenu.TreeItemType.DIRECTORY) {
                 let subdir = iter.get_directory();
                 if(!subdir.get_is_nodisplay()) this._loadCategory(categoryId, subdir);
             }
@@ -105,8 +107,7 @@ var MprisPlayer = GObject.registerClass({
     }
 
     _setPlayer(busName) {
-        if(this._busName || !busName.startsWith(MPRIS_PLAYER_PREFIX)) return;
-        if(!this.apps.includes(this._getAppId(busName))) return;
+        if(this._busName || !busName.startsWith(MPRIS_PLAYER_PREFIX) || !this.apps.includes(this._getAppId(busName))) return;
 
         this._mprisProxy = new MprisProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
         this._playerProxy = new MprisPlayerProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
