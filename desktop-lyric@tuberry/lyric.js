@@ -6,8 +6,11 @@
 const ByteArray = imports.byteArray;
 const { Soup, GLib, Gio, GObject } = imports.gi;
 
-var Lyric = GObject.registerClass(
-class Lyric extends GObject.Object {
+var Lyric = GObject.registerClass({
+    Properties: {
+        'location': GObject.ParamSpec.string('location', 'location', 'location', GObject.ParamFlags.READWRITE, ''),
+    },
+}, class Lyric extends GObject.Object {
     _init() {
         super._init();
         this.http = new Soup.SessionAsync();
@@ -46,8 +49,8 @@ class Lyric extends GObject.Object {
     }
 
     path(title, artist) {
-        let filename = artist ? '%s-%s.lrc'.format(title, artist) : '%s.lrc'.format(title);
-        return GLib.build_filenamev([GLib.get_home_dir(),  '.lyrics', filename.replace(/\//g, ',')]);
+        let filename = artist ? '%s-%s.lrc'.format(title, artist).replace(/\//g, ',') : '%s.lrc'.format(title).replace(/\//g, ',');
+        return this.location ? this.location + '/' + filename : GLib.build_filenamev([GLib.get_home_dir(),  '.lyrics', filename]);
     }
 
     destroy() {

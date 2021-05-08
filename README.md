@@ -16,20 +16,19 @@ Or manually:
 
 ```bash
 git clone https://github.com/tuberry/desktop-lyric.git
-cd desktop-lyric && VERSION=1 make install
+cd desktop-lyric && make install
 ```
 
 ## Features
 
-![dl](https://user-images.githubusercontent.com/17917040/107334212-63dca800-6af1-11eb-944a-154959007dc2.png)
+![dlprefs](https://user-images.githubusercontent.com/17917040/117526303-daa51680-aff6-11eb-8a53-da711c9be482.png)
 
 ## Note
 
 * High CPU usage;
 * Based on Mpris;
-* The lyric files ([LRC] format) are located in `~/.lyrics`;
-* The filename format is `Title-Artist1,Artist2.lrc`;
 * The missing lyrics will be downloaded from [NetEase];
+* The lyric ([LRC] format) filename format is `Title-Artist1,Artist2.lrc`;
 * Draw at an even pace so that exact synchronization with the song is impossible;
 
 ## Acknowledgements

@@ -23,6 +23,7 @@ const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').ge
 const DesktopLyric = GObject.registerClass({
     Properties: {
         'drag':     GObject.ParamSpec.boolean('drag', 'drag', 'drag', GObject.ParamFlags.READWRITE, false),
+        'location': GObject.ParamSpec.string('location', 'location', 'location', GObject.ParamFlags.READWRITE, ''),
         'systray':  GObject.ParamSpec.boolean('systray', 'systray', 'systray', GObject.ParamFlags.READWRITE, false),
         'interval': GObject.ParamSpec.uint('interval', 'interval', 'interval', GObject.ParamFlags.READWRITE, 50, 500, 60),
         'position': GObject.ParamSpec.int64('position', 'position', 'position', GObject.ParamFlags.READWRITE, 0, Number.MAX_SAFE_INTEGER, 0),
@@ -36,6 +37,7 @@ const DesktopLyric = GObject.registerClass({
         this._mpris = new Mpris.MprisPlayer();
 
         this.bind_property('position', this._paper, 'position', GObject.BindingFlags.GET);
+        this.bind_property('location', this._lyric, 'location', GObject.BindingFlags.GET);
         this._mpris.connect('update', this._update.bind(this));
         this._mpris.connect('paused', (player, paused) => { this.playing = !paused; });
         this._mpris.connect('seeked', (player, position) => { this.position = position / 1000; });
@@ -43,6 +45,7 @@ const DesktopLyric = GObject.registerClass({
         gsettings.bind(Fields.DRAG,     this, 'drag',     Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.INTERVAL, this, 'interval', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.SYSTRAY,  this, 'systray',  Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.LOCATION, this, 'location', Gio.SettingsBindFlags.GET);
     }
 
     set drag(drag) {
@@ -71,9 +74,11 @@ const DesktopLyric = GObject.registerClass({
 
     _update(player, title, artist, length) {
         this._lyric.find(title, artist, text => {
-            this._paper.length = length / 1000;
+            let len = length / 1000;
+            let pos = this.Position + 50; // the error: 50ms
+            this._paper.length = len;
+            this.position = pos < len || len == 0 ? pos : 50; // some buggy mpris
             this._paper.text = text;
-            this.position = this.Position + 50; // the error: 50ms;
             this.playing = (this._mpris.status == 'Playing') && text;
         });
     }

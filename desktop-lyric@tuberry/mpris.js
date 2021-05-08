@@ -200,7 +200,6 @@ var MprisPlayer = GObject.registerClass({
 
         this._trackTitle = metadata['xesam:title'];
         if(typeof this._trackTitle !== 'string') this._trackTitle = '';
-
         this._trackLength = metadata['mpris:length'];
         if(typeof this._trackLength === 'undefined') this._trackLength = 0;
 

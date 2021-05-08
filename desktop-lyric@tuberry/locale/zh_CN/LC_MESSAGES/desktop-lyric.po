@@ -7,10 +7,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Desktop Lyric \n"
+"Project-Id-Version: Desktop Lyric 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-04-02 00:59+0800\n"
-"PO-Revision-Date: 2021-04-02 00:59+0800\n"
+"POT-Creation-Date: 2021-05-08 11:53+0800\n"
+"PO-Revision-Date: 2021-05-08 11:55+0800\n"
 "Last-Translator: tuberry <orzun@foxmail.com>\n"
 "Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
 "Language: zh_CHS\n"
@@ -18,49 +18,69 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0\n"
-"X-Generator: Gtranslator 3.38.0\n"
+"X-Generator: Gtranslator 40.0\n"
 
-#: extension.js:101
+#: extension.js:108
 msgid "Lock position"
 msgstr "锁定位置"
 
-#: extension.js:101 prefs.js:45
+#: extension.js:108 prefs.js:38
 msgid "Unlock position"
 msgstr "解锁位置"
 
-#: extension.js:102
+#: extension.js:109
 msgid "Slower 0.5s"
 msgstr "减慢半秒"
 
-#: extension.js:103
+#: extension.js:110
 msgid "Faster 0.5s"
 msgstr "加快半秒"
 
-#: extension.js:105
+#: extension.js:112
 msgid "Settings"
 msgstr "设置"
 
-#: prefs.js:44
+#: prefs.js:37
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: prefs.js:46 prefs.js:53
+#: prefs.js:39
+msgid "Horizontal"
+msgstr "水平"
+
+#: prefs.js:39
+msgid "Vertical"
+msgstr "竖直"
+
+#: prefs.js:41
 msgid "Active color"
 msgstr "已唱颜色"
 
-#: prefs.js:47 prefs.js:54
+#: prefs.js:42
 msgid "Outline color"
 msgstr "轮廓颜色"
 
-#: prefs.js:48 prefs.js:55
+#: prefs.js:43
 msgid "Inactive color"
 msgstr "未唱颜色"
 
-#: prefs.js:56
+#: prefs.js:50
+msgid "Lyric location"
+msgstr "歌词位置"
+
+#: prefs.js:51
+msgid "Lyric orientation"
+msgstr "歌词方向"
+
+#: prefs.js:52
+msgid "Lyric colors"
+msgstr "歌词颜色"
+
+#: prefs.js:53
 msgid "Refresh interval"
 msgstr "刷新间隔"
 
-#: prefs.js:57
+#: prefs.js:54
 msgid "Font name"
 msgstr "字体名称"
 

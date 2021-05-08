@@ -29,11 +29,12 @@ var Paper = GObject.registerClass({
     Properties: {
         'drag':     GObject.ParamSpec.boolean('drag', 'drag', 'drag', GObject.ParamFlags.READWRITE, false),
         'font':     GObject.ParamSpec.string('font', 'font', 'font', GObject.ParamFlags.READWRITE, 'Sans 40'),
+        'orient':   GObject.ParamSpec.uint('orient', 'orient', 'orient', GObject.ParamFlags.READWRITE, 0, 1, 0),
         'xpos':     GObject.ParamSpec.int('xpos', 'xpos', 'xpos', GObject.ParamFlags.READWRITE, -100, 65535, 10),
         'ypos':     GObject.ParamSpec.int('ypos', 'ypos', 'ypos', GObject.ParamFlags.READWRITE, -100, 65535, 10),
         'offset':   GObject.ParamSpec.int('offset', 'offset', 'offset', GObject.ParamFlags.READWRITE, -100000, 100000, 0),
-        'active':   GObject.ParamSpec.string('active', 'active', 'active', GObject.ParamFlags.READWRITE, 'rgba(100, 50, 150, 0.5)'),
         'outline':  GObject.ParamSpec.string('outline', 'outline', 'outline', GObject.ParamFlags.READWRITE, 'rgba(0, 0, 0, 0.2)'),
+        'active':   GObject.ParamSpec.string('active', 'active', 'active', GObject.ParamFlags.READWRITE, 'rgba(100, 50, 150, 0.5)'),
         'inactive': GObject.ParamSpec.string('inactive', 'inactive', 'inactive', GObject.ParamFlags.READWRITE, 'rgba(230, 230, 230, 0.5)'),
         'position': GObject.ParamSpec.int64('position', 'position', 'position', GObject.ParamFlags.READWRITE, 0, Number.MAX_SAFE_INTEGER, 0),
     },
@@ -43,9 +44,7 @@ var Paper = GObject.registerClass({
 
         this.length = 0;
         this.text = '';
-        let [w, h] = global.display.get_size();
-        this._area = new St.DrawingArea({ reactive: false });
-        this._area.set_size(w, 0.3 * h);
+        this._area = new St.DrawingArea({ reactive: false, });
         Main.uiGroup.add_actor(this._area);
 
         this._bindSettings();
@@ -59,35 +58,26 @@ var Paper = GObject.registerClass({
         gsettings.bind(Fields.ACTIVE,   this, 'active',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OUTLINE,  this, 'outline',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.INACTIVE, this, 'inactive', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.ORIENT,   this, 'orient',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.XPOS,     this, 'xpos',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.YPOS,     this, 'ypos',     Gio.SettingsBindFlags.DEFAULT);
     }
 
+    getColor(color, fallbk) {
+        let [ok, cl] = Clutter.Color.from_string(color);
+        return ok ? [cl.red / 255, cl.green / 255, cl.blue / 255, cl.alpha / 255] : fallbk;
+    }
+
     set active(active) {
-        let [ok, color] = Clutter.Color.from_string(active);
-        if(ok) {
-            this._active = [color.red / 255, color.green / 255, color.blue / 255, color.alpha / 255]
-        } else {
-            this._active = [0.4, 0.2, 0.6, 0.5];
-        }
+        this._active = this.getColor(active, [0.4, 0.2, 0.6, 0.5]);
     }
 
     set outline(outline) {
-        let [ok, color] = Clutter.Color.from_string(outline);
-        if(ok) {
-            this._outline = [color.red / 255, color.green / 255, color.blue / 255, color.alpha / 255]
-        } else {
-            this._outline = [0, 0, 0, 0.2];
-        }
+        this._outline = this.getColor(outline, [0, 0, 0, 0.2]);
     }
 
     set inactive(inactive) {
-        let [ok, color] = Clutter.Color.from_string(inactive);
-        if(ok) {
-            this._inactive = [color.red / 255, color.green / 255, color.blue / 255, color.alpha / 255]
-        } else {
-            this._inactive = [0.9, 0.9, 0.9, 0.5];
-        }
+        this._inactive = this.getColor(inactive, [0.9, 0.9, 0.9, 0.5]);
     }
 
     set font(font) {
@@ -113,6 +103,12 @@ var Paper = GObject.registerClass({
     set position(position) {
         this._position = position;
         this._area.queue_repaint();
+    }
+
+    set orient(orient) {
+        this._orient = orient;
+        let [w, h] = global.display.get_size();
+        orient ? this._area.set_size(0.18 * w, h) : this._area.set_size(w, 0.3 * h);
     }
 
     _repaint(area) {
@@ -165,13 +161,18 @@ var Paper = GObject.registerClass({
         ly.set_font_description(this._font);
         ly.set_text(txt, -1);
         let [fw, fh] = ly.get_pixel_size();
-        let gd = new Cairo.LinearGradient(0, 0, fw, 0);
+        let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, fw) : new Cairo.LinearGradient(0, 0, fw, 0);
         gd.addColorStopRGBA(0, ...this._active);
         gd.addColorStopRGBA(position, ...this._active);
         gd.addColorStopRGBA(position, ...this._inactive);
         gd.addColorStopRGBA(1, ...this._inactive);
         cr.moveTo(0, 0);
         cr.setSource(gd);
+        if(this._orient) {
+            ly.get_context().set_base_gravity(Pango.Gravity.EAST);
+            cr.moveTo(fh / 2, 0);
+            cr.rotate(Math.PI / 2);
+        }
         PangoCairo.show_layout(cr, ly);
         cr.setSourceRGBA(...this._outline);
         PangoCairo.layout_path(cr, ly);

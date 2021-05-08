@@ -2,7 +2,7 @@
 // by: tuberry@github
 'use strict';
 
-const { Pango, GLib, Gtk, Gdk, GObject, Gio } = imports.gi;
+const { Gtk, Gdk, GObject, Gio } = imports.gi;
 const _GTK = imports.gettext.domain('gtk40').gettext;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -17,7 +17,7 @@ var FileButton = GObject.registerClass({
         'changed': { param_types: [GObject.TYPE_STRING] },
     },
 }, class FileButton extends Gtk.Button {
-    _init(path, params) {
+    _init(params) {
         super._init(); // no 'always-show-image'
         this._icon = new Gtk.Image({ icon_name:  'document-open-symbolic' });
         this._label = new Gtk.Label({ label: _GTK('(None)') });
@@ -75,7 +75,7 @@ var ColourButton = GObject.registerClass({
 }, class ColourButton extends Gtk.ColorButton {
     _init(params) {
         super._init(params);
-        this.connect('notify::color', () => { this.notify('colour'); });
+        this.connect('color-set', () => { this.notify('colour'); });
     }
 
     get colour() {
