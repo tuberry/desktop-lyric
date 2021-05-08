@@ -124,7 +124,7 @@ var Paper = GObject.registerClass({
         this._text = text.split(/\[/)
             .filter(x => x)
             .map(x => x.split(/\]/))
-            .map(x => [Math.round(ms(x[0])), x[1]])
+            .map(x => [Math.round(ms(x[0])), x[1] ? x[1].trim() : ''])
             .reduce((acc, v, i, a) => {
                 acc[v[0]] = [v[0], a[i + 1] ? a[i + 1][0] : (this.length > v[0] ? this.length : v[0]), v[1]];
                 return acc;
@@ -170,7 +170,7 @@ var Paper = GObject.registerClass({
         cr.setSource(gd);
         if(this._orient) {
             ly.get_context().set_base_gravity(Pango.Gravity.EAST);
-            cr.moveTo(fh / 2, 0);
+            cr.moveTo(fh, 0);
             cr.rotate(Math.PI / 2);
         }
         PangoCairo.show_layout(cr, ly);
