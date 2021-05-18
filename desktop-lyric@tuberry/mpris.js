@@ -4,10 +4,9 @@
 'use strict';
 const Signals = imports.signals;
 const ByteArray = imports.byteArray;
-const { Shell, Gio, GLib, GObject, GMenu } = imports.gi;
+const { Shell, Gio, GLib, GObject } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 
-const AppSys = Shell.AppSystem.get_default();
 const DBusIface = loadInterfaceXML('org.freedesktop.DBus');
 const DBusProxy = Gio.DBusProxy.makeProxyWrapper(DBusIface);
 
@@ -31,84 +30,37 @@ const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 var MprisPlayer = GObject.registerClass({
     Signals: {
         'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_INT64] },
-        'paused': { param_types: [GObject.TYPE_BOOLEAN] },
+        'status': { param_types: [GObject.TYPE_STRING] },
         'seeked': { param_types: [GObject.TYPE_INT64] },
         'closed': { },
     },
 }, class MprisPlayer extends GObject.Object {
     _init() {
         super._init();
-        this._getMultimedia();
         this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', this._onProxyReady.bind(this));
     }
 
-    _getAppId(busName) {
+    _isMusicApp(busName) {
         try {
-            const [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
-            // const [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid)); // NOTE: not suitable for NUL, eg. lollypop and gnome-music
-            const [ok, out] = GLib.spawn_command_line_sync('bash -c \'tr "\\0" " " </proc/%d/cmdline\''.format(pid));
-            if(!ok) return '';
-            let [cmd] = GLib.basename(ByteArray.toString(out)).split(' ');
+            let cmd = busName.replace(new RegExp('^' + MPRIS_PLAYER_PREFIX), ''); // NOTE: some bad mpris implements do not support this;
             let [app] = Shell.AppSystem.search(cmd).toString().split(',');
-            return app;
-        } catch(e) {
-            return '';
-        }
-    }
-
-    _getMusicApps() {
-        return Shell.AppSystem.search('music').toString().split(',');
-    }
-
-    _getMultimedia() {
-        // Ref: https://gitlab.gnome.org/GNOME/gnome-shell-extensions/-/blob/master/extensions/apps-menu/extension.js
-        this._tree = new GMenu.Tree({ menu_basename: 'applications.menu' });
-        this._treeChangedId = this._tree.connect('changed', this._onTreeChanged.bind(this));
-        this._installedChangedId = AppSys.connect('installed-changed', this._onTreeChanged.bind(this));
-        this._onTreeChanged();
-    }
-
-    _onTreeChanged() {
-        this.apps = [];
-        this._tree.load_sync();
-        let root = this._tree.get_root_directory();
-        let iter = root.iter();
-        let next;
-        while((next = iter.next()) !== GMenu.TreeItemType.INVALID) {
-            if(next !== GMenu.TreeItemType.DIRECTORY) continue;
-            let dir = iter.get_directory();
-            if(dir.get_is_nodisplay()) continue;
-            let categoryId = dir.get_menu_id();
-            if(categoryId != 'Multimedia') continue;
-            this._loadCategory(categoryId, dir);
-            break;
-        }
-    }
-
-    _loadCategory(categoryId, dir) {
-        let iter = dir.iter();
-        let next;
-        while((next = iter.next()) !== GMenu.TreeItemType.INVALID) {
-            if(next === GMenu.TreeItemType.ENTRY) {
-                try {
-                    let entry = iter.get_entry();
-                    let id = entry.get_desktop_file_id(); // catch non-UTF8 filenames
-                    this.apps.push(id);
-                } catch (e) {
-                    continue;
-                }
-            } else if(next === GMenu.TreeItemType.SEPARATOR) {
-                continue;
-            } else if(next === GMenu.TreeItemType.DIRECTORY) {
-                let subdir = iter.get_directory();
-                if(!subdir.get_is_nodisplay()) this._loadCategory(categoryId, subdir);
+            if(!app) {
+                let [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
+                // let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid)); // NOTE: not suitable for NUL (`python ...`), eg. lollypop and gnome-music
+                let [ok, out] = GLib.spawn_command_line_sync('bash -c \'tr "\\0" " " </proc/%d/cmdline\''.format(pid));
+                if(!ok) return false;
+                [cmd] = GLib.basename(ByteArray.toString(out)).split(' ');
+                [app] = Shell.AppSystem.search(cmd).toString().split(',');
             }
+            let cate = Shell.AppSystem.get_default().lookup_app(app).get_app_info().get_string('Categories').split(';');
+            return cate.includes('AudioVideo') && !cate.includes('Video');
+        } catch(e) {
+            return false;
         }
     }
 
     _setPlayer(busName) {
-        if(this._busName || !busName.startsWith(MPRIS_PLAYER_PREFIX) || !this.apps.includes(this._getAppId(busName))) return;
-
+        if(this._busName || !busName.startsWith(MPRIS_PLAYER_PREFIX) || !this._isMusicApp(busName)) return;
         this._mprisProxy = new MprisProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
         this._playerProxy = new MprisPlayerProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
 
@@ -127,25 +79,16 @@ var MprisPlayer = GObject.registerClass({
     }
 
     _onNameOwnerChanged(proxy, sender, [name, oldOwner, newOwner]) {
-        if (newOwner && !oldOwner) this._setPlayer(name);
+        if(newOwner && !oldOwner) this._setPlayer(name);
     }
 
     get position() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
         try {
-            const [pos] = this._playerProxy.call_sync(
-                'org.freedesktop.DBus.Properties.Get',
-                new GLib.Variant('(ss)', [
-                    'org.mpris.MediaPlayer2.Player',
-                    'Position',
-                ]),
-                Gio.DBusCallFlags.NONE,
-                -1,
-                null
-            ).recursiveUnpack();
-
+            let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position',]);
+            let [pos] = this._playerProxy.call_sync('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null).recursiveUnpack();
             return pos;
-        } catch (e) {
+        } catch(e) {
             return 0;
         }
     }
@@ -186,7 +129,7 @@ var MprisPlayer = GObject.registerClass({
 
     _getMetadata() {
         let metadata = {};
-        for (let prop in this._playerProxy.Metadata)
+        for(let prop in this._playerProxy.Metadata)
             metadata[prop] = this._playerProxy.Metadata[prop].deepUnpack();
 
         // Validate according to the spec; some clients send buggy metadata:
@@ -212,7 +155,7 @@ var MprisPlayer = GObject.registerClass({
             if(name == 'Metadata') {
                 this._getMetadata();
             } else if(name == 'PlaybackStatus') {
-                this.emit('paused', this.status != 'Playing');
+                this.emit('status', this.status);
             }
         }
         this.thaw_notify();
@@ -220,8 +163,6 @@ var MprisPlayer = GObject.registerClass({
 
     destroy() {
         this._close();
-        this._tree = null;
-        AppSys.disconnect(this._installedChangedId);
         this._proxy.disconnectSignal(this._nameChangedId);
         this._proxy = null;
     }

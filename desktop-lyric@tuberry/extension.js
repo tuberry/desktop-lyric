@@ -39,9 +39,9 @@ const DesktopLyric = GObject.registerClass({
         this.bind_property('position', this._paper, 'position', GObject.BindingFlags.GET);
         this.bind_property('location', this._lyric, 'location', GObject.BindingFlags.GET);
         this._mpris.connect('update', this._update.bind(this));
-        this._mpris.connect('paused', (player, paused) => { this.playing = !paused; });
+        this._mpris.connect('closed', () => { this.status = 'Stopped'; });
+        this._mpris.connect('status', (player, status) => { this.status = status; });
         this._mpris.connect('seeked', (player, position) => { this.position = position / 1000; });
-        this._mpris.connect('closed', () => { this.playing = false; this._paper.clear(); });
         gsettings.bind(Fields.DRAG,     this, 'drag',     Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.INTERVAL, this, 'interval', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.SYSTRAY,  this, 'systray',  Gio.SettingsBindFlags.GET);
@@ -68,6 +68,11 @@ const DesktopLyric = GObject.registerClass({
         }) : 0;
     }
 
+    set status(status) {
+        this.playing = status == 'Playing';
+        if(status == 'Stopped') this._paper.clear();
+    }
+
     get Position() {
         return this._mpris ? this._mpris.position / 1000 : 0;
     }
@@ -75,9 +80,9 @@ const DesktopLyric = GObject.registerClass({
     _update(player, title, artist, length) {
         this._lyric.find(title, artist, text => {
             let len = length / 1000;
-            let pos = this.Position + 50; // the error: 50ms
+            let pos = this.Position + 50;
             this._paper.length = len;
-            this.position = pos < len || len == 0 ? pos : 50; // some buggy mpris
+            this.position = len - pos > 100 || len == 0 ? pos : 50; // some buggy mpris
             this._paper.text = text;
             this.playing = (this._mpris.status == 'Playing') && text;
         });
