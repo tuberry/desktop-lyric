@@ -1,6 +1,5 @@
 // vim:fdm=syntax
 // by tuberry
-// Ref: https://github.com/TheWeirdDev/lyrics-finder-gnome-ext/blob/master/lyrics_api.js
 //
 'use strict';
 const ByteArray = imports.byteArray;
@@ -17,7 +16,7 @@ var Lyric = GObject.registerClass({
         Soup.Session.prototype.add_feature.call(this.http, new Soup.ProxyResolverDefault());
     }
 
-    fetch(title, artist, callback) {
+    fetch(title, artist, callback) { // Ref: https://github.com/TheWeirdDev/lyrics-finder-gnome-ext/blob/master/lyrics_api.js
         let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist.split('/')[0]));
         let request = Soup.Message.new_from_uri('POST', uri);
         this.http.queue_message(request, (session, message) => {

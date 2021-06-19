@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Desktop Lyric 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-05-08 11:53+0800\n"
+"POT-Creation-Date: 2021-06-18 17:21+0800\n"
 "PO-Revision-Date: 2021-05-08 11:55+0800\n"
 "Last-Translator: tuberry <orzun@foxmail.com>\n"
 "Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
@@ -20,23 +20,23 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0\n"
 "X-Generator: Gtranslator 40.0\n"
 
-#: extension.js:108
+#: extension.js:113
 msgid "Lock position"
 msgstr "锁定位置"
 
-#: extension.js:108 prefs.js:38
+#: extension.js:113 prefs.js:38
 msgid "Unlock position"
 msgstr "解锁位置"
 
-#: extension.js:109
+#: extension.js:114
 msgid "Slower 0.5s"
 msgstr "减慢半秒"
 
-#: extension.js:110
+#: extension.js:115
 msgid "Faster 0.5s"
 msgstr "加快半秒"
 
-#: extension.js:112
+#: extension.js:117
 msgid "Settings"
 msgstr "设置"
 

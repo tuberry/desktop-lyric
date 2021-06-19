@@ -17,6 +17,7 @@ Or manually:
 ```bash
 git clone https://github.com/tuberry/desktop-lyric.git
 cd desktop-lyric && make install
+# make mergepo # for translation
 ```
 
 ## Features

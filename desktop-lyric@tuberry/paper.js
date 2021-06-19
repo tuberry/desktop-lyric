@@ -129,6 +129,7 @@ var Paper = GObject.registerClass({
                 acc[v[0]] = [v[0], a[i + 1] ? a[i + 1][0] : (this.length > v[0] ? this.length : v[0]), v[1]];
                 return acc;
             }, {});
+        this._tags = Object.keys(this._text).reverse();
         this.offset = 0;
     }
 
@@ -147,7 +148,7 @@ var Paper = GObject.registerClass({
 
     get text() {
         let now = this._position + this.offset;
-        let key = Object.keys(this._text).reverse().find(k => parseFloat(k) <= now);
+        let key = this._tags.find(k => parseFloat(k) <= now);
         if(key == undefined) return [0, ''];
         let [s, e, t] = this._text[key];
         return [now >= e || s == e ? 1 : (now - s) / (e - s), t];
