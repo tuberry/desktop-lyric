@@ -28,6 +28,7 @@ var DragMove = class extends DND._Draggable {
 var Paper = GObject.registerClass({
     Properties: {
         'drag':     GObject.ParamSpec.boolean('drag', 'drag', 'drag', GObject.ParamFlags.READWRITE, false),
+        'hide':     GObject.ParamSpec.boolean('hide', 'hide', 'hide', GObject.ParamFlags.READWRITE, false),
         'font':     GObject.ParamSpec.string('font', 'font', 'font', GObject.ParamFlags.READWRITE, 'Sans 40'),
         'orient':   GObject.ParamSpec.uint('orient', 'orient', 'orient', GObject.ParamFlags.READWRITE, 0, 1, 0),
         'xpos':     GObject.ParamSpec.int('xpos', 'xpos', 'xpos', GObject.ParamFlags.READWRITE, -100, 65535, 10),
@@ -45,6 +46,7 @@ var Paper = GObject.registerClass({
         this.length = 0;
         this.text = '';
         this._area = new St.DrawingArea({ reactive: false, });
+        this.bind_property('hide', this._area, 'visible', GObject.BindingFlags.INVERT_BOOLEAN);
         Main.uiGroup.add_actor(this._area);
 
         this._bindSettings();
@@ -59,6 +61,7 @@ var Paper = GObject.registerClass({
         gsettings.bind(Fields.OUTLINE,  this, 'outline',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.INACTIVE, this, 'inactive', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.ORIENT,   this, 'orient',   Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.HIDE,     this, 'hide',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XPOS,     this, 'xpos',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.YPOS,     this, 'ypos',     Gio.SettingsBindFlags.DEFAULT);
     }
@@ -102,7 +105,7 @@ var Paper = GObject.registerClass({
 
     set position(position) {
         this._position = position;
-        this._area.queue_repaint();
+        if(this._area.visible) this._area.queue_repaint();
     }
 
     set orient(orient) {

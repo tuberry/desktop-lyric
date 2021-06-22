@@ -6,6 +6,7 @@ var Fields = {
     YPOS:     'ypos',
     DRAG:     'draggable',
     FONT:     'font-name',
+    HIDE:     'hide-lyric',
     ACTIVE:   'active-color',
     OUTLINE:  'outline-color',
     INACTIVE: 'inactive-color',

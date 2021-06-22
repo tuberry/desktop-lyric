@@ -5,6 +5,10 @@
         <default>false</default>
         <summary>enable systray</summary>
     </key>
+    <key type="b" name="hide-lyric">
+        <default>false</default>
+        <summary>hide lyric</summary>
+    </key>
     <key type="b" name="draggable">
         <default>false</default>
         <summary>lyric is draggable or not</summary>

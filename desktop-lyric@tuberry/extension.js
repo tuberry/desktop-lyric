@@ -50,8 +50,7 @@ const DesktopLyric = GObject.registerClass({
 
     set drag(drag) {
         this._drag = drag;
-        if(!this._button) return;
-        this._updateMenu();
+        if(this._button) this._updateMenu();
     }
 
     set interval(interval) {
@@ -78,6 +77,7 @@ const DesktopLyric = GObject.registerClass({
     }
 
     _update(player, title, artist, length) {
+        if(!this._lyric) return;
         this._lyric.find(title, artist, text => {
             let len = length / 1000;
             let pos = this.Position + 50;
@@ -108,19 +108,25 @@ const DesktopLyric = GObject.registerClass({
     _updateMenu() {
         if(!this._button) return;
         this._button.menu.removeAll();
-        this._button.menu.addMenuItem(this._menuItemMaker(item => {
-            item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, !this._drag);
-        }, this._drag ? _('Lock position') : _('Unlock position')));
-        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.slower(); }, _('Slower 0.5s')));
-        this._button.menu.addMenuItem(this._menuItemMaker(() => { this._paper.faster(); }, _('Faster 0.5s')));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, (item, active) => { this._paper.hide = active; }));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, (item, active) => { item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, active); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._button.menu.addMenuItem(this._menuItemMaker(item => { ExtensionUtils.openPrefs() }, _('Settings')));
+        this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Slower'), () => { this._paper.slower(); }));
+        this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Faster'), () => { this._paper.faster(); }));
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._button.menu.addMenuItem(this._menuItemMaker(_('Settings'), item => { ExtensionUtils.openPrefs(); }));
     }
 
-    _menuItemMaker(callback, text) {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'desktop-lyric-item popup-menu-item' });
+    _menuSwitchMaker(text, active, callback) {
+        let item = new PopupMenu.PopupSwitchMenuItem(text, active, { style_class: 'desktop-lyric-item popup-menu-item' });
+        item.connect('toggled', callback);
+
+        return item;
+    }
+
+    _menuItemMaker(text, callback) {
+        let item = new PopupMenu.PopupMenuItem(text, { style_class: 'desktop-lyric-item popup-menu-item' });
         item.connect('activate', callback);
-        item.add_child(new St.Label({ x_expand: true, text: text }));
 
         return item;
     }

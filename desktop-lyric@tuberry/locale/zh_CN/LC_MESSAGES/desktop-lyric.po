@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Desktop Lyric 1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-06-18 17:21+0800\n"
+"POT-Creation-Date: 2021-06-22 23:54+0800\n"
 "PO-Revision-Date: 2021-05-08 11:55+0800\n"
 "Last-Translator: tuberry <orzun@foxmail.com>\n"
 "Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
@@ -20,20 +20,20 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0\n"
 "X-Generator: Gtranslator 40.0\n"
 
-#: extension.js:113
-msgid "Lock position"
-msgstr "锁定位置"
+#: extension.js:111
+msgid "Hide lyric"
+msgstr "隐藏歌词"
 
-#: extension.js:113 prefs.js:38
+#: extension.js:112 prefs.js:38
 msgid "Unlock position"
 msgstr "解锁位置"
 
 #: extension.js:114
-msgid "Slower 0.5s"
+msgid "0.5s Slower"
 msgstr "减慢半秒"
 
 #: extension.js:115
-msgid "Faster 0.5s"
+msgid "0.5s Faster"
 msgstr "加快半秒"
 
 #: extension.js:117
@@ -83,6 +83,15 @@ msgstr "刷新间隔"
 #: prefs.js:54
 msgid "Font name"
 msgstr "字体名称"
+
+#~ msgid "Slower 0.5s"
+#~ msgstr "减慢半秒"
+
+#~ msgid "Faster 0.5s"
+#~ msgstr "加快半秒"
+
+#~ msgid "Lock position"
+#~ msgstr "锁定位置"
 
 #~ msgid "Offset: 0.5s"
 #~ msgstr "补偿：0.5s"
