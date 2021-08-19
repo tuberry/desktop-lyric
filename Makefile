@@ -6,8 +6,7 @@ EXTNUM = 4006
 UUID = $(shell ls | grep @)
 NAME = $(shell cat $(UUID)/metadata.json | grep gettext-domain | sed -e 's/.* "//; s/",//')
 PACK = $(shell echo $(NAME) | sed -e 's/^./\U&/g; s/-/ /g; s/ ./\U&/g')
-EGOURL = https://extensions.gnome.org/extension/$(EXTNUM)/$(NAME)/
-MSGPOS = $(wildcard $(UUID)/locale/*/LC_MESSAGES/*.po)
+EGOURL = https://extensions.gnome.org/extension/$(EXTNUM)/$(subst gnome-shell-extension-,,$(NAME))/
 
 BUILD = _build
 
@@ -42,17 +41,14 @@ clean:
 	-rm -fR $(BUILD)
 	-rm -fR *.zip
 
-%.mo: %.po
-	msgfmt $< -o $@
-
-$(BUILD): $(MSGPOS:.po=.mo)
+$(BUILD):
 	mkdir -p $(BUILD)
 	cp -rf $(UUID)/* $(BUILD)
+	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
+	if test -d $(BUILD)/locale; then for p in $(BUILD)/locale/*/LC_MESSAGES/*.po; do msgfmt -o $${p/.po/.mo} $$p; done; fi;
 	-rm -fR $(BUILD)/locale/*/LC_MESSAGES/*po
-	-rm -fR $(UUID)/locale/*/LC_MESSAGES/*mo
 	glib-compile-schemas $(BUILD)/schemas/
 	-rm -fR $(BUILD)/schemas/*xml
-	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
 
 pack: $(BUILD)
 	cd $(BUILD); \
@@ -74,11 +70,11 @@ endif
 
 $(MSGAIM):
 	mkdir -p $(MSGDIR); \
-		msginit --no-translator --locale $(LANGUAGE).UTF-8 -i $(MSGPOT) -o $(MSGAIM)
+		msginit --no-translator -l $(LANGUAGE).UTF-8 -i $(MSGPOT) -o $(MSGAIM)
 
 $(MSGPOT):
 	cd $(UUID); \
-		xgettext -k --keyword=_ --from-code=utf-8 --package-name="$(PACK)" --package-version=$(VERSION) --add-comments='Translators:' --output locale/$(NAME).pot *js
+		xgettext --keyword=_ --from-code=utf-8 --package-name="$(NAME)" --package-version=$(VERSION) --add-comments='Translators:' --output locale/$(NAME).pot *js
 
 mergepo: $(MSGPOT) $(MSGAIM)
 	msgmerge -U $(MSGAIM) $(MSGPOT)

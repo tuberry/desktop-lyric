@@ -152,7 +152,7 @@ var Paper = GObject.registerClass({
     get text() {
         let now = this._position + this.offset;
         let key = this._tags.find(k => parseFloat(k) <= now);
-        if(key == undefined) return [0, ''];
+        if(key === undefined) return [0, ''];
         let [s, e, t] = this._text[key];
         return [now >= e || s == e ? 1 : (now - s) / (e - s), t];
     }

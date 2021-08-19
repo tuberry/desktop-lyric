@@ -111,6 +111,7 @@ const DesktopLyric = GObject.registerClass({
         this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, (item, active) => { this._paper.hide = active; }));
         this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, (item, active) => { item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, active); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._button.menu.addMenuItem(this._menuItemMaker(_('Resynchronize'), () => { this.position = this.Position + 50; }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Slower'), () => { this._paper.slower(); }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Faster'), () => { this._paper.faster(); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());

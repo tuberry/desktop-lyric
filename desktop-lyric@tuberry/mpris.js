@@ -47,7 +47,7 @@ var MprisPlayer = GObject.registerClass({
             if(!app) {
                 let [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
                 // let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid)); // NOTE: not suitable for NUL (`python ...`), eg. lollypop and gnome-music
-                let [ok, out] = GLib.spawn_command_line_sync('bash -c \'tr "\\0" " " </proc/%d/cmdline\''.format(pid));
+                let [ok, out] = GLib.spawn_command_line_sync('tr "\\0" " " </proc/%d/cmdline'.format(pid));
                 if(!ok) return false;
                 [cmd] = GLib.basename(ByteArray.toString(out)).split(' ');
                 [app] = Shell.AppSystem.search(cmd).toString().split(',');

@@ -1,24 +1,21 @@
-# Chinese translations for Desktop Lyric package
-# Desktop Lyric 软件包的简体中文翻译.
-# Copyright (C) 2021 THE Desktop Lyric'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the Desktop Lyric package.
+# Chinese translations for gnome-shell-extension-desktop-lyric package
+# gnome-shell-extension-desktop-lyric 软件包的简体中文翻译.
+# Copyright (C) 2021 THE gnome-shell-extension-desktop-lyric'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-desktop-lyric package.
 # Automatically generated, 2021.
-# tuberry <orzun@foxmail.com>, 2021.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Desktop Lyric 1\n"
+"Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-06-22 23:54+0800\n"
-"PO-Revision-Date: 2021-05-08 11:55+0800\n"
-"Last-Translator: tuberry <orzun@foxmail.com>\n"
-"Language-Team: Chinese (Simplified) <orzun@foxmail.com>\n"
-"Language: zh_CHS\n"
+"POT-Creation-Date: 2021-08-19 12:27+0800\n"
+"PO-Revision-Date: 2021-08-18 14:05+0800\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=1; plural=0\n"
-"X-Generator: Gtranslator 40.0\n"
 
 #: extension.js:111
 msgid "Hide lyric"
@@ -29,14 +26,18 @@ msgid "Unlock position"
 msgstr "解锁位置"
 
 #: extension.js:114
+msgid "Resynchronize"
+msgstr "重新同步"
+
+#: extension.js:115
 msgid "0.5s Slower"
 msgstr "减慢半秒"
 
-#: extension.js:115
+#: extension.js:116
 msgid "0.5s Faster"
 msgstr "加快半秒"
 
-#: extension.js:117
+#: extension.js:118
 msgid "Settings"
 msgstr "设置"
 
@@ -83,18 +84,3 @@ msgstr "刷新间隔"
 #: prefs.js:54
 msgid "Font name"
 msgstr "字体名称"
-
-#~ msgid "Slower 0.5s"
-#~ msgstr "减慢半秒"
-
-#~ msgid "Faster 0.5s"
-#~ msgstr "加快半秒"
-
-#~ msgid "Lock position"
-#~ msgstr "锁定位置"
-
-#~ msgid "Offset: 0.5s"
-#~ msgstr "补偿：0.5s"
-
-#~ msgid "More"
-#~ msgstr "更多"
