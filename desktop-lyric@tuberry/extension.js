@@ -6,7 +6,7 @@ const Cairo = imports.cairo;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const { PangoCairo, Pango, Soup, GLib, Clutter, St, Gio, GObject } = imports.gi;
+const { GLib, St, Gio, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
@@ -82,7 +82,7 @@ const DesktopLyric = GObject.registerClass({
             let len = length / 1000;
             let pos = this.Position + 50;
             this._paper.length = len;
-            this.position = len - pos > 100 || len == 0 ? pos : 50; // some buggy mpris
+            this.position = len - pos > 800 || len == 0 ? pos : 50; // some buggy mpris
             this._paper.text = text;
             this.playing = (this._mpris.status == 'Playing') && text;
         });
