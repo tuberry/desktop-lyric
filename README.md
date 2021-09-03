@@ -10,14 +10,25 @@ Show lyric of the playing song on the desktop.
 
 ## Installation
 
+### Recommended
+
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
-Or manually:
+### Manual
+
+The latest and supported version should only work on the the most current stable version of GNOME Shell.
 
 ```bash
-git clone https://github.com/tuberry/desktop-lyric.git
-cd desktop-lyric && make install
+git clone https://github.com/tuberry/desktop-lyric.git && cd desktop-lyric
+make && make install
 # make mergepo # for translation
+```
+
+For older versions, it's necessary to switch the git tag before `make`:
+
+```bash
+# git tag # to see available versions
+git checkout your_gnome_shell_version
 ```
 
 ## Features

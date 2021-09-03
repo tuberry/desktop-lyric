@@ -1,5 +1,5 @@
 // vim:fdm=syntax
-// by tuberry, from ui.mpris, add position
+// by tuberry
 //
 'use strict';
 const Signals = imports.signals;
@@ -29,7 +29,7 @@ const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 
 var MprisPlayer = GObject.registerClass({
     Signals: {
-        'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING, GObject.TYPE_INT64] },
+        'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_JSOBJECT, GObject.TYPE_INT64] },
         'status': { param_types: [GObject.TYPE_STRING] },
         'seeked': { param_types: [GObject.TYPE_INT64] },
         'closed': { },
@@ -65,7 +65,7 @@ var MprisPlayer = GObject.registerClass({
         this._playerProxy = new MprisPlayerProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
 
         this._trackTitle = '';
-        this._trackArtists = '';
+        this._trackArtists = [];
         this._trackLength = 0;
         this._busName = busName;
     }
@@ -101,11 +101,10 @@ var MprisPlayer = GObject.registerClass({
         try {
             this._playerProxy.disconnect(this._propsChangedId);
             this._playerProxy.disconnectSignal(this._positChangedId);
-            this._playerProxy = null;
-
             this._mprisProxy.disconnect(this._ownerNotifyId);
-            this._mprisProxy = null;
-            this._busName = '';
+            delete this._playerProxy;
+            delete this._mprisProxy;
+            delete this._busName;
         } catch(e) {
             // Ignore DBus.NoReply Error when closing
         }
@@ -131,21 +130,13 @@ var MprisPlayer = GObject.registerClass({
         let metadata = {};
         for(let prop in this._playerProxy.Metadata)
             metadata[prop] = this._playerProxy.Metadata[prop].deepUnpack();
-
+        this._trackLength = metadata['mpris:length'] || 0;
+        let title = metadata['xesam:title'];
+        this._trackTitle = typeof title === 'string' ? title : '';
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         let artists = metadata['xesam:artist'];
-        if(!Array.isArray(artists) || !artists.every(artist => typeof artist === 'string')) {
-            this._trackArtists = '';
-        } else {
-            this._trackArtists = artists.join('/');
-        }
-
-        this._trackTitle = metadata['xesam:title'];
-        if(typeof this._trackTitle !== 'string') this._trackTitle = '';
-        this._trackLength = metadata['mpris:length'];
-        if(typeof this._trackLength === 'undefined') this._trackLength = 0;
-
+        this._trackArtists = Array.isArray(artists) && artists.every(a => typeof a === 'string') ? artists : [];
         if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength);
     }
 
@@ -164,7 +155,7 @@ var MprisPlayer = GObject.registerClass({
     destroy() {
         this._close();
         this._proxy.disconnectSignal(this._nameChangedId);
-        this._proxy = null;
+        delete this._proxy;
     }
 });
 

@@ -1,5 +1,5 @@
 // vim:fdm=syntax
-// by: tuberry@github
+// by tuberry
 'use strict';
 
 const Cairo = imports.cairo;
@@ -10,6 +10,7 @@ const { GLib, St, Gio, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const gsettings = ExtensionUtils.getSettings();
+const _ = ExtensionUtils.gettext;
 const Me = ExtensionUtils.getCurrentExtension();
 const Fields = Me.imports.fields.Fields;
 
@@ -17,7 +18,6 @@ const Mpris = Me.imports.mpris;
 const Lyric = Me.imports.lyric;
 const Paper = Me.imports.paper;
 
-const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const DesktopLyric = GObject.registerClass({
@@ -76,9 +76,9 @@ const DesktopLyric = GObject.registerClass({
         return this._mpris ? this._mpris.position / 1000 : 0;
     }
 
-    _update(player, title, artist, length) {
+    _update(player, title, artists, length) {
         if(!this._lyric) return;
-        this._lyric.find(title, artist, text => {
+        this._lyric.find(title, artists, text => {
             let len = length / 1000;
             let pos = this.Position + 50;
             this._paper.length = len;
@@ -108,19 +108,20 @@ const DesktopLyric = GObject.registerClass({
     _updateMenu() {
         if(!this._button) return;
         this._button.menu.removeAll();
-        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, (item, active) => { this._paper.hide = active; }));
-        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, (item, active) => { item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, active); }));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, () => { this._paper.hide = !this._paper.hide; }));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, () => {
+            this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._button.menu.addMenuItem(this._menuItemMaker(_('Resynchronize'), () => { this.position = this.Position + 50; }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Slower'), () => { this._paper.slower(); }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Faster'), () => { this._paper.faster(); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._button.menu.addMenuItem(this._menuItemMaker(_('Settings'), item => { ExtensionUtils.openPrefs(); }));
+        this._button.menu.addMenuItem(this._menuItemMaker(_('Settings'), () => { ExtensionUtils.openPrefs(); }));
     }
 
     _menuSwitchMaker(text, active, callback) {
         let item = new PopupMenu.PopupSwitchMenuItem(text, active, { style_class: 'desktop-lyric-item popup-menu-item' });
-        item.connect('toggled', callback);
+        item.connect('activate', callback);
 
         return item;
     }

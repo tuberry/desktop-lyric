@@ -2,8 +2,10 @@
 // by tuberry
 //
 'use strict';
-const ByteArray = imports.byteArray;
 const { Soup, GLib, Gio, GObject } = imports.gi;
+
+const SEARCH = 'http://music.163.com/api/search/pc?';
+const GETLRC = 'https://music.163.com/api/song/lyric?';
 
 var Lyric = GObject.registerClass({
     Properties: {
@@ -12,48 +14,52 @@ var Lyric = GObject.registerClass({
 }, class Lyric extends GObject.Object {
     _init() {
         super._init();
-        this.http = new Soup.SessionAsync();
-        Soup.Session.prototype.add_feature.call(this.http, new Soup.ProxyResolverDefault());
+        this.http = new Soup.Session();
     }
 
-    fetch(title, artist, callback) { // Ref: https://github.com/TheWeirdDev/lyrics-finder-gnome-ext/blob/master/lyrics_api.js
-        let uri = new Soup.URI('http://music.163.com/api/search/pc?s=%s %s&type=1&limit=1'.format(title, artist.split('/')[0]));
-        let request = Soup.Message.new_from_uri('POST', uri);
-        this.http.queue_message(request, (session, message) => {
-            if (message.status_code != Soup.KnownStatusCode.OK) return;
-            let data = JSON.parse(message.response_body.data);
-            if (data.code != 200 || data.result.songCount < 1) return;
-            let song = Array.from(data.result.songs)[0];
-            if(!song || !song.id) return;
-            let request = Soup.Message.new('GET', 'http://music.163.com/api/song/media?id=%d'.format(song.id));
-            this.http.queue_message(request, (session, message) => {
-                if (message.status_code != Soup.KnownStatusCode.OK) return;
-                let data = JSON.parse(message.response_body.data);
-                if (data.code != 200 || !data.lyric) return;
-                callback(data.lyric);
-                Gio.File.new_for_path(this.path(title, artist)).replace_contents(data.lyric, null, false, Gio.FileCreateFlags.NONE, null);
-            });
-        });
+    async visit(method, url, param) {
+        let message = Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param));
+        let bytes = await this.http.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null);
+        if(message.statusCode !== Soup.Status.OK)
+            throw new Error('Unexpected response: %s'.format(Soup.Status.get_phrase(statusCode)));
+
+        return new TextDecoder().decode(bytes.get_data());
     }
 
-    find(title, artist, callback) {
-        let file = Gio.File.new_for_path(this.path(title, artist));
+    async fetch(title, artists) {
+        let info = artists ? title + ' ' + artists.join('/') : title;
+        let result = JSON.parse(await this.visit('POST', SEARCH, { s: info, limit: '1', type: '1' })).result;
+        if(!result.songCount) throw new Error('Empty search result for %s'.format(info));
+        let answer = JSON.parse(await this.visit('GET', GETLRC, { id: result.songs[0].id.toString(), lv: '1', kv: '0', tv: '0' }));
+        if(!answer.lrc) throw new Error('Lyric of %s not found'.format(info));
+        let file = Gio.File.new_for_path(this.path(title, artists));
+        if(file.query_exists(null)) file.replace_contents(answer.lrc.lyric, null, false, Gio.FileCreateFlags.NONE, null);
+
+        return answer.lrc.lyric;
+    }
+
+    find(title, artists, callback) {
+        let file = Gio.File.new_for_path(this.path(title, artists));
         if(file.query_exists(null)) {
             let [ok, contents] = file.load_contents(null);
-            callback(ByteArray.toString(contents));
+            if(ok) callback(new TextDecoder().decode(contents));
         } else {
             callback('');
-            this.fetch(title, artist, callback);
+            this.fetch(title, artists).then(callback);
         }
     }
 
-    path(title, artist) {
-        let filename = artist ? '%s-%s.lrc'.format(title, artist).replace(/\//g, ',') : '%s.lrc'.format(title).replace(/\//g, ',');
-        return this.location ? this.location + '/' + filename : GLib.build_filenamev([GLib.get_home_dir(),  '.lyrics', filename]);
+    path(title, artists) {
+        let filename = artists.length
+            ? '%s-%s.lrc'.format(title, artists.join(',')).replace(/\//g, ',')
+            : '%s.lrc'.format(title).replace(/\//g, ',');
+
+        return this.location ? this.location + '/' + filename
+            : GLib.build_filenamev([GLib.get_home_dir(),  '.lyrics', filename]);
     }
 
     destroy() {
-        this.http = null;
+        delete this.http;
     }
 });
 
