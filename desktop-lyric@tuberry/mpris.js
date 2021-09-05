@@ -3,7 +3,6 @@
 //
 'use strict';
 const Signals = imports.signals;
-const ByteArray = imports.byteArray;
 const { Shell, Gio, GLib, GObject } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 
@@ -12,6 +11,7 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(DBusIface);
 
 const MprisIface = loadInterfaceXML('org.mpris.MediaPlayer2');
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(MprisIface);
+const SPACE = new TextEncoder().encode(' ');
 
 const MprisPlayerIface = `
 <node>
@@ -42,14 +42,14 @@ var MprisPlayer = GObject.registerClass({
 
     _isMusicApp(busName) {
         try {
-            let cmd = busName.replace(new RegExp('^' + MPRIS_PLAYER_PREFIX), ''); // NOTE: some bad mpris implements do not support this;
+            let cmd = busName.replace(new RegExp('^' + MPRIS_PLAYER_PREFIX), '');
             let [app] = Shell.AppSystem.search(cmd).toString().split(',');
-            if(!app) {
+            if(!app) { //NOTE: for some bad mpris
                 let [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
-                // let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid)); // NOTE: not suitable for NUL (`python ...`), eg. lollypop and gnome-music
-                let [ok, out] = GLib.spawn_command_line_sync('bash -c \'tr "\\0" " " </proc/%d/cmdline\''.format(pid));
+                let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid));
                 if(!ok) return false;
-                [cmd] = GLib.basename(ByteArray.toString(out)).split(' ');
+                content = content.map(c => c == '\0' || c == '\n' ? SPACE : c);
+                [cmd] = GLib.basename(new TextDecoder().decode(content)).split(' ');
                 [app] = Shell.AppSystem.search(cmd).toString().split(',');
             }
             let cate = Shell.AppSystem.get_default().lookup_app(app).get_app_info().get_string('Categories').split(';');

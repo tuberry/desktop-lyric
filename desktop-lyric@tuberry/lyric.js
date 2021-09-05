@@ -21,7 +21,7 @@ var Lyric = GObject.registerClass({
         let message = Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param));
         let bytes = await this.http.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null);
         if(message.statusCode !== Soup.Status.OK)
-            throw new Error('Unexpected response: %s'.format(Soup.Status.get_phrase(statusCode)));
+            throw new Error('Unexpected response: %s'.format(Soup.Status.get_phrase(message.statusCode)));
 
         return new TextDecoder().decode(bytes.get_data());
     }
@@ -55,7 +55,7 @@ var Lyric = GObject.registerClass({
             : '%s.lrc'.format(title).replace(/\//g, ',');
 
         return this.location ? this.location + '/' + filename
-            : GLib.build_filenamev([GLib.get_home_dir(),  '.lyrics', filename]);
+            : GLib.build_filenamev([GLib.get_home_dir(), '.lyrics', filename]);
     }
 
     destroy() {
