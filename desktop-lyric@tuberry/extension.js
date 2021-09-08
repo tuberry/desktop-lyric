@@ -18,7 +18,7 @@ const Mpris = Me.imports.mpris;
 const Lyric = Me.imports.lyric;
 const Paper = Me.imports.paper;
 
-const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
+const LYRIC_ICON = Me.dir.get_child('icons').get_child('lyric-symbolic.svg').get_path();
 
 const DesktopLyric = GObject.registerClass({
     Properties: {
@@ -79,12 +79,15 @@ const DesktopLyric = GObject.registerClass({
     _update(player, title, artists, length) {
         if(!this._lyric) return;
         this._lyric.find(title, artists, text => {
-            let len = length / 1000;
-            let pos = this.Position + 50;
-            this._paper.length = len;
-            this.position = len - pos > 800 || len == 0 ? pos : 50; // some buggy mpris
-            this._paper.text = text;
-            this.playing = (this._mpris.status == 'Playing') && text;
+            if(text) {
+                this._paper.length = length;
+                this.position = (pos => length - pos > 800 || length == 0 ? pos : 50)(this.Position + 50); // some buggy mpris
+                this._paper.text = text;
+                this.playing = this._mpris.status == 'Playing';
+            } else {
+                this._paper.clear();
+                this.playing = false;
+            }
         });
     }
 
@@ -93,7 +96,7 @@ const DesktopLyric = GObject.registerClass({
             if(this._button) return;
             this._button = new PanelMenu.Button(0.0, null, false);
             this._button.add_actor(new St.Icon({
-                gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon('lyric')) }),
+                gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(LYRIC_ICON) }),
                 style_class: 'desktop-lyric-systray system-status-icon',
             }));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button, 0, 'right');
@@ -109,8 +112,8 @@ const DesktopLyric = GObject.registerClass({
         if(!this._button) return;
         this._button.menu.removeAll();
         this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, () => { this._paper.hide = !this._paper.hide; }));
-        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, item => {
-            item._getTopMenu().close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, () => {
+            this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._button.menu.addMenuItem(this._menuItemMaker(_('Resynchronize'), () => { this.position = this.Position + 50; }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Slower'), () => { this._paper.slower(); }));

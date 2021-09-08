@@ -170,7 +170,7 @@ var Paper = GObject.registerClass({
         gd.addColorStopRGBA(position, ...this._active);
         gd.addColorStopRGBA(position, ...this._inactive);
         gd.addColorStopRGBA(1, ...this._inactive);
-        cr.moveTo(0, 0);
+        cr.moveTo((a => a > 0 ? 0 : a)(x - position * fw), 0);
         cr.setSource(gd);
         if(this._orient) {
             ly.get_context().set_base_gravity(Pango.Gravity.EAST);

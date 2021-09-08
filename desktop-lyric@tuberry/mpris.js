@@ -137,7 +137,7 @@ var MprisPlayer = GObject.registerClass({
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         let artists = metadata['xesam:artist'];
         this._trackArtists = Array.isArray(artists) && artists.every(a => typeof a === 'string') ? artists : [];
-        if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength);
+        if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength / 1000);
     }
 
     _updateState(proxy, changed, invalidated) {
