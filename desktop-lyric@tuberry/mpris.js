@@ -71,10 +71,7 @@ var MprisPlayer = GObject.registerClass({
     }
 
     _onProxyReady() {
-        this._proxy.ListNamesRemote(([names]) => {
-            if(!names) return;
-            names.forEach(name => { this._setPlayer(name); });
-        });
+        this._proxy.ListNamesRemote(([names]) => { if(names) names.forEach(name => { this._setPlayer(name); }); });
         this._nameChangedId = this._proxy.connectSignal('NameOwnerChanged', this._onNameOwnerChanged.bind(this));
     }
 
@@ -115,9 +112,9 @@ var MprisPlayer = GObject.registerClass({
 
     _onMprisProxyReady() {
         this._ownerNotifyId = this._mprisProxy.connect('notify::g-name-owner', () => {
-            if (!this._mprisProxy.g_name_owner) this._close();
+            if(!this._mprisProxy.g_name_owner) this._close();
         });
-        if (!this._mprisProxy.g_name_owner) this._close();
+        if(!this._mprisProxy.g_name_owner) this._close();
     }
 
     _onPlayerProxyReady() {

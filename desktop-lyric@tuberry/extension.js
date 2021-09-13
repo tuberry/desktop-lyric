@@ -154,12 +154,12 @@ class Extension {
     }
 
     enable() {
-        this._lyric = new DesktopLyric();
+        this._ext = new DesktopLyric();
     }
 
     disable() {
-        this._lyric.destroy();
-        delete this._lyric;
+        this._ext.destroy();
+        delete this._ext;
     }
 }
 

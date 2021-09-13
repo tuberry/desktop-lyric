@@ -12,15 +12,18 @@ const gsettings = ExtensionUtils.getSettings();
 const Me = ExtensionUtils.getCurrentExtension();
 const Fields = Me.imports.fields.Fields;
 
+const splitAt = i => x => [x.slice(0, i), x.slice(i)];
+const toMS = x => x.split(':').reverse().reduce((a, v, i) => a + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
+
 var DragMove = class extends DND._Draggable {
     _dragActorDropped(event) {
         // override this for moving only and do nothing more
         this._dragCancellable = false;
         this._dragState = DND.DragState.INIT;
-
         global.display.set_cursor(Meta.Cursor.DEFAULT);
         this.emit('drag-end', event.get_time(), true);
         this._dragComplete();
+
         return true;
     }
 }
@@ -123,16 +126,12 @@ var Paper = GObject.registerClass({
     }
 
     set text(text) {
-        let ms = x => x.split(':').reverse().reduce((acc, v, i) => (acc + parseFloat(v) * 60 ** i), 0) * 1000; // 1:1 => 61000 ms
-        this._text = text.split(/\[/)
-            .filter(x => x)
-            .map(x => x.split(/\]/))
-            .map(x => [Math.round(ms(x[0])), x[1] ? x[1].trim() : ''])
-            .reduce((acc, v, i, a) => {
-                acc[v[0]] = [v[0], a[i + 1] ? a[i + 1][0] : (this.length > v[0] ? this.length : v[0]), v[1]];
-                return acc;
-            }, {});
-        this._tags = Object.keys(this._text).reverse();
+        this._text = text.split(/\n/)
+            .flatMap(x => (i => i > 0 ? [splitAt(i + 1)(x)] : [])(x.lastIndexOf(']')))
+            .flatMap(x => x[0].match(/(?<=\[)[^\][]+(?=])/g).map(y => [Math.round(toMS(y)), x[1]]))
+            .sort((u, v) => u[0] > v[0])
+            .reduce((a, v, i, arr) => a.set([v[0]], [v[0], arr[i + 1] ? arr[i + 1][0] : Math.max(this.length, v[0]), v[1]]), new Map());
+        this._tags = Array.from(this._text.keys()).reverse();
         this.offset = 0;
     }
 
@@ -153,7 +152,7 @@ var Paper = GObject.registerClass({
         let now = this._position + this.offset;
         let key = this._tags.find(k => parseFloat(k) <= now);
         if(key === undefined) return [0, ''];
-        let [s, e, t] = this._text[key];
+        let [s, e, t] = this._text.get(key);
         return [now >= e || s == e ? 1 : (now - s) / (e - s), t];
     }
 
