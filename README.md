@@ -1,6 +1,6 @@
 # desktop-lyric
 
-Show lyric of the playing song on the desktop.
+Show the lyric of playing songs on the desktop.
 
 >很多歌消失了。 —— *汪曾祺 《徙》*<br>
 [![license]](/LICENSE)

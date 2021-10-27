@@ -59,17 +59,19 @@ const DesktopLyric = GObject.registerClass({
     }
 
     set playing(play) {
+        if(this._paper.hide) this._paper.hide = false;
         if(this._refreshId) GLib.source_remove(this._refreshId);
         this._refreshId = play ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._interval, () => {
             this.position += this._interval + 1; // the error: 1ms;
             // log(this.position - this.Position);
             return GLib.SOURCE_CONTINUE;
-        }) : 0;
+        }) : undefined;
     }
 
     set status(status) {
         this.playing = status == 'Playing';
         if(status == 'Stopped') this._paper.clear();
+        if(status == 'Paused') this._paper.hide = true;
     }
 
     get Position() {
@@ -82,7 +84,7 @@ const DesktopLyric = GObject.registerClass({
             if(text) {
                 this._paper.length = length;
                 this.position = (pos => length - pos > 800 || length == 0 ? pos : 50)(this.Position + 50); // some buggy mpris
-                this._paper.text = text;
+                this._paper.text = text || '';
                 this.playing = this._mpris.status == 'Playing';
             } else {
                 this._paper.clear();
