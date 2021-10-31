@@ -1,14 +1,13 @@
 // vim:fdm=syntax
 // by tuberry
-//
+/* exported MprisPlayer Signals */
 'use strict';
+
 const Signals = imports.signals;
 const { Shell, Gio, GLib, GObject } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
-
 const DBusIface = loadInterfaceXML('org.freedesktop.DBus');
 const DBusProxy = Gio.DBusProxy.makeProxyWrapper(DBusIface);
-
 const MprisIface = loadInterfaceXML('org.mpris.MediaPlayer2');
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(MprisIface);
 const SPACE = new TextEncoder().encode(' ');
@@ -42,13 +41,13 @@ var MprisPlayer = GObject.registerClass({
 
     _isMusicApp(busName) {
         try {
-            let cmd = busName.replace(new RegExp('^' + MPRIS_PLAYER_PREFIX), '');
+            let cmd = busName.replace(new RegExp('^%s'.format(MPRIS_PLAYER_PREFIX)), '');
             let [app] = Shell.AppSystem.search(cmd).toString().split(',');
-            if(!app) { //NOTE: for some bad mpris
+            if(!app) { // NOTE: for some bad mpris
                 let [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
                 let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid));
                 if(!ok) return false;
-                content = content.map(c => c == '\0' || c == '\n' ? SPACE : c);
+                content = content.map(c => c === '\0' || c === '\n' ? SPACE : c);
                 [cmd] = GLib.basename(new TextDecoder().decode(content)).split(' ');
                 [app] = Shell.AppSystem.search(cmd).toString().split(',');
             }
@@ -82,7 +81,7 @@ var MprisPlayer = GObject.registerClass({
     get position() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
         try {
-            let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position',]);
+            let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']);
             let [pos] = this._playerProxy.call_sync('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null).recursiveUnpack();
             return pos;
         } catch(e) {
@@ -125,8 +124,7 @@ var MprisPlayer = GObject.registerClass({
 
     _getMetadata() {
         let metadata = {};
-        for(let prop in this._playerProxy.Metadata)
-            metadata[prop] = this._playerProxy.Metadata[prop].deepUnpack();
+        for(let prop in this._playerProxy.Metadata) metadata[prop] = this._playerProxy.Metadata[prop].deepUnpack();
         this._trackLength = metadata['mpris:length'] || 0;
         let title = metadata['xesam:title'];
         this._trackTitle = typeof title === 'string' ? title : '';
@@ -137,14 +135,11 @@ var MprisPlayer = GObject.registerClass({
         if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength / 1000);
     }
 
-    _updateState(proxy, changed, invalidated) {
+    _updateState(proxy, changed, _invalidated) {
         this.freeze_notify();
         for(let name in changed.deepUnpack()) {
-            if(name == 'Metadata') {
-                this._getMetadata();
-            } else if(name == 'PlaybackStatus') {
-                this.emit('status', this.status);
-            }
+            if(name === 'Metadata') this._getMetadata();
+            else if(name === 'PlaybackStatus') this.emit('status', this.status);
         }
         this.thaw_notify();
     }

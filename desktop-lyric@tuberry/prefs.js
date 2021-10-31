@@ -1,8 +1,9 @@
 // vim:fdm=syntax
 // by tuberry
-//
-const { Gio, Gtk, GLib, GObject, } = imports.gi;
+/* exported init buildPrefsWidget */
+'use strict';
 
+const { Gio, Gtk, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -22,7 +23,7 @@ function init() {
 const DesktopLyricPrefs = GObject.registerClass(
 class DesktopLyricPrefs extends Gtk.ScrolledWindow {
     _init() {
-        super._init({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
+        super._init({ hscrollbar_policy: Gtk.PolicyType.NEVER });
 
         this._buildWidgets();
         this._bindValues();

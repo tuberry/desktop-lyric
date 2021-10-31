@@ -1,5 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported Paper */
 'use strict';
 
 const Cairo = imports.cairo;
@@ -15,7 +16,7 @@ const Fields = Me.imports.fields.Fields;
 const splitAt = i => x => [x.slice(0, i), x.slice(i)];
 const toMS = x => x.split(':').reverse().reduce((a, v, i) => a + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 
-var DragMove = class extends DND._Draggable {
+const DragMove = class extends DND._Draggable {
     _dragActorDropped(event) {
         // override this for moving only and do nothing more
         this._dragCancellable = false;
@@ -26,7 +27,7 @@ var DragMove = class extends DND._Draggable {
 
         return true;
     }
-}
+};
 
 var Paper = GObject.registerClass({
     Properties: {
@@ -48,7 +49,7 @@ var Paper = GObject.registerClass({
 
         this.length = 0;
         this.text = '';
-        this._area = new St.DrawingArea({ reactive: false, });
+        this._area = new St.DrawingArea({ reactive: false });
         this.bind_property('hide', this._area, 'visible', GObject.BindingFlags.INVERT_BOOLEAN);
         Main.uiGroup.add_actor(this._area);
 
@@ -94,7 +95,7 @@ var Paper = GObject.registerClass({
         if(drag) {
             if(this._drag) return;
             this._area.reactive = true;
-            this._drag = new DragMove(this._area, { dragActorOpacity : 200, });
+            this._drag = new DragMove(this._area, { dragActorOpacity: 200 });
             this._drag.connect('drag-end', () => {
                 gsettings.set_boolean(Fields.DRAG, false);
                 [this.xpos, this.ypos] = this._area.get_position();
@@ -119,8 +120,8 @@ var Paper = GObject.registerClass({
 
     _repaint(area) {
         let cr = area.get_context();
-        let [x, y] = area.get_surface_size();
-        this.draw(cr, x, y);
+        let [w, h] = area.get_surface_size();
+        this.draw(cr, w, h);
 
         cr.$dispose();
     }
@@ -153,10 +154,10 @@ var Paper = GObject.registerClass({
         let key = this._tags.find(k => parseFloat(k) <= now);
         if(key === undefined) return [0, ''];
         let [s, e, t] = this._text.get(key);
-        return [now >= e || s == e ? 1 : (now - s) / (e - s), t];
+        return [now >= e || s === e ? 1 : (now - s) / (e - s), t];
     }
 
-    draw(cr, x, y) {
+    draw(cr, w, _h) {
         let [position, txt] = this.text;
         if(!txt) return;
         cr.save();
@@ -169,7 +170,7 @@ var Paper = GObject.registerClass({
         gd.addColorStopRGBA(position, ...this._active);
         gd.addColorStopRGBA(position, ...this._inactive);
         gd.addColorStopRGBA(1, ...this._inactive);
-        cr.moveTo((a => a > 0 ? 0 : a)(x - position * fw), 0);
+        cr.moveTo((a => a > 0 ? 0 : a)(w - position * fw), 0);
         cr.setSource(gd);
         if(this._orient) {
             ly.get_context().set_base_gravity(Pango.Gravity.EAST);
@@ -179,7 +180,7 @@ var Paper = GObject.registerClass({
         PangoCairo.show_layout(cr, ly);
         cr.setSourceRGBA(...this._outline);
         PangoCairo.layout_path(cr, ly);
-        cr.stroke()
+        cr.stroke();
         cr.restore();
     }
 

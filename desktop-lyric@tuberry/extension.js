@@ -1,8 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported init */
 'use strict';
 
-const Cairo = imports.cairo;
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
@@ -13,11 +13,9 @@ const gsettings = ExtensionUtils.getSettings();
 const _ = ExtensionUtils.gettext;
 const Me = ExtensionUtils.getCurrentExtension();
 const Fields = Me.imports.fields.Fields;
-
 const Mpris = Me.imports.mpris;
 const Lyric = Me.imports.lyric;
 const Paper = Me.imports.paper;
-
 const LYRIC_ICON = Me.dir.get_child('icons').get_child('lyric-symbolic.svg').get_path();
 
 const DesktopLyric = GObject.registerClass({
@@ -31,11 +29,9 @@ const DesktopLyric = GObject.registerClass({
 }, class DesktopLyric extends GObject.Object {
     _init() {
         super._init();
-
         this._lyric = new Lyric.Lyric();
         this._paper = new Paper.Paper();
         this._mpris = new Mpris.MprisPlayer();
-
         this.bind_property('position', this._paper, 'position', GObject.BindingFlags.GET);
         this.bind_property('location', this._lyric, 'location', GObject.BindingFlags.GET);
         this._mpris.connect('update', this._update.bind(this));
@@ -69,9 +65,9 @@ const DesktopLyric = GObject.registerClass({
     }
 
     set status(status) {
-        this.playing = status == 'Playing';
-        if(status == 'Stopped') this._paper.clear();
-        if(status == 'Paused') this._paper.hide = true;
+        this.playing = status === 'Playing';
+        if(status === 'Stopped') this._paper.clear();
+        if(status === 'Paused') this._paper.hide = true;
     }
 
     get Position() {
@@ -83,9 +79,9 @@ const DesktopLyric = GObject.registerClass({
         this._lyric.find(title, artists, text => {
             if(text) {
                 this._paper.length = length;
-                this.position = (pos => length - pos > 800 || length == 0 ? pos : 50)(this.Position + 50); // some buggy mpris
+                this.position = (pos => length - pos > 800 || length === 0 ? pos : 50)(this.Position + 50); // some buggy mpris
                 this._paper.text = text || '';
-                this.playing = this._mpris.status == 'Playing';
+                this.playing = this._mpris.status === 'Playing';
             } else {
                 this._paper.clear();
                 this.playing = false;
@@ -114,8 +110,7 @@ const DesktopLyric = GObject.registerClass({
         if(!this._button) return;
         this._button.menu.removeAll();
         this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, () => { this._paper.hide = !this._paper.hide; }));
-        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, () => {
-            this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
+        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, () => { this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._button.menu.addMenuItem(this._menuItemMaker(_('Resynchronize'), () => { this.position = this.Position + 50; }));
         this._button.menu.addMenuItem(this._menuItemMaker(_('0.5s Slower'), () => { this._paper.slower(); }));
