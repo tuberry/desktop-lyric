@@ -64,10 +64,10 @@ var Paper = GObject.registerClass({
         gsettings.bind(Fields.ACTIVE,   this, 'active',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OUTLINE,  this, 'outline',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.INACTIVE, this, 'inactive', Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.ORIENT,   this, 'orient',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.HIDE,     this, 'hide',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XPOS,     this, 'xpos',     Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.YPOS,     this, 'ypos',     Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.ORIENT,   this, 'orient',   Gio.SettingsBindFlags.GET);
     }
 
     getColor(color, fallbk) {
