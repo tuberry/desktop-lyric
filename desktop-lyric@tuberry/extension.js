@@ -55,7 +55,7 @@ const DesktopLyric = GObject.registerClass({
     }
 
     set playing(play) {
-        if(this._paper.hide) this._paper.hide = false;
+        if(!this._hideItem?.state && this._paper.hide) this._paper.hide = false;
         if(this._refreshId) GLib.source_remove(this._refreshId);
         this._refreshId = play ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._interval, () => {
             this.position += this._interval + 1; // the error: 1ms;
@@ -109,7 +109,7 @@ const DesktopLyric = GObject.registerClass({
     _updateMenu() {
         if(!this._button) return;
         this._button.menu.removeAll();
-        this._button.menu.addMenuItem(this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, () => { this._paper.hide = !this._paper.hide; }));
+        this._button.menu.addMenuItem((this._hideItem = this._menuSwitchMaker(_('Hide lyric'), this._paper.hide, () => { this._paper.hide = !this._paper.hide; })));
         this._button.menu.addMenuItem(this._menuSwitchMaker(_('Unlock position'), this._drag, () => { this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this._button.menu.addMenuItem(this._menuItemMaker(_('Resynchronize'), () => { this.position = this.Position + 50; }));
