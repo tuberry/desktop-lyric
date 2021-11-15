@@ -90,7 +90,7 @@ var MprisPlayer = GObject.registerClass({
     }
 
     get status() {
-        return this._playerProxy ? this._playerProxy.PlaybackStatus : '';
+        return this._playerProxy?.PlaybackStatus;
     }
 
     _close() {
