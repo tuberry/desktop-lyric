@@ -34,12 +34,12 @@ git checkout your_gnome_shell_version
 
 ## Features
 
-![dlprefs](https://user-images.githubusercontent.com/17917040/117526303-daa51680-aff6-11eb-8a53-da711c9be482.png)
+![dlpref](https://user-images.githubusercontent.com/17917040/155883047-593e79cb-9647-4c9c-bbbd-665c90719305.png)
+
 
 ## Note
 
 * High CPU usage;
-* Based on Mpris;
 * The missing lyrics will be downloaded from [NetEase];
 * The lyric ([LRC] format) filename format is `Title-Artist1,Artist2.lrc`;
 * Draw at an even pace so that exact synchronization with the song is impossible;

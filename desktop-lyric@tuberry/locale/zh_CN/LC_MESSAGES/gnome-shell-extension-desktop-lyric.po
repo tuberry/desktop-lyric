@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-19 12:27+0800\n"
+"POT-Creation-Date: 2022-02-27 16:15+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,70 +17,76 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:111
+#: extension.js:136
 msgid "Hide lyric"
 msgstr "隐藏歌词"
 
-#: extension.js:112 prefs.js:38
+#: extension.js:137 prefs.js:50
 msgid "Unlock position"
 msgstr "解锁位置"
 
-#: extension.js:114
+#: extension.js:140
 msgid "Resynchronize"
 msgstr "重新同步"
 
-#: extension.js:115
-msgid "0.5s Slower"
-msgstr "减慢半秒"
-
-#: extension.js:116
-msgid "0.5s Faster"
-msgstr "加快半秒"
-
-#: extension.js:118
+#: extension.js:142
 msgid "Settings"
 msgstr "设置"
 
-#: prefs.js:37
-msgid "Enable systray"
-msgstr "托盘图标"
-
 #: prefs.js:39
-msgid "Horizontal"
-msgstr "水平"
-
-#: prefs.js:39
-msgid "Vertical"
-msgstr "竖直"
-
-#: prefs.js:41
 msgid "Active color"
 msgstr "已唱颜色"
 
-#: prefs.js:42
+#: prefs.js:40
 msgid "Outline color"
 msgstr "轮廓颜色"
 
-#: prefs.js:43
+#: prefs.js:41
 msgid "Inactive color"
 msgstr "未唱颜色"
 
-#: prefs.js:50
-msgid "Lyric location"
-msgstr "歌词位置"
+#: prefs.js:42
+msgid "Horizontal"
+msgstr "水平"
+
+#: prefs.js:42
+msgid "Vertical"
+msgstr "竖直"
+
+#: prefs.js:49
+msgid "Enable systray"
+msgstr "托盘图标"
 
 #: prefs.js:51
 msgid "Lyric orientation"
 msgstr "歌词方向"
 
 #: prefs.js:52
+msgid "Lyric location"
+msgstr "歌词位置"
+
+#: prefs.js:53
 msgid "Lyric colors"
 msgstr "歌词颜色"
 
-#: prefs.js:53
+#: prefs.js:54
 msgid "Refresh interval"
 msgstr "刷新间隔"
 
-#: prefs.js:54
+#: prefs.js:55
 msgid "Font name"
 msgstr "字体名称"
+
+#: ui.js:56
+msgid "Clear"
+msgstr "清除"
+
+#: ui.js:250
+msgid "Click or Press ENTER to commit changes"
+msgstr "单击或按回车提交更改"
+
+#~ msgid "0.5s Slower"
+#~ msgstr "减慢半秒"
+
+#~ msgid "0.5s Faster"
+#~ msgstr "加快半秒"

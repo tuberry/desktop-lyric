@@ -2,24 +2,36 @@
 // by tuberry
 /* exported Lyric */
 'use strict';
+
 const { Soup, GLib, Gio, GObject } = imports.gi;
 
 const SEARCH = 'http://music.163.com/api/search/get/web?';
 const GETLRC = 'https://music.163.com/api/song/lyric?';
 
-var Lyric = GObject.registerClass({
-    Properties: {
-        'location': GObject.ParamSpec.string('location', 'location', 'location', GObject.ParamFlags.READWRITE, ''),
-    },
-}, class Lyric extends GObject.Object {
-    _init() {
-        super._init();
-        this.http = new Soup.Session();
+const noop = () => {};
+const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
+
+Gio._promisify(Gio.File.prototype, 'query_info_async');
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.File.prototype, 'replace_contents_async');
+
+var Lyric = class extends GObject.Object {
+    static {
+        GObject.registerClass({
+            Properties: {
+                location: genParam('string', 'location', ''),
+            },
+        }, this);
+    }
+
+    constructor() {
+        super();
+        this._session = new Soup.Session({ timeout: 30 });
     }
 
     async visit(method, url, param) {
         let message = Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param));
-        let bytes = await this.http.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null);
+        let bytes = await this._session.send_and_read_async(message, GLib.PRIORITY_DEFAULT, null);
         if(message.statusCode !== Soup.Status.OK) throw new Error('Unexpected response: %s'.format(Soup.Status.get_phrase(message.statusCode)));
 
         return new TextDecoder().decode(bytes.get_data());
@@ -31,21 +43,20 @@ var Lyric = GObject.registerClass({
         if(ans1.code !== Soup.Status.OK) throw new Error('%s not found. Message: %s'.format(info, JSON.stringify(ans1, null, 0)));
         let ans2 = JSON.parse(await this.visit('GET', GETLRC, { id: ans1.result.songs[0].id.toString(), lv: '1', kv: '0', tv: '0' }));
         if(ans2.code !== Soup.Status.OK) throw new Error('Lyric of %s not found. Message: %s'.format(info, JSON.stringify(ans2, null, 0)));
-        if(!ans2.lrc?.lyric) return '';
+        if(!ans2.lrc.lyric) throw new Error('Empty lyric');
         let file = Gio.File.new_for_path(this.path(title, artists));
-        file.replace_contents(ans2.lrc.lyric, null, false, Gio.FileCreateFlags.NONE, null);
+        await file.replace_contents_async(new TextEncoder().encode(ans2.lrc.lyric), null, false, Gio.FileCreateFlags.NONE, null);
 
         return ans2.lrc.lyric;
     }
 
-    find(title, artists, callback) {
+    async find(title, artists) {
         let file = Gio.File.new_for_path(this.path(title, artists));
-        if(file.query_exists(null)) {
-            let [ok, contents] = file.load_contents(null);
-            if(ok) callback(new TextDecoder().decode(contents));
+        if(await file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null).catch(noop)) {
+            let [contents] = await file.load_contents_async(null);
+            return new TextDecoder().decode(contents);
         } else {
-            callback();
-            this.fetch(title, artists).then(callback);
+            return this.fetch(title, artists);
         }
     }
 
@@ -59,7 +70,7 @@ var Lyric = GObject.registerClass({
     }
 
     destroy() {
-        delete this.http;
+        this._session.abort();
+        this._session = null;
     }
-});
-
+};

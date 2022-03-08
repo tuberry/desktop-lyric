@@ -1,19 +1,15 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported MprisPlayer Signals */
+/* exported MprisPlayer */
 'use strict';
 
-const Signals = imports.signals;
 const { Shell, Gio, GLib, GObject } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
-const DBusIface = loadInterfaceXML('org.freedesktop.DBus');
-const DBusProxy = Gio.DBusProxy.makeProxyWrapper(DBusIface);
-const MprisIface = loadInterfaceXML('org.mpris.MediaPlayer2');
-const MprisProxy = Gio.DBusProxy.makeProxyWrapper(MprisIface);
-const SPACE = new TextEncoder().encode(' ');
 
-const MprisPlayerIface = `
-<node>
+const noop = () => {};
+const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
+const MPRIS_PLAYER_IFACE =
+`<node>
   <interface name="org.mpris.MediaPlayer2.Player">
     <property name="Metadata" type="a{sv}" access="read"/>
     <property name="PlaybackStatus" type="s" access="read"/>
@@ -21,133 +17,114 @@ const MprisPlayerIface = `
       <arg type="x" direction="out" name="pos"/>
     </signal>
   </interface>
-</node>
-`;
-const MprisPlayerProxy = Gio.DBusProxy.makeProxyWrapper(MprisPlayerIface);
-const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
+</node>`;
 
-var MprisPlayer = GObject.registerClass({
-    Signals: {
-        'update': { param_types: [GObject.TYPE_STRING, GObject.TYPE_JSOBJECT, GObject.TYPE_INT64] },
-        'status': { param_types: [GObject.TYPE_STRING] },
-        'seeked': { param_types: [GObject.TYPE_INT64] },
-        'closed': { },
-    },
-}, class MprisPlayer extends GObject.Object {
-    _init() {
-        super._init();
-        this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', this._onProxyReady.bind(this));
+Gio._promisify(Gio.File.prototype, 'load_contents_async');
+Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
+
+var MprisPlayer = class extends GObject.Object {
+    static {
+        GObject.registerClass({
+            Signals: {
+                update: { param_types: [GObject.TYPE_STRING, GObject.TYPE_JSOBJECT, GObject.TYPE_INT64] },
+                status: { param_types: [GObject.TYPE_STRING] },
+                seeked: { param_types: [GObject.TYPE_INT64] },
+                closed: { },
+            },
+        }, this);
     }
 
-    _isMusicApp(busName) {
-        try {
-            let cmd = busName.replace(new RegExp('^%s'.format(MPRIS_PLAYER_PREFIX)), '');
-            let [app] = Shell.AppSystem.search(cmd).toString().split(',');
-            if(!app) { // NOTE: for some bad mpris
-                let [pid] = this._proxy.call_sync('GetConnectionUnixProcessID', new GLib.Variant('(s)', [busName]), Gio.DBusCallFlags.NONE, -1, null).deepUnpack();
-                let [ok, content] = GLib.file_get_contents('/proc/%d/cmdline'.format(pid));
-                if(!ok) return false;
-                content = content.map(c => c === '\0' || c === '\n' ? SPACE : c);
-                [cmd] = GLib.basename(new TextDecoder().decode(content)).split(' ');
-                [app] = Shell.AppSystem.search(cmd).toString().split(',');
-            }
-            let cate = Shell.AppSystem.get_default().lookup_app(app).get_app_info().get_string('Categories').split(';');
-            return cate.includes('AudioVideo') && !cate.includes('Video');
-        } catch(e) {
-            return false;
+    constructor() {
+        super();
+        let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
+        this._bus_proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', this._onProxyReady.bind(this));
+    }
+
+    async _checkMusicApp(bus_name) {
+        let cmd = bus_name.replace(new RegExp('^%s'.format(MPRIS_PLAYER_PREFIX)), '');
+        let [app] = Shell.AppSystem.search(cmd).toString().split(',');
+        if(!app) { // NOTE: for some bad mpris
+            let pid = await this._bus_proxy.call('GetConnectionUnixProcessID', new GLib.Variant('(s)', [bus_name]), Gio.DBusCallFlags.NONE, -1, null);
+            let [contents] = await Gio.File.new_for_path('/proc/%d/cmdline'.format(pid.deepUnpack().at(0))).load_contents_async(null);
+            contents = contents.map(c => c === '\0' || c === '\n' ? new TextEncoder().encode(' ') : c);
+            [cmd] = GLib.basename(new TextDecoder().decode(contents)).split(' ');
+            [app] = Shell.AppSystem.search(cmd).toString().split(',');
         }
+        let cate = Shell.AppSystem.get_default().lookup_app(app).get_app_info().get_string('Categories').split(';');
+        return cate.includes('AudioVideo') && !cate.includes('Video');
     }
 
-    _setPlayer(busName) {
-        if(this._busName || !busName.startsWith(MPRIS_PLAYER_PREFIX) || !this._isMusicApp(busName)) return;
-        this._mprisProxy = new MprisProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
-        this._playerProxy = new MprisPlayerProxy(Gio.DBus.session, busName, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
-
-        this._trackTitle = '';
-        this._trackArtists = [];
-        this._trackLength = 0;
-        this._busName = busName;
+    _setPlayer(bus_name) {
+        if(this._bus_name || !bus_name.startsWith(MPRIS_PLAYER_PREFIX)) return;
+        this._checkMusicApp(bus_name).then(scc => {
+            if(!scc) return;
+            this._track_title = '';
+            this._track_artists = [];
+            this._track_length = 0;
+            this._bus_name = bus_name;
+            let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
+            this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
+            let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
+            this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
+        }).catch(noop);
     }
 
     _onProxyReady() {
-        this._proxy.ListNamesRemote(([names]) => { if(names) names.forEach(name => { this._setPlayer(name); }); });
-        this._nameChangedId = this._proxy.connectSignal('NameOwnerChanged', this._onNameOwnerChanged.bind(this));
+        this._bus_proxy.ListNamesRemote(([names]) => { if(names) names.forEach(name => { this._setPlayer(name); }); });
+        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old_, new_]) => { if(new_ && !old_) this._setPlayer(name); });
     }
 
-    _onNameOwnerChanged(proxy, sender, [name, oldOwner, newOwner]) {
-        if(newOwner && !oldOwner) this._setPlayer(name);
-    }
-
-    get position() {
+    async getPosition() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
-        try {
-            let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']);
-            let [pos] = this._playerProxy.call_sync('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null).recursiveUnpack();
-            return pos;
-        } catch(e) {
-            return 0;
-        }
+        let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']);
+        let pos = await this._player_proxy.call('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null);
+        return pos.recursiveUnpack().at(0);
     }
 
-    get status() {
-        return this._playerProxy?.PlaybackStatus;
-    }
-
-    _close() {
-        try {
-            this._playerProxy.disconnect(this._propsChangedId);
-            this._playerProxy.disconnectSignal(this._positChangedId);
-            this._mprisProxy.disconnect(this._ownerNotifyId);
-            delete this._playerProxy;
-            delete this._mprisProxy;
-            delete this._busName;
-        } catch(e) {
-            // Ignore DBus.NoReply Error when closing
-        }
-        if(this._proxy) this._onProxyReady();
-
+    _closePlayer() {
+        this._player_proxy = this._mpris_proxy = this._bus_name = null;
+        if(this._bus_proxy) this._onProxyReady();
         this.emit('closed');
     }
 
     _onMprisProxyReady() {
-        this._ownerNotifyId = this._mprisProxy.connect('notify::g-name-owner', () => {
-            if(!this._mprisProxy.g_name_owner) this._close();
-        });
-        if(!this._mprisProxy.g_name_owner) this._close();
+        this._mpris_proxy.connect('notify::g-name-owner', () => { if(!this._mpris_proxy?.g_name_owner) this._closePlayer(); });
+        if(!this._mpris_proxy?.g_name_owner) this._closePlayer();
     }
 
     _onPlayerProxyReady() {
-        this._propsChangedId = this._playerProxy.connect('g-properties-changed', this._updateState.bind(this));
-        this._positChangedId = this._playerProxy.connectSignal('Seeked', (proxy, sender, [pos]) => { this.emit('seeked', pos); });
-        this._getMetadata();
+        this._player_proxy.connect('g-properties-changed', this._propsChanged.bind(this));
+        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => { this.emit('seeked', pos); });
+        this._updateMetadata();
     }
 
-    _getMetadata() {
+    _updateMetadata() {
         let metadata = {};
-        for(let prop in this._playerProxy.Metadata) metadata[prop] = this._playerProxy.Metadata[prop].deepUnpack();
-        this._trackLength = metadata['mpris:length'] || 0;
+        for(let prop in this._player_proxy?.Metadata) metadata[prop] = this._player_proxy.Metadata[prop].deepUnpack();
         let title = metadata['xesam:title'];
-        this._trackTitle = typeof title === 'string' ? title : '';
+        let artists = metadata['xesam:artist'];
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
-        let artists = metadata['xesam:artist'];
-        this._trackArtists = Array.isArray(artists) && artists.every(a => typeof a === 'string') ? artists : [];
-        if(this._trackTitle) this.emit('update', this._trackTitle, this._trackArtists, this._trackLength / 1000);
+        this._track_length = metadata['mpris:length'] || 0;
+        this._track_title = typeof title === 'string' ? title : '';
+        this._track_artists = Array.isArray(artists) && artists.every(a => typeof a === 'string') ? artists : [];
+        if(this._track_title) this.emit('update', this._track_title, this._track_artists, this._track_length / 1000);
     }
 
-    _updateState(proxy, changed, _invalidated) {
-        this.freeze_notify();
+    get status() {
+        return this._player_proxy?.PlaybackStatus;
+    }
+
+    _propsChanged(proxy, changed, _invalidated) {
         for(let name in changed.deepUnpack()) {
-            if(name === 'Metadata') this._getMetadata();
+            if(name === 'Metadata') this._updateMetadata();
             else if(name === 'PlaybackStatus') this.emit('status', this.status);
         }
-        this.thaw_notify();
     }
 
     destroy() {
-        this._close();
-        this._proxy.disconnectSignal(this._nameChangedId);
-        delete this._proxy;
+        this._bus_proxy = null;
+        this._closePlayer();
     }
-});
+};
 
