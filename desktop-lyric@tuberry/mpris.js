@@ -41,11 +41,11 @@ var MprisPlayer = class extends GObject.Object {
     }
 
     async _checkMusicApp(bus_name) {
-        let cmd = bus_name.replace(new RegExp('^%s'.format(MPRIS_PLAYER_PREFIX)), '');
+        let cmd = bus_name.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
         let [app] = Shell.AppSystem.search(cmd).toString().split(',');
         if(!app) { // NOTE: for some bad mpris
             let pid = await this._bus_proxy.call('GetConnectionUnixProcessID', new GLib.Variant('(s)', [bus_name]), Gio.DBusCallFlags.NONE, -1, null);
-            let [contents] = await Gio.File.new_for_path('/proc/%d/cmdline'.format(pid.deepUnpack().at(0))).load_contents_async(null);
+            let [contents] = await Gio.File.new_for_path(`/proc/${pid.deepUnpack().at(0)}/cmdline`).load_contents_async(null);
             contents = contents.map(c => c === '\0' || c === '\n' ? new TextEncoder().encode(' ') : c);
             [cmd] = GLib.basename(new TextDecoder().decode(contents)).split(' ');
             [app] = Shell.AppSystem.search(cmd).toString().split(',');
@@ -70,8 +70,8 @@ var MprisPlayer = class extends GObject.Object {
     }
 
     _onProxyReady() {
-        this._bus_proxy.ListNamesRemote(([names]) => { if(names) names.forEach(name => { this._setPlayer(name); }); });
-        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old_, new_]) => { if(new_ && !old_) this._setPlayer(name); });
+        this._bus_proxy.ListNamesRemote(([names]) => names?.length && names.forEach(name => this._setPlayer(name)));
+        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old_, new_]) => (new_ && !old_) && this._setPlayer(name));
     }
 
     async getPosition() {
@@ -88,13 +88,13 @@ var MprisPlayer = class extends GObject.Object {
     }
 
     _onMprisProxyReady() {
-        this._mpris_proxy.connect('notify::g-name-owner', () => { if(!this._mpris_proxy?.g_name_owner) this._closePlayer(); });
+        this._mpris_proxy.connect('notify::g-name-owner', () => this._mpris_proxy?.g_name_owner || this._closePlayer());
         if(!this._mpris_proxy?.g_name_owner) this._closePlayer();
     }
 
     _onPlayerProxyReady() {
         this._player_proxy.connect('g-properties-changed', this._propsChanged.bind(this));
-        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => { this.emit('seeked', pos); });
+        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => this.emit('seeked', pos));
         this._updateMetadata();
     }
 

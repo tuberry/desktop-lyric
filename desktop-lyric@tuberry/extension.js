@@ -17,7 +17,7 @@ const Lyric = Me.imports.lyric;
 const Paper = Me.imports.paper;
 let gsettings = null;
 
-const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child('%s-symbolic.svg'.format(x)).get_path());
+const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
@@ -27,7 +27,7 @@ class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, params) {
         super(text, active, params);
-        this.connect('toggled', (x_, y) => { callback(y); });
+        this.connect('toggled', (x_, y) => callback(y));
     }
 }
 
@@ -67,10 +67,10 @@ class DesktopLyric extends GObject.Object {
         this.bind_property('position', this._paper, 'position', GObject.BindingFlags.DEFAULT);
         this.bind_property('location', this._lyric, 'location', GObject.BindingFlags.DEFAULT);
         this._mpris.connectObject('update', this._update.bind(this),
-            'closed', () => { this.status = 'Stopped'; },
-            'status', (player, status) => { this.status = status; },
-            'seeked', (player, position) => { this.position = position / 1000; }, this);
-        Main.overview.connectObject('showing', () => { this.view = true; }, 'hidden', () => { this.view = false; }, this);
+            'closed', () => (this.status = 'Stopped'),
+            'status', (player, status) => (this.status = status),
+            'seeked', (player, position) => (this.position = position / 1000), this);
+        Main.overview.connectObject('showing', () => (this.view = true), 'hidden', () => (this.view = false), this);
         [[Fields.DRAG, 'drag'], [Fields.INTERVAL, 'interval'], [Fields.SYSTRAY, 'systray'], [Fields.LOCATION, 'location']]
             .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
     }
@@ -97,7 +97,7 @@ class DesktopLyric extends GObject.Object {
     set playing(playing) {
         this._updateViz();
         clearInterval(this._refreshId);
-        if(playing) this._refreshId = setInterval(() => { this.position += this._interval + 1; }, this._interval);
+        if(playing) this._refreshId = setInterval(() => (this.position += this._interval + 1), this._interval);
     }
 
     get status() {
@@ -110,7 +110,7 @@ class DesktopLyric extends GObject.Object {
     }
 
     _syncPosition(callback) {
-        this._mpris.getPosition().then(scc => { this.position = callback(scc / 1000); }).catch(() => { this.position = 0; });
+        this._mpris.getPosition().then(scc => (this.position = callback(scc / 1000))).catch(() => (this.position = 0));
     }
 
     _update(_player, title, artists, length) {
@@ -155,9 +155,9 @@ class DesktopLyric extends GObject.Object {
         this._menus = {
             hide:     new SwitchItem(_('Hide lyric'), this._paper.hide, this._updateViz.bind(this)),
             unlock:   new SwitchItem(_('Unlock position'), this._drag, () => { this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }),
-            resync:   new MenuItem(_('Resynchronize'), () => { this._syncPosition(x => x + 50); }),
+            resync:   new MenuItem(_('Resynchronize'), () => this._syncPosition(x => x + 50)),
             sep:      new PopupMenu.PopupSeparatorMenuItem(),
-            settings: new MenuItem(_('Settings'), () => { ExtensionUtils.openPrefs(); }),
+            settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
         for(let p in this._menus) this._button.menu.addMenuItem(this._menus[p]);
     }
