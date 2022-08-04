@@ -11,14 +11,39 @@ const { St, Gio, GObject } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const _ = ExtensionUtils.gettext;
 const Me = ExtensionUtils.getCurrentExtension();
-const Fields = Me.imports.fields.Fields;
+const { Fields } = Me.imports.fields;
 const Mpris = Me.imports.mpris;
 const Lyric = Me.imports.lyric;
 const Paper = Me.imports.paper;
-let gsettings = null;
 
 const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
+
+class Field {
+    constructor(prop, gset, obj) {
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.prop = prop;
+        this.bind(obj);
+    }
+
+    _get(x) {
+        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
+    }
+
+    _set(x, y) {
+        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
+    }
+
+    bind(a) {
+        let fs = Object.entries(this.prop);
+        fs.forEach(([x]) => { a[x] = this._get(x); });
+        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
+    }
+
+    unbind(a) {
+        this.gset.disconnectObject(a);
+    }
+}
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
@@ -50,10 +75,7 @@ class DesktopLyric extends GObject.Object {
     static {
         GObject.registerClass({
             Properties: {
-                drag:     genParam('boolean', 'drag', false),
                 location: genParam('string', 'location', ''),
-                systray:  genParam('boolean', 'systray', false),
-                interval: genParam('uint', 'interval', 50, 500, 60),
                 position: genParam('int64', 'position', 0, Number.MAX_SAFE_INTEGER, 0),
             },
         }, this);
@@ -62,7 +84,8 @@ class DesktopLyric extends GObject.Object {
     constructor() {
         super();
         this._lyric = new Lyric.Lyric();
-        this._paper = new Paper.Paper(gsettings);
+        this.gset = ExtensionUtils.getSettings();
+        this._paper = new Paper.Paper(this.gset);
         this._mpris = new Mpris.MprisPlayer();
         this.bind_property('position', this._paper, 'position', GObject.BindingFlags.DEFAULT);
         this.bind_property('location', this._lyric, 'location', GObject.BindingFlags.DEFAULT);
@@ -71,8 +94,12 @@ class DesktopLyric extends GObject.Object {
             'status', (player, status) => (this.status = status),
             'seeked', (player, position) => (this.position = position / 1000), this);
         Main.overview.connectObject('showing', () => (this.view = true), 'hidden', () => (this.view = false), this);
-        [[Fields.DRAG, 'drag'], [Fields.INTERVAL, 'interval'], [Fields.SYSTRAY, 'systray'], [Fields.LOCATION, 'location']]
-            .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this._field = new Field({
+            drag:     [Fields.DRAG,     'boolean'],
+            location: [Fields.LOCATION, 'string'],
+            systray:  [Fields.SYSTRAY,  'boolean'],
+            interval: [Fields.INTERVAL, 'uint'],
+        }, this.gset, this);
     }
 
     set view(view) {
@@ -148,13 +175,14 @@ class DesktopLyric extends GObject.Object {
     }
 
     _updateViz() {
-        if(this._paper.hide ^ this.hide) this._paper.hide = !this._paper.hide;
+        if(!this._paper || this._paper?.hide ^ !this.hide) return;
+        this._paper.hide = !this._paper.hide;
     }
 
     _addMenuItems() {
         this._menus = {
             hide:     new SwitchItem(_('Hide lyric'), this._paper.hide, this._updateViz.bind(this)),
-            unlock:   new SwitchItem(_('Unlock position'), this._drag, () => { this._button.menu.close(); gsettings.set_boolean(Fields.DRAG, !this._drag); }),
+            unlock:   new SwitchItem(_('Unlock position'), this._drag, () => { this._button.menu.close(); this._field._set('drag', !this._drag); }),
             resync:   new MenuItem(_('Resynchronize'), () => this._syncPosition(x => x + 50)),
             sep:      new PopupMenu.PopupSeparatorMenuItem(),
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
@@ -163,6 +191,7 @@ class DesktopLyric extends GObject.Object {
     }
 
     destroy() {
+        this._field.unbind(this);
         this.playing = this.systray = null;
         Main.overview.disconnectObject(this);
         ['_mpris', '_lyric', '_paper'].forEach(x => { this[x].destroy(); this[x] = null; });
@@ -175,17 +204,15 @@ class Extension {
     }
 
     enable() {
-        gsettings = ExtensionUtils.getSettings();
         this._ext = new DesktopLyric();
     }
 
     disable() {
         this._ext.destroy();
-        gsettings = this._ext = null;
+        this._ext = null;
     }
 }
 
 function init() {
     return new Extension();
 }
-

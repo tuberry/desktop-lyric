@@ -7,11 +7,37 @@ const Cairo = imports.cairo;
 const DND = imports.ui.dnd;
 const Main = imports.ui.main;
 const { Gio, Clutter, Meta, PangoCairo, Pango, St, GObject } = imports.gi;
-const Fields = imports.misc.extensionUtils.getCurrentExtension().imports.fields.Fields;
+const { Fields } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
 
 const splitAt = i => x => [x.slice(0, i), x.slice(i)];
 const toMS = x => x.split(':').reverse().reduce((a, v, i) => a + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
+
+class Field {
+    constructor(prop, gset, obj) {
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.prop = prop;
+        this.bind(obj);
+    }
+
+    _get(x) {
+        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
+    }
+
+    _set(x, y) {
+        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
+    }
+
+    bind(a) {
+        let fs = Object.entries(this.prop);
+        fs.forEach(([x]) => { a[x] = this._get(x); });
+        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
+    }
+
+    unbind(a) {
+        this.gset.disconnectObject(a);
+    }
+}
 
 class DragMove extends DND._Draggable {
     _dragActorDropped(event) {
@@ -30,45 +56,35 @@ var Paper = class extends GObject.Object {
     static {
         GObject.registerClass({
             Properties: {
-                drag:     genParam('boolean', 'drag', false),
                 hide:     genParam('boolean', 'hide', false),
-                orient:   genParam('uint', 'orient', 0, 1, 0),
-                font:     genParam('string',  'font', 'Sans 40'),
-                xpos:     genParam('int', 'xpos', -100, 65535, 10),
-                ypos:     genParam('int', 'ypos', -100, 65535, 10),
-                offset:   genParam('int', 'offset', -100000, 100000, 0),
-                outline:  genParam('string', 'outline', 'rgba(0, 0, 0, 0.2)'),
-                active:   genParam('string', 'active', 'rgba(100, 50, 150, 0.5)'),
-                inactive: genParam('string', 'inactive', 'rgba(230, 230, 230, 0.5)'),
                 position: genParam('int64', 'position', 0, Number.MAX_SAFE_INTEGER, 0),
             },
         }, this);
     }
 
-    constructor(gsettings) {
+    constructor(gset) {
         super();
         this.length = 0;
         this.text = '';
-        this._gsettings = gsettings;
         this._area = new St.DrawingArea({ reactive: false });
         this.bind_property('hide', this._area, 'visible', GObject.BindingFlags.INVERT_BOOLEAN);
         Main.uiGroup.add_actor(this._area);
-        this._bindSettings();
+        this._bindSettings(gset);
         this._area.set_position(this.xpos, this.ypos);
         this._area.connect('repaint', this._repaint.bind(this));
     }
 
-    _bindSettings() {
-        [
-            [Fields.FONT,     'font'],
-            [Fields.DRAG,     'drag'],
-            [Fields.ACTIVE,   'active'],
-            [Fields.OUTLINE,  'outline'],
-            [Fields.INACTIVE, 'inactive'],
-            [Fields.XPOS,     'xpos', Gio.SettingsBindFlags.DEFAULT],
-            [Fields.YPOS,     'ypos', Gio.SettingsBindFlags.DEFAULT],
-            [Fields.ORIENT,   'orient'],
-        ].forEach(([x, y, z]) => this._gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+    _bindSettings(gset) {
+        this._field = new Field({
+            drag:     [Fields.DRAG,     'boolean'],
+            orient:   [Fields.ORIENT,   'uint'],
+            font:     [Fields.FONT,     'string'],
+            xpos:     [Fields.XPOS,     'int'],
+            ypos:     [Fields.YPOS,     'int'],
+            outline:  [Fields.OUTLINE,  'string'],
+            active:   [Fields.ACTIVE,   'string'],
+            inactive: [Fields.INACTIVE, 'string'],
+        }, gset, this);
     }
 
     getColor(color, fallbk) {
@@ -100,8 +116,10 @@ var Paper = class extends GObject.Object {
             this._drag = new DragMove(this._area, { dragActorOpacity: 200 });
             this._drag.connect('drag-end', () => {
                 Main.layoutManager.untrackChrome(this._area);
-                this._gsettings.set_boolean(Fields.DRAG, false);
-                [this.xpos, this.ypos] = this._area.get_position();
+                let [x, y] = this._area.get_position();
+                this._field._set('drag', false);
+                this._field._set('xpos', x);
+                this._field._set('ypos', y);
             });
         } else {
             if(!this._drag) return;
@@ -173,8 +191,8 @@ var Paper = class extends GObject.Object {
     }
 
     destroy() {
+        this._field.unbind(this);
         this._area.destroy();
         this._area = this.drag = null;
     }
 };
-

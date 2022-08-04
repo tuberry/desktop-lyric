@@ -6,7 +6,6 @@
 const { Shell, Gio, GLib, GObject } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 
-const noop = () => {};
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
 `<node>
@@ -40,33 +39,28 @@ var MprisPlayer = class extends GObject.Object {
         this._bus_proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', this._onProxyReady.bind(this));
     }
 
-    async _checkMusicApp(bus_name) {
-        let cmd = bus_name.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
-        let [app] = Shell.AppSystem.search(cmd).toString().split(',');
-        if(!app) { // NOTE: for some bad mpris
-            let pid = await this._bus_proxy.call('GetConnectionUnixProcessID', new GLib.Variant('(s)', [bus_name]), Gio.DBusCallFlags.NONE, -1, null);
-            let [contents] = await Gio.File.new_for_path(`/proc/${pid.deepUnpack().at(0)}/cmdline`).load_contents_async(null);
-            contents = contents.map(c => c === '\0' || c === '\n' ? new TextEncoder().encode(' ') : c);
-            [cmd] = GLib.basename(new TextDecoder().decode(contents)).split(' ');
-            [app] = Shell.AppSystem.search(cmd).toString().split(',');
+    _isMusicApp(bus_name) {
+        if(!bus_name.startsWith(MPRIS_PLAYER_PREFIX)) return false;
+        let name = bus_name.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
+        let [app] = Shell.AppSystem.search(name).toString().split(',');
+        try {
+            let cate = Shell.AppSystem.get_default().lookup_app(app || `${name}.desktop`).get_app_info().get_string('Categories').split(';');
+            return cate.includes('AudioVideo') && !cate.includes('Video');
+        } catch(e) {
+            return false;
         }
-        let cate = Shell.AppSystem.get_default().lookup_app(app).get_app_info().get_string('Categories').split(';');
-        return cate.includes('AudioVideo') && !cate.includes('Video');
     }
 
     _setPlayer(bus_name) {
-        if(this._bus_name || !bus_name.startsWith(MPRIS_PLAYER_PREFIX)) return;
-        this._checkMusicApp(bus_name).then(scc => {
-            if(!scc) return;
-            this._track_title = '';
-            this._track_artists = [];
-            this._track_length = 0;
-            this._bus_name = bus_name;
-            let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
-            this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
-            let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
-            this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
-        }).catch(noop);
+        if(this._bus_name || !this._isMusicApp(bus_name)) return;
+        this._track_title = '';
+        this._track_length = 0;
+        this._track_artists = [];
+        this._bus_name = bus_name;
+        let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
+        this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
+        let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
+        this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
     }
 
     _onProxyReady() {
@@ -112,7 +106,7 @@ var MprisPlayer = class extends GObject.Object {
     }
 
     get status() {
-        return this._player_proxy?.PlaybackStatus;
+        return this._player_proxy?.PlaybackStatus ?? 'Stopped';
     }
 
     _propsChanged(proxy, changed, _invalidated) {
@@ -127,4 +121,3 @@ var MprisPlayer = class extends GObject.Object {
         this._closePlayer();
     }
 };
-
