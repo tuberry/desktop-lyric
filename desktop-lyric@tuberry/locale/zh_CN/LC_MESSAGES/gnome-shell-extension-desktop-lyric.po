@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-02-27 16:15+0800\n"
+"POT-Creation-Date: 2022-08-06 19:09+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,19 +17,19 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:136
+#: extension.js:184
 msgid "Hide lyric"
 msgstr "隐藏歌词"
 
-#: extension.js:137 prefs.js:50
+#: extension.js:185 prefs.js:52
 msgid "Unlock position"
 msgstr "解锁位置"
 
-#: extension.js:140
+#: extension.js:186
 msgid "Resynchronize"
 msgstr "重新同步"
 
-#: extension.js:142
+#: extension.js:188
 msgid "Settings"
 msgstr "设置"
 
@@ -53,36 +53,36 @@ msgstr "水平"
 msgid "Vertical"
 msgstr "竖直"
 
-#: prefs.js:49
+#: prefs.js:51
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: prefs.js:51
+#: prefs.js:53
 msgid "Lyric orientation"
 msgstr "歌词方向"
 
-#: prefs.js:52
+#: prefs.js:54
 msgid "Lyric location"
 msgstr "歌词位置"
 
-#: prefs.js:53
+#: prefs.js:55
 msgid "Lyric colors"
 msgstr "歌词颜色"
 
-#: prefs.js:54
+#: prefs.js:56
 msgid "Refresh interval"
 msgstr "刷新间隔"
 
-#: prefs.js:55
+#: prefs.js:57
 msgid "Font name"
 msgstr "字体名称"
 
-#: ui.js:56
+#: ui.js:30
 msgid "Clear"
 msgstr "清除"
 
-#: ui.js:250
-msgid "Click or Press ENTER to commit changes"
+#: ui.js:258
+msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
 #~ msgid "0.5s Slower"

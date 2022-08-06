@@ -28,46 +28,33 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     constructor() {
         super();
         this._buildWidgets();
-        this._bindValues();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._field_systray  = new Gtk.CheckButton();
-        this._field_drag     = new Gtk.CheckButton();
-        this._field_interval = new UI.Spin(50, 500, 10);
-        this._field_active   = new UI.Color(_('Active color'));
-        this._field_outline  = new UI.Color(_('Outline color'));
-        this._field_inactive = new UI.Color(_('Inactive color'));
-        this._field_orient   = new UI.Drop(_('Horizontal'), _('Vertical'));
-        this._field_font     = new Gtk.FontButton({ valign: Gtk.Align.CENTER });
-        this._field_folder   = new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER });
+        this._field = {
+            SYSTRAY:  ['active',   new Gtk.CheckButton()],
+            DRAG:     ['active',   new Gtk.CheckButton()],
+            INTERVAL: ['value',    new UI.Spin(50, 500, 10)],
+            ACTIVE:   ['colour',   new UI.Color(_('Active color'))],
+            OUTLINE:  ['colour',   new UI.Color(_('Outline color'))],
+            INACTIVE: ['colour',   new UI.Color(_('Inactive color'))],
+            ORIENT:   ['selected', new UI.Drop(_('Horizontal'), _('Vertical'))],
+            FONT:     ['font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
+            LOCATION: ['file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
+        };
+        Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
     }
 
     _buildUI() {
         [
-            [this._field_systray, [_('Enable systray')]],
-            [this._field_drag, [_('Unlock position')]],
-            [[_('Lyric orientation')], this._field_orient],
-            [[_('Lyric location')], this._field_folder],
-            [[_('Lyric colors')], this._field_active, this._field_inactive, this._field_outline],
-            [[_('Refresh interval')], this._field_interval],
-            [[_('Font name')], this._field_font],
+            [this._field.SYSTRAY[1],   [_('Enable systray')]],
+            [this._field.DRAG[1],      [_('Unlock position')]],
+            [[_('Lyric orientation')], this._field.ORIENT[1]],
+            [[_('Lyric location')],    this._field.LOCATION[1]],
+            [[_('Lyric colors')],      this._field.ACTIVE[1], this._field.INACTIVE[1], this._field.OUTLINE[1]],
+            [[_('Refresh interval')],  this._field.INTERVAL[1]],
+            [[_('Font name')],         this._field.FONT[1]],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
-
-    _bindValues() {
-        [
-            [Fields.SYSTRAY,  this._field_systray,  'active'],
-            [Fields.DRAG,     this._field_drag,     'active'],
-            [Fields.ORIENT,   this._field_orient,   'selected'],
-            [Fields.INTERVAL, this._field_interval, 'value'],
-            [Fields.FONT,     this._field_font,     'font'],
-            [Fields.ACTIVE,   this._field_active,   'colour'],
-            [Fields.OUTLINE,  this._field_outline,  'colour'],
-            [Fields.INACTIVE, this._field_inactive, 'colour'],
-            [Fields.LOCATION, this._field_folder,   'file'],
-        ].forEach(xs => gsettings.bind(...xs, Gio.SettingsBindFlags.DEFAULT));
-    }
 }
-
