@@ -39,7 +39,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             ACTIVE:   ['colour',   new UI.Color(_('Active color'))],
             OUTLINE:  ['colour',   new UI.Color(_('Outline color'))],
             INACTIVE: ['colour',   new UI.Color(_('Inactive color'))],
-            ORIENT:   ['selected', new UI.Drop(_('Horizontal'), _('Vertical'))],
+            ORIENT:   ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
             FONT:     ['font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
             LOCATION: ['file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
         };

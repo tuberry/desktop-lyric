@@ -93,15 +93,18 @@ var Paper = class extends GObject.Object {
     }
 
     set active(active) {
-        this._active = this.getColor(active, [0.4, 0.2, 0.6, 0.5]);
+        this._active = this.getColor(active, [0.6, 0.4, 0.8, 1]);
+        this._draw_plain = this._inactive?.every((x, i) => x === this._active[i]);
     }
 
     set outline(outline) {
-        this._outline = this.getColor(outline, [0, 0, 0, 0.2]);
+        this._outline = this.getColor(outline, [0, 0, 0, 0]);
+        this._draw_outline = this._outline[3] > 0 && this._outline[3] < 1;
     }
 
     set inactive(inactive) {
-        this._inactive = this.getColor(inactive, [0.9, 0.9, 0.9, 0.5]);
+        this._inactive = this.getColor(inactive, [0.95, 0.95, 0.95, 1]);
+        this._draw_plain = this._active?.every((x, i) => x === this._inactive[i]);
     }
 
     set font(font) {
@@ -130,7 +133,10 @@ var Paper = class extends GObject.Object {
 
     set position(position) {
         this._position = position;
-        if(this._area.visible) this._area.queue_repaint();
+        let txt = this._txt;
+        [this._pos, this._txt] = this.text;
+        if(!this._area.visible || this._draw_plain && this._txt === txt) return;
+        this._area.queue_repaint();
     }
 
     set orient(orient) {
@@ -142,7 +148,7 @@ var Paper = class extends GObject.Object {
     _repaint(area) {
         let cr = area.get_context();
         let [w, h] = area.get_surface_size();
-        this.draw(cr, w, h);
+        if(this._txt) this.draw(cr, w, h);
 
         cr.$dispose();
     }
@@ -151,32 +157,27 @@ var Paper = class extends GObject.Object {
         this._text = text.split(/\n/)
             .flatMap(x => (i => i > 0 ? [splitAt(i + 1)(x)] : [])(x.lastIndexOf(']')))
             .flatMap(x => x[0].match(/(?<=\[)[^\][]+(?=])/g).map(y => [Math.round(toMS(y)), x[1]]))
-            .sort((u, v) => u[0] > v[0])
-            .reduce((a, v, i, arr) => a.set([v[0]], [v[0], arr[i + 1] ? arr[i + 1][0] : Math.max(this.length, v[0]), v[1]]), new Map());
-        this._tags = Array.from(this._text.keys()).reverse();
-        this.offset = 0;
+            .reduce((ac, v, i, a) => ac.set(v[0], [a[i + 1] ? a[i + 1][0] : Math.max(this.length, v[0]), v[1]]), new Map());
+        this._tags = Array.from(this._text.keys()).sort((u, v) => v - u);
     }
 
     get text() {
-        let now = this._position + this.offset;
-        let key = this._tags.find(k => parseFloat(k) <= now);
+        let now = this._position;
+        let key = this._tags.find(x => x <= now);
         if(key === undefined) return [0, ''];
-        let [s, e, t] = this._text.get(key);
-        return [now >= e || s === e ? 1 : (now - s) / (e - s), t];
+        let [end, txt] = this._text.get(key);
+        return [now >= end || key === end ? 1 : (now - key) / (end - key), txt];
     }
 
     draw(cr, w, _h) {
-        let [position, txt] = this.text;
-        if(!txt) return;
         cr.save();
         let ly = PangoCairo.create_layout(cr);
         ly.set_font_description(this._font);
-        ly.set_text(txt, -1);
+        ly.set_text(this._txt, -1);
         let [fw, fh] = ly.get_pixel_size();
         let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, fw) : new Cairo.LinearGradient(0, 0, fw, 0);
-        [[0, this._active], [position, this._active], [position, this._inactive],
-            [1, this._inactive]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
-        cr.moveTo((a => a > 0 ? 0 : a)(w - position * fw), 0);
+        [[0, this._active], [this._pos, this._active], [this._pos, this._inactive], [1, this._inactive]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
+        cr.moveTo(Math.min(w - this._pos * fw, 0), 0);
         cr.setSource(gd);
         if(this._orient) {
             ly.get_context().set_base_gravity(Pango.Gravity.EAST);
@@ -184,9 +185,11 @@ var Paper = class extends GObject.Object {
             cr.rotate(Math.PI / 2);
         }
         PangoCairo.show_layout(cr, ly);
-        cr.setSourceRGBA(...this._outline);
-        PangoCairo.layout_path(cr, ly);
-        cr.stroke();
+        if(this._draw_outline) {
+            cr.setSourceRGBA(...this._outline);
+            PangoCairo.layout_path(cr, ly);
+            cr.stroke();
+        }
         cr.restore();
     }
 
