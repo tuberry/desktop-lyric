@@ -52,7 +52,7 @@ class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, params) {
         super(text, active, params);
-        this.connect('toggled', (x_, y) => callback(y));
+        this.connect('toggled', (x, y) => callback(y));
     }
 }
 
@@ -175,7 +175,7 @@ class DesktopLyric extends GObject.Object {
     }
 
     _updateViz() {
-        if(!this._paper || this._paper?.hide ^ !this.hide) return;
+        if(!this._paper || this._paper.hide ^ !this.hide) return;
         this._paper.hide = !this._paper.hide;
     }
 
@@ -199,7 +199,7 @@ class DesktopLyric extends GObject.Object {
 }
 
 class Extension {
-    static {
+    constructor() {
         ExtensionUtils.initTranslations();
     }
 

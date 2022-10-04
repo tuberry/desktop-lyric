@@ -157,8 +157,9 @@ var Paper = class extends GObject.Object {
         this._text = text.split(/\n/)
             .flatMap(x => (i => i > 0 ? [splitAt(i + 1)(x)] : [])(x.lastIndexOf(']')))
             .flatMap(x => x[0].match(/(?<=\[)[^\][]+(?=])/g).map(y => [Math.round(toMS(y)), x[1]]))
+            .sort(([u], [v]) => u - v)
             .reduce((ac, v, i, a) => ac.set(v[0], [a[i + 1] ? a[i + 1][0] : Math.max(this.length, v[0]), v[1]]), new Map());
-        this._tags = Array.from(this._text.keys()).sort((u, v) => v - u);
+        this._tags = Array.from(this._text.keys()).reverse();
     }
 
     get text() {

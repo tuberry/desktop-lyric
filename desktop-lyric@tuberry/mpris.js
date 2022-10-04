@@ -65,7 +65,7 @@ var MprisPlayer = class extends GObject.Object {
 
     _onProxyReady() {
         this._bus_proxy.ListNamesRemote(([names]) => names?.length && names.forEach(name => this._setPlayer(name)));
-        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old_, new_]) => (new_ && !old_) && this._setPlayer(name));
+        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old, mew]) => (mew && !old) && this._setPlayer(name));
     }
 
     async getPosition() {
@@ -88,7 +88,7 @@ var MprisPlayer = class extends GObject.Object {
 
     _onPlayerProxyReady() {
         this._player_proxy.connect('g-properties-changed', this._propsChanged.bind(this));
-        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => this.emit('seeked', pos));
+        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
         this._updateMetadata();
     }
 

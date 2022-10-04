@@ -50,10 +50,10 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
         [
             [this._field.SYSTRAY[1],   [_('Enable systray')]],
             [this._field.DRAG[1],      [_('Unlock position')]],
+            [[_('Refresh interval')],  this._field.INTERVAL[1]],
             [[_('Lyric orientation')], this._field.ORIENT[1]],
             [[_('Lyric location')],    this._field.LOCATION[1]],
             [[_('Lyric colors')],      this._field.ACTIVE[1], this._field.INACTIVE[1], this._field.OUTLINE[1]],
-            [[_('Refresh interval')],  this._field.INTERVAL[1]],
             [[_('Font name')],         this._field.FONT[1]],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
