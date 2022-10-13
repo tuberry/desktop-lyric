@@ -81,7 +81,6 @@ var File = class extends Gtk.Box {
             if(!this.file) this.chooser.set_file(file);
             this._file = path;
         } catch(e) {
-            log(e.message);
             this._setLabel(null);
             this._icon.icon_name = 'document-open-symbolic';
             this._file = null;

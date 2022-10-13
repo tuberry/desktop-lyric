@@ -140,23 +140,39 @@ class DesktopLyric extends GObject.Object {
         this._mpris.getPosition().then(scc => (this.position = callback(scc / 1000))).catch(() => (this.position = 0));
     }
 
-    _update(_player, title, artists, length) {
+    async _update(player, title, artists, length) {
         if(this._title === title && JSON.stringify(this._artists) === JSON.stringify(artists)) {
             this._syncPosition(x => length - x > 5000 || !length ? x : 50);
         } else {
             this._title = title;
             this._artists = artists;
-            this._lyric.find(title, artists).then(text => {
-                this._paper.text = text;
-                this._paper.length = length;
-                this._syncPosition(x => length - x > 5000 || !length ? x : 50); // some buggy mpris
-                this.playing = this._mpris.status === 'Playing';
-            }).catch(() => {
-                this.playing = false;
-                this._paper.text = '';
-                this._paper._area.queue_repaint();
-            });
+            try {
+                this.setLyric(await this._lyric.find(title, artists), length);
+            } catch(e) {
+                this.clearLyric();
+            }
         }
+    }
+
+    async reload() {
+        try {
+            this.setLyric(await this._lyric.fetch(this._title, this._artists), this._paper.length);
+        } catch(e) {
+            this.clearLyric();
+        }
+    }
+
+    setLyric(text, length) {
+        this._paper.text = text;
+        this._paper.length = length;
+        this._syncPosition(x => length - x > 5000 || !length ? x : 50); // some buggy mpris
+        this.playing = this._mpris.status === 'Playing';
+    }
+
+    clearLyric() {
+        this.playing = false;
+        this._paper.text = '';
+        this._paper._area.queue_repaint();
     }
 
     set systray(systray) {
@@ -184,6 +200,7 @@ class DesktopLyric extends GObject.Object {
             hide:     new SwitchItem(_('Hide lyric'), this._paper.hide, this._updateViz.bind(this)),
             unlock:   new SwitchItem(_('Unlock position'), this._drag, () => { this._button.menu.close(); this._field._set('drag', !this._drag); }),
             resync:   new MenuItem(_('Resynchronize'), () => this._syncPosition(x => x + 50)),
+            reload:   new MenuItem(_('Redownload'), () => this.reload()),
             sep:      new PopupMenu.PopupSeparatorMenuItem(),
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
