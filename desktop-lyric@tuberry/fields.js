@@ -6,6 +6,7 @@
 var Fields = {
     XPOS:     'xpos',
     YPOS:     'ypos',
+    MINI:     'minimize',
     DRAG:     'draggable',
     FONT:     'font-name',
     ACTIVE:   'active-color',

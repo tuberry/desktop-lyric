@@ -1,6 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Paper */
+/* exported DesktopPaper PanelPaper */
 'use strict';
 
 const Cairo = imports.cairo;
@@ -52,102 +52,58 @@ class DragMove extends DND._Draggable {
     }
 }
 
-var Paper = class extends GObject.Object {
+var BasePaper = class extends St.DrawingArea {
     static {
         GObject.registerClass({
             Properties: {
-                hide:     genParam('boolean', 'hide', false),
-                position: genParam('int64', 'position', 0, Number.MAX_SAFE_INTEGER, 0),
+                moment: genParam('int64', 'moment', 0, Number.MAX_SAFE_INTEGER, 0),
             },
         }, this);
     }
 
     constructor(gset) {
-        super();
-        this.length = 0;
+        super({ reactive: false });
+        this.span = 0;
         this.text = '';
-        this._area = new St.DrawingArea({ reactive: false });
-        this.bind_property('hide', this._area, 'visible', GObject.BindingFlags.INVERT_BOOLEAN);
-        Main.uiGroup.add_actor(this._area);
         this._bindSettings(gset);
-        this._area.set_position(this.xpos, this.ypos);
-        this._area.connect('repaint', this._repaint.bind(this));
     }
 
     _bindSettings(gset) {
         this._field = new Field({
-            drag:     [Fields.DRAG,     'boolean'],
-            orient:   [Fields.ORIENT,   'uint'],
-            font:     [Fields.FONT,     'string'],
-            xpos:     [Fields.XPOS,     'int'],
-            ypos:     [Fields.YPOS,     'int'],
-            outline:  [Fields.OUTLINE,  'string'],
             active:   [Fields.ACTIVE,   'string'],
             inactive: [Fields.INACTIVE, 'string'],
         }, gset, this);
     }
 
-    getColor(color, fallbk) {
-        let [ok, cl] = Clutter.Color.from_string(color);
-        return ok ? [cl.red / 255, cl.green / 255, cl.blue / 255, cl.alpha / 255] : fallbk;
+    getColor(color) {
+        return Clutter.Color.from_string(color).reduce((a, x) => a && x);
+    }
+
+    normColor({ red, green, blue, alpha }) {
+        return [red, green, blue, alpha].map(x => x / 255);
     }
 
     set active(active) {
-        this._active = this.getColor(active, [0.6, 0.4, 0.8, 1]);
-        this._draw_plain = this._inactive?.every((x, i) => x === this._active[i]);
-    }
-
-    set outline(outline) {
-        this._outline = this.getColor(outline, [0, 0, 0, 0]);
-        this._draw_outline = this._outline[3] > 0 && this._outline[3] < 1;
+        this._acolor = this.getColor(active) || Clutter.Color.from_string('#643296')[1];
+        this._active = this.normColor(this._acolor);
     }
 
     set inactive(inactive) {
-        this._inactive = this.getColor(inactive, [0.95, 0.95, 0.95, 1]);
-        this._draw_plain = this._active?.every((x, i) => x === this._inactive[i]);
+        this._icolor = this.getColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
+        this._inactive = this.normColor(this._icolor);
     }
 
-    set font(font) {
-        this._font = Pango.FontDescription.from_string(font);
-    }
-
-    set drag(drag) {
-        if(drag) {
-            if(this._drag) return;
-            Main.layoutManager.trackChrome(this._area);
-            this._area.reactive = true;
-            this._drag = new DragMove(this._area, { dragActorOpacity: 200 });
-            this._drag.connect('drag-end', () => {
-                Main.layoutManager.untrackChrome(this._area);
-                let [x, y] = this._area.get_position();
-                this._field._set('drag', false);
-                this._field._set('xpos', x);
-                this._field._set('ypos', y);
-            });
-        } else {
-            if(!this._drag) return;
-            this._drag = null;
-            this._area.reactive = false;
-        }
-    }
-
-    set position(position) {
-        this._position = position;
+    set moment(moment) {
+        this._moment = moment;
         let txt = this._txt;
         [this._pos, this._txt] = this.text;
-        if(!this._area.visible || this._draw_plain && this._txt === txt) return;
-        this._area.queue_repaint();
+        if(!this.visible || this._icolor.equal(this._acolor) && this._txt === txt) return;
+        this.queue_repaint();
     }
 
-    set orient(orient) {
-        this._orient = orient;
-        let [w, h] = global.display.get_size();
-        orient ? this._area.set_size(0.18 * w, h) : this._area.set_size(w, 0.3 * h);
-    }
-
-    _repaint(area) {
-        let cr = area.get_context();
-        let [w, h] = area.get_surface_size();
+    vfunc_repaint() {
+        let cr = this.get_context();
+        let [w, h] = this.get_surface_size();
         if(this._txt) this.draw(cr, w, h);
 
         cr.$dispose();
@@ -158,31 +114,169 @@ var Paper = class extends GObject.Object {
             .flatMap(x => (i => i > 0 ? [splitAt(i + 1)(x)] : [])(x.lastIndexOf(']')))
             .flatMap(x => x[0].match(/(?<=\[)[^\][]+(?=])/g).map(y => [Math.round(toMS(y)), x[1]]))
             .sort(([u], [v]) => u - v)
-            .reduce((ac, v, i, a) => ac.set(v[0], [a[i + 1] ? a[i + 1][0] : Math.max(this.length, v[0]), v[1]]), new Map());
+            .reduce((ac, v, i, a) => ac.set(v[0], [a[i + 1] ? a[i + 1][0] : Math.max(this.span, v[0]), v[1]]), new Map());
         this._tags = Array.from(this._text.keys()).reverse();
     }
 
     get text() {
-        let now = this._position;
+        let now = this._moment;
         let key = this._tags.find(x => x <= now);
         if(key === undefined) return [0, ''];
         let [end, txt] = this._text.get(key);
         return [now >= end || key === end ? 1 : (now - key) / (end - key), txt];
     }
 
-    draw(cr, w, _h) {
+    draw(cr, w, h) {
         cr.save();
         let ly = PangoCairo.create_layout(cr);
+        this._setup_layout(cr, h, ly);
+        this._paint_color(cr, w, ly);
+        this._show_layout(cr, ly);
+        cr.restore();
+    }
+
+    _setup_layout(cr, h, ly) {
         ly.set_font_description(this._font);
         ly.set_text(this._txt, -1);
-        let [fw, fh] = ly.get_pixel_size();
-        let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, fw) : new Cairo.LinearGradient(0, 0, fw, 0);
-        [[0, this._active], [this._pos, this._active], [this._pos, this._inactive], [1, this._inactive]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
-        cr.moveTo(Math.min(w - this._pos * fw, 0), 0);
+    }
+
+    _paint_color(cr, w, ly) {
+        let [pw] = ly.get_pixel_size();
+        let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
+        [[0, this._active], [this._pos, this._active], [this._pos, this._inactive],
+            [1, this._inactive]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
+        cr.moveTo(Math.min(w - this._pos * pw, 0), 0);
         cr.setSource(gd);
+    }
+
+    _show_layout(cr, ly) {
+        PangoCairo.show_layout(cr, ly);
+    }
+
+    destroy() {
+        this._field.unbind(this);
+        super.destroy();
+    }
+};
+
+var PanelPaper = class extends BasePaper {
+    static {
+        GObject.registerClass(this);
+    }
+
+    _bindSettings(gset) {
+        super._bindSettings(gset);
+        this._ffield = new Field({
+            font: ['font-name', 'string'],
+        }, 'org.gnome.desktop.interface', this);
+        let [w, h] = Main.panel.get_size();
+        this._pixel_width = this._max_width = w / 4;
+        this.set_size(this._max_width, h);
+    }
+
+    set font(font) {
+        this._font = Pango.FontDescription.from_string(font);
+        this._font.set_weight(Pango.Weight.BOLD);
+    }
+
+    get_fgcolor() {
+        let bg = Main.panel.get_background_color();
+        bg.alpha = 255;
+        return Clutter.Color.from_string('#fff')[1].subtract(bg);
+    }
+
+    set active(active) {
+        this._acolor = this.getColor(active) || Clutter.Color.from_string('#643296')[1];
+        this._active = this.normColor(this._acolor.interpolate(this.get_fgcolor(), 0.65));
+    }
+
+    set inactive(inactive) {
+        this._icolor = this.getColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
+        this._inactive = this._acolor?.equal(this._icolor) ? this._active : this.normColor(this.get_fgcolor());
+    }
+
+    set moment(moment) {
+        super.moment = moment;
+        this.set_width(Math.min(this._max_width, this._pixel_width + 4));
+    }
+
+    _setup_layout(cr, h, ly) {
+        super._setup_layout(cr, h, ly);
+        let [pw, ph] = ly.get_pixel_size();
+        this._pixel_width = pw;
+        cr.translate(0, (h - ph) / 2);
+    }
+
+    destroy() {
+        this._ffield.unbind(this);
+        super.destroy();
+    }
+};
+
+var DesktopPaper = class extends BasePaper {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(gset) {
+        super(gset);
+        Main.uiGroup.add_actor(this);
+        this.set_position(this.xpos, this.ypos);
+    }
+
+    _bindSettings(gset) {
+        this._field = new Field({
+            drag:     [Fields.DRAG,     'boolean'],
+            orient:   [Fields.ORIENT,   'uint'],
+            font:     [Fields.FONT,     'string'],
+            xpos:     [Fields.XPOS,     'uint'],
+            ypos:     [Fields.YPOS,     'uint'],
+            outline:  [Fields.OUTLINE,  'string'],
+            active:   [Fields.ACTIVE,   'string'],
+            inactive: [Fields.INACTIVE, 'string'],
+        }, gset, this);
+    }
+
+    set font(font) {
+        this._font = Pango.FontDescription.from_string(font);
+    }
+
+    set outline(outline) {
+        this._ocolor = this.getColor(outline) || Clutter.Color.from_string('#000')[1];
+        this._outline = this.normColor(this._ocolor);
+        this._draw_outline = this._outline[3] > 0 && this._outline[3] < 1;
+    }
+
+    set drag(drag) {
+        if(drag) {
+            if(this._drag) return;
+            Main.layoutManager.trackChrome(this);
+            this.reactive = true;
+            this._drag = new DragMove(this, { dragActorOpacity: 200 });
+            this._drag.connect('drag-end', () => {
+                Main.layoutManager.untrackChrome(this);
+                let [x, y] = this.get_position();
+                this._field._set('drag', false);
+                this._field._set('xpos', x);
+                this._field._set('ypos', y);
+            });
+        } else {
+            if(!this._drag) return;
+            this._drag = null;
+            this.reactive = false;
+        }
+    }
+
+    set orient(orient) {
+        this._orient = orient;
+        let [w, h] = global.display.get_size();
+        orient ? this.set_size(0.18 * w, h) : this.set_size(w, 0.3 * h);
+    }
+
+    _show_layout(cr, ly) {
         if(this._orient) {
             ly.get_context().set_base_gravity(Pango.Gravity.EAST);
-            cr.moveTo(fh, 0);
+            cr.moveTo(ly.get_pixel_size()[1], 0);
             cr.rotate(Math.PI / 2);
         }
         PangoCairo.show_layout(cr, ly);
@@ -191,12 +285,5 @@ var Paper = class extends GObject.Object {
             PangoCairo.layout_path(cr, ly);
             cr.stroke();
         }
-        cr.restore();
-    }
-
-    destroy() {
-        this._field.unbind(this);
-        this._area.destroy();
-        this._area = this.drag = null;
     }
 };

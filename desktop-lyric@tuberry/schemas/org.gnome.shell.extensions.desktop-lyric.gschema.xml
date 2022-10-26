@@ -5,15 +5,19 @@
         <default>false</default>
         <summary>enable systray</summary>
     </key>
+    <key type="b" name="minimize">
+        <default>false</default>
+        <summary>minimize to panel</summary>
+    </key>
     <key type="b" name="draggable">
         <default>false</default>
         <summary>lyric is draggable or not</summary>
     </key>
-    <key type="i" name="xpos">
+    <key type="u" name="xpos">
         <default>200</default>
         <summary>lyric x position</summary>
     </key>
-    <key type="i" name="ypos">
+    <key type="u" name="ypos">
         <default>5</default>
         <summary>lyric y position</summary>
     </key>

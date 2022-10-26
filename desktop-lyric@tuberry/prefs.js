@@ -48,8 +48,8 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     _buildUI() {
         [
+            [this._field.DRAG[1],      [_('Mobilize'), _('Allow dragging to displace')]],
             [this._field.SYSTRAY[1],   [_('Enable systray')]],
-            [this._field.DRAG[1],      [_('Unlock position')]],
             [[_('Refresh interval')],  this._field.INTERVAL[1]],
             [[_('Lyric orientation')], this._field.ORIENT[1]],
             [[_('Lyric location')],    this._field.LOCATION[1]],

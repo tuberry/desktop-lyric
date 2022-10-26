@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-09 16:37+0800\n"
+"POT-Creation-Date: 2022-10-26 09:21+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,23 +17,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:200
-msgid "Hide lyric"
-msgstr "隐藏歌词"
+#: extension.js:244
+msgid "Invisiblize"
+msgstr "隐藏"
 
-#: extension.js:201 prefs.js:52
-msgid "Unlock position"
+#: extension.js:245
+msgid "Minimize"
+msgstr "最小化"
+
+#: extension.js:246 prefs.js:51
+msgid "Mobilize"
 msgstr "解锁位置"
 
-#: extension.js:202
-msgid "Resynchronize"
-msgstr "重新同步"
-
-#: extension.js:203
+#: extension.js:248
 msgid "Redownload"
 msgstr "重新下载"
 
-#: extension.js:205
+#: extension.js:249
+msgid "Resynchronize"
+msgstr "重新同步"
+
+#: extension.js:251
 msgid "Settings"
 msgstr "设置"
 
@@ -58,6 +62,10 @@ msgid "Vertical"
 msgstr "竖直"
 
 #: prefs.js:51
+msgid "Allow dragging to displace"
+msgstr "允许拖拽以更改位置"
+
+#: prefs.js:52
 msgid "Enable systray"
 msgstr "托盘图标"
 
@@ -88,6 +96,12 @@ msgstr "清除"
 #: ui.js:262
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
+
+#~ msgid "Unlock position"
+#~ msgstr "解锁位置"
+
+#~ msgid "Hide lyric"
+#~ msgstr "隐藏歌词"
 
 #~ msgid "0.5s Slower"
 #~ msgstr "减慢半秒"
