@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-10-26 09:21+0800\n"
+"POT-Creation-Date: 2022-10-28 14:42+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,27 +17,27 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:244
+#: extension.js:250
 msgid "Invisiblize"
 msgstr "隐藏"
 
-#: extension.js:245
+#: extension.js:251
 msgid "Minimize"
 msgstr "最小化"
 
-#: extension.js:246 prefs.js:51
+#: extension.js:252 prefs.js:51
 msgid "Mobilize"
 msgstr "解锁位置"
 
-#: extension.js:248
+#: extension.js:254
 msgid "Redownload"
 msgstr "重新下载"
 
-#: extension.js:249
+#: extension.js:255
 msgid "Resynchronize"
 msgstr "重新同步"
 
-#: extension.js:251
+#: extension.js:257
 msgid "Settings"
 msgstr "设置"
 

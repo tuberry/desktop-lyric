@@ -11,13 +11,12 @@ const { Fields } = imports.misc.extensionUtils.getCurrentExtension().imports.fie
 
 const splitAt = i => x => [x.slice(0, i), x.slice(i)];
 const toMS = x => x.split(':').reverse().reduce((a, v, i) => a + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
-const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 class Field {
     constructor(prop, gset, obj) {
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
         this.prop = prop;
-        this.bind(obj);
+        this.attach(obj);
     }
 
     _get(x) {
@@ -28,37 +27,32 @@ class Field {
         this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
     }
 
-    bind(a) {
+    attach(a) {
         let fs = Object.entries(this.prop);
         fs.forEach(([x]) => { a[x] = this._get(x); });
         this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
     }
 
-    unbind(a) {
+    detach(a) {
         this.gset.disconnectObject(a);
     }
 }
 
 class DragMove extends DND._Draggable {
     _dragActorDropped(event) {
-        // override this for moving only and do nothing more
+        // override for moving only
         this._dragCancellable = false;
         this._dragState = DND.DragState.INIT;
         global.display.set_cursor(Meta.Cursor.DEFAULT);
         this.emit('drag-end', event.get_time(), true);
         this._dragComplete();
-
         return true;
     }
 }
 
 var BasePaper = class extends St.DrawingArea {
     static {
-        GObject.registerClass({
-            Properties: {
-                moment: genParam('int64', 'moment', 0, Number.MAX_SAFE_INTEGER, 0),
-            },
-        }, this);
+        GObject.registerClass(this);
     }
 
     constructor(gset) {
@@ -75,7 +69,7 @@ var BasePaper = class extends St.DrawingArea {
         }, gset, this);
     }
 
-    getColor(color) {
+    genColor(color) {
         return Clutter.Color.from_string(color).reduce((a, x) => a && x);
     }
 
@@ -84,12 +78,12 @@ var BasePaper = class extends St.DrawingArea {
     }
 
     set active(active) {
-        this._acolor = this.getColor(active) || Clutter.Color.from_string('#643296')[1];
+        this._acolor = this.genColor(active) || Clutter.Color.from_string('#643296')[1];
         this._active = this.normColor(this._acolor);
     }
 
     set inactive(inactive) {
-        this._icolor = this.getColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
+        this._icolor = this.genColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
         this._inactive = this.normColor(this._icolor);
     }
 
@@ -104,7 +98,10 @@ var BasePaper = class extends St.DrawingArea {
     vfunc_repaint() {
         let cr = this.get_context();
         let [w, h] = this.get_surface_size();
-        if(this._txt) this.draw(cr, w, h);
+        let ly = PangoCairo.create_layout(cr);
+        this._setup_layout(cr, h, ly);
+        this._color_layout(cr, w, ly);
+        this._show_layout(cr, ly);
 
         cr.$dispose();
     }
@@ -126,21 +123,12 @@ var BasePaper = class extends St.DrawingArea {
         return [now >= end || key === end ? 1 : (now - key) / (end - key), txt];
     }
 
-    draw(cr, w, h) {
-        cr.save();
-        let ly = PangoCairo.create_layout(cr);
-        this._setup_layout(cr, h, ly);
-        this._paint_color(cr, w, ly);
-        this._show_layout(cr, ly);
-        cr.restore();
-    }
-
     _setup_layout(cr, h, ly) {
         ly.set_font_description(this._font);
-        ly.set_text(this._txt, -1);
+        ly.set_text(this._txt ?? '', -1);
     }
 
-    _paint_color(cr, w, ly) {
+    _color_layout(cr, w, ly) {
         let [pw] = ly.get_pixel_size();
         let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
         [[0, this._active], [this._pos, this._active], [this._pos, this._inactive],
@@ -154,7 +142,7 @@ var BasePaper = class extends St.DrawingArea {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         super.destroy();
     }
 };
@@ -186,12 +174,12 @@ var PanelPaper = class extends BasePaper {
     }
 
     set active(active) {
-        this._acolor = this.getColor(active) || Clutter.Color.from_string('#643296')[1];
+        this._acolor = this.genColor(active) || Clutter.Color.from_string('#643296')[1];
         this._active = this.normColor(this._acolor.interpolate(this.get_fgcolor(), 0.65));
     }
 
     set inactive(inactive) {
-        this._icolor = this.getColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
+        this._icolor = this.genColor(inactive) || Clutter.Color.from_string('#f5f5f5')[1];
         this._inactive = this._acolor?.equal(this._icolor) ? this._active : this.normColor(this.get_fgcolor());
     }
 
@@ -208,7 +196,7 @@ var PanelPaper = class extends BasePaper {
     }
 
     destroy() {
-        this._ffield.unbind(this);
+        this._ffield.detach(this);
         super.destroy();
     }
 };
@@ -242,7 +230,7 @@ var DesktopPaper = class extends BasePaper {
     }
 
     set outline(outline) {
-        this._ocolor = this.getColor(outline) || Clutter.Color.from_string('#000')[1];
+        this._ocolor = this.genColor(outline) || Clutter.Color.from_string('#000')[1];
         this._outline = this.normColor(this._ocolor);
         this._draw_outline = this._outline[3] > 0 && this._outline[3] < 1;
     }

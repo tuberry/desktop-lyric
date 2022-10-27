@@ -3,7 +3,8 @@
 /* exported MprisPlayer */
 'use strict';
 
-const { Shell, Gio, GLib, GObject } = imports.gi;
+const { Shell, Gio, GLib } = imports.gi;
+const { EventEmitter } = imports.misc.signals;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
@@ -21,18 +22,7 @@ const MPRIS_PLAYER_IFACE =
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
 
-var MprisPlayer = class extends GObject.Object {
-    static {
-        GObject.registerClass({
-            Signals: {
-                update: { param_types: [GObject.TYPE_STRING, GObject.TYPE_JSOBJECT, GObject.TYPE_INT64] },
-                status: { param_types: [GObject.TYPE_STRING] },
-                seeked: { param_types: [GObject.TYPE_INT64] },
-                closed: { },
-            },
-        }, this);
-    }
-
+var MprisPlayer = class extends EventEmitter {
     constructor() {
         super();
         let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
@@ -53,9 +43,6 @@ var MprisPlayer = class extends GObject.Object {
 
     _setPlayer(bus_name) {
         if(this._bus_name || !this._isMusicApp(bus_name)) return;
-        this._track_title = '';
-        this._track_length = 0;
-        this._track_artists = [];
         this._bus_name = bus_name;
         let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
         this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
@@ -82,34 +69,33 @@ var MprisPlayer = class extends GObject.Object {
     }
 
     _onMprisProxyReady() {
-        this._mpris_proxy.connect('notify::g-name-owner', () => this._mpris_proxy?.g_name_owner || this._closePlayer());
+        this._mpris_proxy.connectObject('notify::g-name-owner', () => this._mpris_proxy?.g_name_owner || this._closePlayer(), this);
         if(!this._mpris_proxy?.g_name_owner) this._closePlayer();
     }
 
     _onPlayerProxyReady() {
-        this._player_proxy.connect('g-properties-changed', this._propsChanged.bind(this));
+        this._player_proxy.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
         this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
         this._updateMetadata();
     }
 
     _updateMetadata() {
-        let metadata = {};
-        for(let prop in this._player_proxy?.Metadata) metadata[prop] = this._player_proxy.Metadata[prop].deepUnpack();
-        let title = metadata['xesam:title'];
-        let artists = metadata['xesam:artist'];
+        let meta = {};
+        for(let prop in this._player_proxy?.Metadata) meta[prop] = this._player_proxy.Metadata[prop].deepUnpack();
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
-        this._track_length = metadata['mpris:length'] || 0;
-        this._track_title = typeof title === 'string' ? title : '';
-        this._track_artists = Array.isArray(artists) && artists.every(a => typeof a === 'string') ? artists : [];
-        if(this._track_title) this.emit('update', this._track_title, this._track_artists, this._track_length / 1000);
+        let length = meta['mpris:length'] ?? 0;
+        let title = typeof meta['xesam:title'] === 'string' ? meta['xesam:title'] : '';
+        let album = typeof meta['xesam:album'] === 'string' ? meta['xesam:album'] : '';
+        let artist = meta['xesam:artist']?.every?.(x => typeof x === 'string') ? meta['xesam:artist'] : [];
+        if(title) this.emit('update', title, artist, album, length / 1000);
     }
 
     get status() {
         return this._player_proxy?.PlaybackStatus ?? 'Stopped';
     }
 
-    _propsChanged(proxy, changed, _invalidated) {
+    _propsChanged(proxy, changed) {
         for(let name in changed.deepUnpack()) {
             if(name === 'Metadata') this._updateMetadata();
             else if(name === 'PlaybackStatus') this.emit('status', this.status);
