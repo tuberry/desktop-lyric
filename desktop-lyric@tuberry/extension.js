@@ -173,14 +173,11 @@ class DesktopLyric {
         this._mpris.getPosition().then(scc => this.setPosition(cb(scc / 1000))).catch(() => this.setPosition(0));
     }
 
-    _update(player, title, artist, album, length) {
-        if(this._title === title && JSON.stringify(this._artist) === JSON.stringify(artist)) {
-            this.syncPosition(x => length - x > 5000 || !length ? x : 50);
+    _update(player, song) {
+        if(JSON.stringify(song) === JSON.stringify(this._song)) {
+            this.syncPosition(x => song.length - x > 5000 || !song.length ? x : 50);
         } else {
-            this._title = title;
-            this._album = album;
-            this._artist = artist;
-            this._length = length;
+            this._song = song;
             this.loadLyric();
         }
     }
@@ -191,7 +188,7 @@ class DesktopLyric {
 
     async loadLyric() {
         try {
-            this.setLyric(await this._lyric.find(this._title, this._artist, this._album));
+            this.setLyric(await this._lyric.find(this._song));
         } catch(e) {
             this.clearLyric();
         }
@@ -199,10 +196,10 @@ class DesktopLyric {
 
     async reloadLyric() {
         try {
-            this.setLyric(await this._lyric.fetch(this._title, this._artist, this._album));
+            this.setLyric(await this._lyric.fetch(this._song));
         } catch(e) {
             this.clearLyric();
-            this._lyric.delete(this._title, this._artist, this._album);
+            this._lyric.delete(this._song);
         }
     }
 

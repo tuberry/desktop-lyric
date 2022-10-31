@@ -98,11 +98,10 @@ var BasePaper = class extends St.DrawingArea {
     vfunc_repaint() {
         let cr = this.get_context();
         let [w, h] = this.get_surface_size();
-        let ly = PangoCairo.create_layout(cr);
-        this._setup_layout(cr, h, ly);
-        this._color_layout(cr, w, ly);
-        this._show_layout(cr, ly);
-
+        let pl = PangoCairo.create_layout(cr);
+        this._setup_layout(cr, h, pl);
+        this._color_layout(cr, w, pl);
+        this._show_layout(cr, pl);
         cr.$dispose();
     }
 
@@ -123,13 +122,13 @@ var BasePaper = class extends St.DrawingArea {
         return [now >= end || key === end ? 1 : (now - key) / (end - key), txt];
     }
 
-    _setup_layout(cr, h, ly) {
-        ly.set_font_description(this._font);
-        ly.set_text(this._txt ?? '', -1);
+    _setup_layout(cr, h, pl) {
+        pl.set_font_description(this._font);
+        pl.set_text(this._txt ?? '', -1);
     }
 
-    _color_layout(cr, w, ly) {
-        let [pw] = ly.get_pixel_size();
+    _color_layout(cr, w, pl) {
+        let [pw] = pl.get_pixel_size();
         let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
         [[0, this._active], [this._pos, this._active], [this._pos, this._inactive],
             [1, this._inactive]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
@@ -137,8 +136,8 @@ var BasePaper = class extends St.DrawingArea {
         cr.setSource(gd);
     }
 
-    _show_layout(cr, ly) {
-        PangoCairo.show_layout(cr, ly);
+    _show_layout(cr, pl) {
+        PangoCairo.show_layout(cr, pl);
     }
 
     destroy() {
@@ -188,9 +187,9 @@ var PanelPaper = class extends BasePaper {
         this.set_width(Math.min(this._max_width, this._pixel_width + 4));
     }
 
-    _setup_layout(cr, h, ly) {
-        super._setup_layout(cr, h, ly);
-        let [pw, ph] = ly.get_pixel_size();
+    _setup_layout(cr, h, pl) {
+        super._setup_layout(cr, h, pl);
+        let [pw, ph] = pl.get_pixel_size();
         this._pixel_width = pw;
         cr.translate(0, (h - ph) / 2);
     }
@@ -261,16 +260,16 @@ var DesktopPaper = class extends BasePaper {
         orient ? this.set_size(0.18 * w, h) : this.set_size(w, 0.3 * h);
     }
 
-    _show_layout(cr, ly) {
+    _show_layout(cr, pl) {
         if(this._orient) {
-            ly.get_context().set_base_gravity(Pango.Gravity.EAST);
-            cr.moveTo(ly.get_pixel_size()[1], 0);
+            pl.get_context().set_base_gravity(Pango.Gravity.EAST);
+            cr.moveTo(pl.get_pixel_size()[1], 0);
             cr.rotate(Math.PI / 2);
         }
-        PangoCairo.show_layout(cr, ly);
+        PangoCairo.show_layout(cr, pl);
         if(this._draw_outline) {
             cr.setSourceRGBA(...this._outline);
-            PangoCairo.layout_path(cr, ly);
+            PangoCairo.layout_path(cr, pl);
             cr.stroke();
         }
     }

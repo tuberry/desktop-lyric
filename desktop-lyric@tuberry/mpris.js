@@ -84,11 +84,12 @@ var MprisPlayer = class extends EventEmitter {
         for(let prop in this._player_proxy?.Metadata) meta[prop] = this._player_proxy.Metadata[prop].deepUnpack();
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
-        let length = meta['mpris:length'] ?? 0;
+        let length = (meta['mpris:length'] ?? 0) / 1000;
         let title = typeof meta['xesam:title'] === 'string' ? meta['xesam:title'] : '';
         let album = typeof meta['xesam:album'] === 'string' ? meta['xesam:album'] : '';
-        let artist = meta['xesam:artist']?.every?.(x => typeof x === 'string') ? meta['xesam:artist'] : [];
-        if(title) this.emit('update', title, artist, album, length / 1000);
+        let artist = meta['xesam:artist']?.every?.(x => typeof x === 'string')
+            ? meta['xesam:artist'].flatMap(x => x.split('/')).filter(Boolean).sort() : [];
+        if(title) this.emit('update', { title, artist, album, length });
     }
 
     get status() {
