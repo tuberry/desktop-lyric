@@ -104,7 +104,7 @@ class DesktopLyric {
         this._field = new Field({
             mini:     [Fields.MINI,     'boolean'],
             drag:     [Fields.DRAG,     'boolean'],
-            systray:  [Fields.SYSTRAY,  'boolean'],
+            index:    [Fields.INDEX,    'uint'],
             location: [Fields.LOCATION, 'string'],
             interval: [Fields.INTERVAL, 'uint'],
         }, ExtensionUtils.getSettings(), this);
@@ -121,7 +121,6 @@ class DesktopLyric {
     }
 
     set mini(mini) {
-        if(this._mini === mini) return;
         this._mini = mini;
         if(this._paper) {
             this.playing = false;
@@ -137,6 +136,28 @@ class DesktopLyric {
             this._menus?.drag.show();
         }
         this.loadLyric();
+    }
+
+    set systray(systray) {
+        if(systray) {
+            if(this._button) return;
+            this._button = new LyricButton(() => this.syncPosition(x => x + 50));
+            Main.panel.addToStatusArea(Me.metadata.uuid, this._button, this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
+            this._addMenuItems();
+            if(this._mini) this.mini = this._mini;
+        } else {
+            if(!this._button) return;
+            this._button.destroy();
+            this._menus = this._button = null;
+            if(this._mini) this._paper = null;
+        }
+    }
+
+    set index(index) {
+        if(this._index === index) return;
+        this._index = index;
+        this.systray = false;
+        this.systray = true;
     }
 
     set view(view) {
@@ -157,7 +178,7 @@ class DesktopLyric {
     set playing(playing) {
         this._updateViz();
         clearInterval(this._refreshId);
-        if(playing) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 1), this._interval);
+        if(playing && this._paper) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 1), this._interval);
     }
 
     get status() {
@@ -173,10 +194,11 @@ class DesktopLyric {
         this._mpris.getPosition().then(scc => this.setPosition(cb(scc / 1000))).catch(() => this.setPosition(0));
     }
 
-    _update(player, song) {
+    _update(player, song, length) {
         if(JSON.stringify(song) === JSON.stringify(this._song)) {
-            this.syncPosition(x => song.length - x > 5000 || !song.length ? x : 50);
+            this.syncPosition(x => length - x > 5000 || !length ? x : 50);
         } else {
+            this._length = length;
             this._song = song;
             this.loadLyric();
         }
@@ -219,20 +241,6 @@ class DesktopLyric {
         this._paper.queue_repaint();
     }
 
-    set systray(systray) {
-        if(systray) {
-            if(this._button) return;
-            this._button = new LyricButton(() => this.syncPosition(x => x + 50));
-            Main.panel.addToStatusArea(Me.metadata.uuid, this._button, 2, 'left');
-            this._addMenuItems();
-        } else {
-            if(!this._button) return;
-            this._button.destroy();
-            this._menus = this._button = null;
-            if(this._mini) this._paper = null;
-        }
-    }
-
     get visible() {
         return this.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
     }
@@ -254,14 +262,11 @@ class DesktopLyric {
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
         for(let p in this._menus) this._button.menu.addMenuItem(this._menus[p]);
-        if(!this._mini) return;
-        this._button.set_paper(this._paper);
-        this._menus.drag.hide();
     }
 
     destroy() {
         this._field.detach(this);
-        this.playing = this.systray = null;
+        this.systray = this.playing = null;
         Main.overview.disconnectObject(this);
         ['_mpris', '_lyric', '_paper'].forEach(x => { this[x]?.destroy(); this[x] = null; });
     }

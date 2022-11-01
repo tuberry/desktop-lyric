@@ -89,7 +89,7 @@ var MprisPlayer = class extends EventEmitter {
         let album = typeof meta['xesam:album'] === 'string' ? meta['xesam:album'] : '';
         let artist = meta['xesam:artist']?.every?.(x => typeof x === 'string')
             ? meta['xesam:artist'].flatMap(x => x.split('/')).filter(Boolean).sort() : [];
-        if(title) this.emit('update', { title, artist, album, length });
+        if(title) this.emit('update', { title, artist, album }, length);
     }
 
     get status() {

@@ -10,10 +10,10 @@ var Fields = {
     DRAG:     'draggable',
     FONT:     'font-name',
     ACTIVE:   'active-color',
+    INDEX:    'systray-index',
     OUTLINE:  'outline-color',
     INACTIVE: 'inactive-color',
     LOCATION: 'lyric-location',
-    SYSTRAY:  'enable-systray',
     INTERVAL: 'refresh-interval',
     ORIENT:   'lyric-orientation',
 };

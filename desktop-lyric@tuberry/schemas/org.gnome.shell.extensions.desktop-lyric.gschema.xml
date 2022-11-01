@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.desktop-lyric" path="/org/gnome/shell/extensions/desktop-lyric/">
-    <key type="b" name="enable-systray">
-        <default>false</default>
-        <summary>enable systray</summary>
-    </key>
     <key type="b" name="minimize">
         <default>false</default>
         <summary>minimize to panel</summary>
@@ -12,6 +8,10 @@
     <key type="b" name="draggable">
         <default>false</default>
         <summary>lyric is draggable or not</summary>
+    </key>
+    <key type="u" name="systray-index">
+        <default>0</default>
+        <summary>systray index (0 - left, 1 - middle, 2 - right)</summary>
     </key>
     <key type="u" name="xpos">
         <default>200</default>

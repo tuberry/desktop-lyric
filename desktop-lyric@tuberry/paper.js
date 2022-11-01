@@ -231,7 +231,7 @@ var DesktopPaper = class extends BasePaper {
     set outline(outline) {
         this._ocolor = this.genColor(outline) || Clutter.Color.from_string('#000')[1];
         this._outline = this.normColor(this._ocolor);
-        this._draw_outline = this._outline[3] > 0 && this._outline[3] < 1;
+        this._draw_outline = this._outline[3] > 0;
     }
 
     set drag(drag) {

@@ -33,7 +33,6 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     _buildWidgets() {
         this._field = {
-            SYSTRAY:  ['active',   new Gtk.CheckButton()],
             DRAG:     ['active',   new Gtk.CheckButton()],
             INTERVAL: ['value',    new UI.Spin(50, 500, 10)],
             ACTIVE:   ['colour',   new UI.Color(_('Active color'))],
@@ -41,6 +40,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             INACTIVE: ['colour',   new UI.Color(_('Inactive color'))],
             ORIENT:   ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
             FONT:     ['font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
+            INDEX:    ['selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
             LOCATION: ['file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
         };
         Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
@@ -49,7 +49,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     _buildUI() {
         [
             [this._field.DRAG[1],      [_('Mobilize'), _('Allow dragging to displace')]],
-            [this._field.SYSTRAY[1],   [_('Enable systray')]],
+            [[_('Systray position')],  this._field.INDEX[1]],
             [[_('Refresh interval')],  this._field.INTERVAL[1]],
             [[_('Lyric orientation')], this._field.ORIENT[1]],
             [[_('Lyric location')],    this._field.LOCATION[1]],
