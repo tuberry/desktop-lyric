@@ -47,6 +47,7 @@ var Lyric = class {
 
     getSongId(ans, song) {
         let attr = ['title', 'artist', 'album'].filter(x => song[x].toString());
+        if(ans.result.abroad) throw new Error('abroad');
         return ans.result.songs.map(({ id, name: title, album: x, artists: y }) => ({ id, title, album: x.name, artist: y.map(z => z.name).sort() }))
             .find(x => attr.every(y => song[y].toString() === x[y].toString())).id.toString();
     }

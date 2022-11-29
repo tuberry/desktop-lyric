@@ -11,38 +11,12 @@ const { St, Gio, GObject, Clutter } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const _ = ExtensionUtils.gettext;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fields } = Me.imports.fields;
+const { Fields, Field } = Me.imports.fields;
 const { Lyric } = Me.imports.lyric;
 const { MprisPlayer } = Me.imports.mpris;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
 
-const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
-
-class Field {
-    constructor(prop, gset, obj) {
-        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
-        this.prop = prop;
-        this.attach(obj);
-    }
-
-    _get(x) {
-        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
-    }
-
-    _set(x, y) {
-        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
-    }
-
-    attach(a) {
-        let fs = Object.entries(this.prop);
-        fs.forEach(([x]) => { a[x] = this._get(x); });
-        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
-    }
-
-    detach(a) {
-        this.gset.disconnectObject(a);
-    }
-}
+const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}.svg`).get_path());
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
@@ -51,7 +25,7 @@ class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, params) {
         super(text, active, params);
-        this.connect('toggled', (x, y) => callback(y));
+        this.connect('toggled', (_x, y) => callback(y));
     }
 }
 
@@ -80,7 +54,7 @@ class LyricButton extends PanelMenu.Button {
         this._xbutton_cb = callback;
         this.menu.actor.add_style_class_name('app-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        this._box.add_actor(new St.Icon({ gicon: genIcon('lyric'), style_class: 'desktop-lyric-systray system-status-icon' }));
+        this._box.add_actor(new St.Icon({ gicon: genIcon('lyric-symbolic'), style_class: 'desktop-lyric-systray system-status-icon' }));
         this.add_actor(this._box);
     }
 
@@ -101,19 +75,24 @@ class DesktopLyric {
     constructor() {
         this._lyric = new Lyric();
         this._mpris = new MprisPlayer();
-        this._field = new Field({
+        this._bindSettings();
+        Main.overview.connectObject('showing', () => (this.view = true),
+            'hiding', () => (this.view = false), this);
+        this._mpris.connectObject('update', this._update.bind(this),
+            'closed', () => (this.status = 'Stopped'),
+            'status', (_p, status) => (this.status = status),
+            'seeked', (_p, position) => this.setPosition(position / 1000), this);
+    }
+
+    _bindSettings() {
+        this._field = new Field({}, ExtensionUtils.getSettings(), this);
+        this._field.attach({
             mini:     [Fields.MINI,     'boolean'],
             drag:     [Fields.DRAG,     'boolean'],
             index:    [Fields.INDEX,    'uint'],
             location: [Fields.LOCATION, 'string'],
             interval: [Fields.INTERVAL, 'uint'],
-        }, ExtensionUtils.getSettings(), this);
-        Main.overview.connectObject('showing', () => (this.view = true),
-            'hidden', () => (this.view = false), this);
-        this._mpris.connectObject('update', this._update.bind(this),
-            'closed', () => (this.status = 'Stopped'),
-            'status', (p, status) => (this.status = status),
-            'seeked', (p, position) => this.setPosition(position / 1000), this);
+        }, this);
     }
 
     set location(location) {
@@ -128,14 +107,14 @@ class DesktopLyric {
             this._paper = null;
         }
         if(mini) {
-            this._paper = new PanelPaper(ExtensionUtils.getSettings());
+            this._paper = new PanelPaper(this._field);
             this._button?.set_paper(this._paper);
             this._menus?.drag.hide();
         } else {
-            this._paper = new DesktopPaper(ExtensionUtils.getSettings());
+            this._paper = new DesktopPaper(this._field);
             this._menus?.drag.show();
         }
-        this.loadLyric();
+        if(this._song) this.loadLyric();
     }
 
     set systray(systray) {
@@ -194,7 +173,7 @@ class DesktopLyric {
         this._mpris.getPosition().then(scc => this.setPosition(cb(scc / 1000))).catch(() => this.setPosition(0));
     }
 
-    _update(player, song, length) {
+    _update(_player, song, length) {
         if(JSON.stringify(song) === JSON.stringify(this._song)) {
             this.syncPosition(x => length - x > 5000 || !length ? x : 50);
         } else {
@@ -220,6 +199,7 @@ class DesktopLyric {
         try {
             this.setLyric(await this._lyric.fetch(this._song));
         } catch(e) {
+            logError(e);
             this.clearLyric();
             this._lyric.delete(this._song);
         }
@@ -241,25 +221,21 @@ class DesktopLyric {
         this._paper.queue_repaint();
     }
 
-    get visible() {
-        return this.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
-    }
-
     _updateViz() {
-        if(!this._paper || this._paper.visible === this.visible) return;
-        this._paper.visible = !this._paper.visible;
+        let viz = this.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
+        if(this._paper && this._paper.visible ^ viz) this._paper.visible = !this._paper.visible;
     }
 
     _addMenuItems() {
         this._menus = {
-            hide:     new SwitchItem(_('Invisiblize'), false, this._updateViz.bind(this)),
-            mini:     new SwitchItem(_('Minimize'), this._mini, () => this._field._set('mini', !this._mini)),
-            drag:     new SwitchItem(_('Mobilize'), this._drag, () => this._field._set('drag', !this._drag)),
-            sep0:     new PopupMenu.PopupSeparatorMenuItem(),
-            reload:   new MenuItem(_('Redownload'), () => this.reloadLyric()),
-            resync:   new MenuItem(_('Resynchronize'), () => this.syncPosition(x => x + 50)),
-            sep1:     new PopupMenu.PopupSeparatorMenuItem(),
-            settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
+            hide:   new SwitchItem(_('Invisiblize'), false, () => this._updateViz()),
+            mini:   new SwitchItem(_('Minimize'), this._mini, () => this.setf('mini', !this._mini)),
+            drag:   new SwitchItem(_('Mobilize'), this._drag, () => this.setf('drag', !this._drag)),
+            sep0:   new PopupMenu.PopupSeparatorMenuItem(),
+            reload: new MenuItem(_('Redownload'), () => this.reloadLyric()),
+            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition(x => x + 50)),
+            sep1:   new PopupMenu.PopupSeparatorMenuItem(),
+            prefs:  new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
         for(let p in this._menus) this._button.menu.addMenuItem(this._menus[p]);
     }

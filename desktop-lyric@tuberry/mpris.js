@@ -6,6 +6,7 @@
 const { Shell, Gio, GLib } = imports.gi;
 const { EventEmitter } = imports.misc.signals;
 const { loadInterfaceXML } = imports.misc.fileUtils;
+const noop = () => {};
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -26,7 +27,8 @@ var MprisPlayer = class extends EventEmitter {
     constructor() {
         super();
         let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
-        this._bus_proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', this._onProxyReady.bind(this));
+        this._bus_proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
+        this._bus_proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(noop);
     }
 
     _isMusicApp(bus_name) {
@@ -45,14 +47,14 @@ var MprisPlayer = class extends EventEmitter {
         if(this._bus_name || !this._isMusicApp(bus_name)) return;
         this._bus_name = bus_name;
         let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
-        this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onMprisProxyReady.bind(this));
+        this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', () => this._onMprisProxyReady(1));
         let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
-        this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', this._onPlayerProxyReady.bind(this));
+        this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', () => this._onPlayerProxyReady(2));
     }
 
     _onProxyReady() {
         this._bus_proxy.ListNamesRemote(([names]) => names?.length && names.forEach(name => this._setPlayer(name)));
-        this._bus_proxy.connectSignal('NameOwnerChanged', (proxy, sender, [name, old, mew]) => (mew && !old) && this._setPlayer(name));
+        this._bus_proxy.connectSignal('NameOwnerChanged', (_proxy, _sender, [name, old, neo]) => (neo && !old) && this._setPlayer(name));
     }
 
     async getPosition() {
@@ -75,20 +77,20 @@ var MprisPlayer = class extends EventEmitter {
 
     _onPlayerProxyReady() {
         this._player_proxy.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
-        this._player_proxy.connectSignal('Seeked', (proxy, sender, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
+        this._player_proxy.connectSignal('Seeked', (_proxy, _sender, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
         this._updateMetadata();
     }
 
     _updateMetadata() {
-        let meta = {};
-        for(let prop in this._player_proxy?.Metadata) meta[prop] = this._player_proxy.Metadata[prop].deepUnpack();
+        let data = {};
+        for(let prop in this._player_proxy?.Metadata) data[prop] = this._player_proxy.Metadata[prop].deepUnpack();
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
-        let length = (meta['mpris:length'] ?? 0) / 1000;
-        let title = typeof meta['xesam:title'] === 'string' ? meta['xesam:title'] : '';
-        let album = typeof meta['xesam:album'] === 'string' ? meta['xesam:album'] : '';
-        let artist = meta['xesam:artist']?.every?.(x => typeof x === 'string')
-            ? meta['xesam:artist'].flatMap(x => x.split('/')).filter(Boolean).sort() : [];
+        let length = (data['mpris:length'] ?? 0) / 1000,
+            title = typeof data['xesam:title'] === 'string' ? data['xesam:title'] : '',
+            album = typeof data['xesam:album'] === 'string' ? data['xesam:album'] : '',
+            artist = data['xesam:artist']?.every?.(x => typeof x === 'string')
+                ? data['xesam:artist'].flatMap(x => x.split('/')).filter(Boolean).sort() : [];
         if(title) this.emit('update', { title, artist, album }, length);
     }
 
@@ -96,7 +98,7 @@ var MprisPlayer = class extends EventEmitter {
         return this._player_proxy?.PlaybackStatus ?? 'Stopped';
     }
 
-    _propsChanged(proxy, changed) {
+    _propsChanged(_p, changed) {
         for(let name in changed.deepUnpack()) {
             if(name === 'Metadata') this._updateMetadata();
             else if(name === 'PlaybackStatus') this.emit('status', this.status);

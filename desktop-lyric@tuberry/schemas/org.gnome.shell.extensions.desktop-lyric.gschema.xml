@@ -13,14 +13,6 @@
         <default>0</default>
         <summary>systray index (0 - left, 1 - middle, 2 - right)</summary>
     </key>
-    <key type="u" name="xpos">
-        <default>200</default>
-        <summary>lyric x position</summary>
-    </key>
-    <key type="u" name="ypos">
-        <default>5</default>
-        <summary>lyric y position</summary>
-    </key>
     <key type="u" name="lyric-orientation">
         <range min="0" max="1"/>
         <default>0</default>
@@ -50,6 +42,10 @@
     <key type="s" name="outline-color">
         <default>"rgba(0, 0, 0, 0)"</default>
         <summary>lyric outline color</summary>
+    </key>
+    <key type="(uu)" name="place">
+        <default>(200, 200)</default>
+        <summary>lyric place</summary>
     </key>
   </schema>
 </schemalist>
