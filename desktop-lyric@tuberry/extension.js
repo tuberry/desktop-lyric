@@ -54,7 +54,7 @@ class LyricButton extends PanelMenu.Button {
         this._xbutton_cb = callback;
         this.menu.actor.add_style_class_name('app-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        this._box.add_actor(new St.Icon({ gicon: genIcon('lyric-symbolic'), style_class: 'desktop-lyric-systray system-status-icon' }));
+        this._box.add_actor(new St.Icon({ gicon: genIcon('lyric-symbolic'), style_class: 'system-status-icon' }));
         this.add_actor(this._box);
     }
 
