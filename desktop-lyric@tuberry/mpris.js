@@ -27,63 +27,68 @@ var MprisPlayer = class extends EventEmitter {
     constructor() {
         super();
         let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
-        this._bus_proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
-        this._bus_proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(noop);
+        this._dbus = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
+        this._dbus.init_async(GLib.PRIORITY_DEFAULT, null).catch(noop);
     }
 
-    _isMusicApp(bus_name) {
-        if(!bus_name.startsWith(MPRIS_PLAYER_PREFIX)) return false;
-        let name = bus_name.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
-        let [app] = Shell.AppSystem.search(name).toString().split(',');
+    _isMusicApp(app) {
+        if(!app.startsWith(MPRIS_PLAYER_PREFIX)) return false;
+        let name = app.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
+        let [appid] = Shell.AppSystem.search(name).toString().split(',');
         try {
-            let cate = Shell.AppSystem.get_default().lookup_app(app || `${name}.desktop`).get_app_info().get_string('Categories').split(';');
-            return cate.includes('AudioVideo') && !cate.includes('Video');
+            let cat = Shell.AppSystem.get_default().lookup_app(appid || `${name}.desktop`).get_app_info().get_string('Categories').split(';');
+            return cat.includes('AudioVideo') && !cat.includes('Video');
         } catch(e) {
             return false;
         }
     }
 
-    _setPlayer(bus_name) {
-        if(this._bus_name || !this._isMusicApp(bus_name)) return;
-        this._bus_name = bus_name;
+    _setPlayer(app) {
+        if(this._app || !this._isMusicApp(app)) return;
+        this._app = app;
         let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
-        this._mpris_proxy = new MprisProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', () => this._onMprisProxyReady(1));
+        this._mpris = new MprisProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onMprisProxyReady());
         let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
-        this._player_proxy = new PlayerProxy(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2', () => this._onPlayerProxyReady(2));
+        this._player = new PlayerProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onPlayerProxyReady());
     }
 
-    _onProxyReady() {
-        this._bus_proxy.ListNamesRemote(([names]) => names?.length && names.forEach(name => this._setPlayer(name)));
-        this._bus_proxy.connectSignal('NameOwnerChanged', (_proxy, _sender, [name, old, neo]) => (neo && !old) && this._setPlayer(name));
+    async _onProxyReady() {
+        let [names] = await this._dbus.ListNamesAsync();
+        names.forEach(name => this._setPlayer(name));
+        this._dbus.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => (neo && !old) && this._setPlayer(name));
     }
 
     async getPosition() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
         let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']);
-        let pos = await this._player_proxy.call('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null);
+        let pos = await this._player.call('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null);
         return pos.recursiveUnpack().at(0);
     }
 
     _closePlayer() {
-        this._player_proxy = this._mpris_proxy = this._bus_name = null;
-        if(this._bus_proxy) this._onProxyReady();
-        this.emit('closed');
+        this._player?.disconnectObject(this);
+        this._mpris?.disconnectObject(this);
+        if(this._playerId) this._player.disconnectSignal(this._playerId), this._playerId = 0;
+        this._player = this._mpris = this._app = null;
+        this.emit('closed', true);
+        if(this._dbus) this._onProxyReady();
     }
 
     _onMprisProxyReady() {
-        this._mpris_proxy.connectObject('notify::g-name-owner', () => this._mpris_proxy?.g_name_owner || this._closePlayer(), this);
-        if(!this._mpris_proxy?.g_name_owner) this._closePlayer();
+        this._mpris.connectObject('notify::g-name-owner', () => this._mpris?.g_name_owner || this._closePlayer(), this);
+        if(!this._mpris?.g_name_owner) this._closePlayer();
     }
 
     _onPlayerProxyReady() {
-        this._player_proxy.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
-        this._player_proxy.connectSignal('Seeked', (_proxy, _sender, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
+        this.emit('closed', false);
+        this._player.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
+        this._playerId = this._player.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
         this._updateMetadata();
     }
 
     _updateMetadata() {
         let data = {};
-        for(let prop in this._player_proxy?.Metadata) data[prop] = this._player_proxy.Metadata[prop].deepUnpack();
+        for(let prop in this._player?.Metadata) data[prop] = this._player.Metadata[prop].deepUnpack();
         // Validate according to the spec; some clients send buggy metadata:
         // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         let length = (data['mpris:length'] ?? 0) / 1000,
@@ -95,7 +100,7 @@ var MprisPlayer = class extends EventEmitter {
     }
 
     get status() {
-        return this._player_proxy?.PlaybackStatus ?? 'Stopped';
+        return this._player?.PlaybackStatus ?? 'Stopped';
     }
 
     _propsChanged(_p, changed) {
@@ -106,7 +111,7 @@ var MprisPlayer = class extends EventEmitter {
     }
 
     destroy() {
-        this._bus_proxy = null;
+        this._dbus = null;
         this._closePlayer();
     }
 };

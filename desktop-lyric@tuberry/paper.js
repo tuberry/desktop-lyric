@@ -51,9 +51,9 @@ var BasePaper = class extends St.DrawingArea {
 
     set moment(moment) {
         this._moment = moment;
-        let txt = this._txt;
-        [this._pos, this._txt] = this._getCurrentText();
-        if(!this.visible || this.icolor.equal(this.acolor) && this._txt === txt) return;
+        let lrc = this._lrc;
+        [this._pos, this._lrc] = this.getLyric();
+        if(!this.visible || this.icolor.equal(this.acolor) && this._lrc === lrc) return;
         this.queue_repaint();
     }
 
@@ -77,17 +77,23 @@ var BasePaper = class extends St.DrawingArea {
         cr.$dispose();
     }
 
-    _getCurrentText() {
+    clear() {
+        this.text = '';
+        [this._pos, this._lrc] = this.getLyric();
+        this.queue_repaint();
+    }
+
+    getLyric() {
         let now = this._moment;
         let key = this._tags.find(x => x <= now);
         if(key === undefined) return [0, ''];
-        let [end, txt] = this._text.get(key);
-        return [now >= end || key === end ? 1 : (now - key) / (end - key), txt];
+        let [end, lrc] = this._text.get(key);
+        return [now >= end || key === end ? 1 : (now - key) / (end - key), lrc];
     }
 
     _setupLayout(_cr, _h, pl) {
         pl.set_font_description(this._font);
-        pl.set_text(this._txt ?? '', -1);
+        pl.set_text(this._lrc ?? '', -1);
     }
 
     _colorLayout(cr, w, pl) {

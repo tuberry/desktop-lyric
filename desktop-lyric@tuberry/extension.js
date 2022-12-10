@@ -79,8 +79,8 @@ class DesktopLyric {
         Main.overview.connectObject('showing', () => (this.view = true),
             'hiding', () => (this.view = false), this);
         this._mpris.connectObject('update', this._update.bind(this),
-            'closed', () => (this.status = 'Stopped'),
-            'status', (_p, status) => (this.status = status),
+            'closed', (_p, closed) => (this.closed = closed),
+            'status', (_p, status) => (this.playing = status === 'Playing'),
             'seeked', (_p, position) => this.setPosition(position / 1000), this);
     }
 
@@ -123,6 +123,7 @@ class DesktopLyric {
             this._button = new LyricButton(() => this.syncPosition(x => x + 50));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button, this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._addMenuItems();
+            this._button.visible = this._showing;
             if(this._mini) this.mini = this._mini;
         } else {
             if(!this._button) return;
@@ -160,13 +161,10 @@ class DesktopLyric {
         if(playing && this._paper) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 1), this._interval);
     }
 
-    get status() {
-        return this._status ?? this._mpris.status;
-    }
-
-    set status(status) {
-        this._status = status;
-        this.playing = status === 'Playing';
+    set closed(closed) {
+        this._showing = !closed;
+        if(closed) this.status = 'Stopped';
+        if(this._button) this._button.visible = !closed;
     }
 
     syncPosition(cb) {
@@ -216,13 +214,11 @@ class DesktopLyric {
 
     clearLyric() {
         this.playing = false;
-        if(!this._paper) return;
-        this._paper.text = '';
-        this._paper.queue_repaint();
+        this._paper?.clear();
     }
 
     _updateViz() {
-        let viz = this.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
+        let viz = this._mpris.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
         if(this._paper && this._paper.visible ^ viz) this._paper.visible = !this._paper.visible;
     }
 
