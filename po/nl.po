@@ -1,0 +1,126 @@
+# Dutch translations for gnome-shell-extension-desktop-lyric package.
+# Copyright (C) 2021 THE gnome-shell-extension-desktop-lyric'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-desktop-lyric package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-desktop-lyric\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"PO-Revision-Date: 2021-09-14 18:13+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: none\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: src/ui.js:32
+msgid "Clear"
+msgstr ""
+
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
+msgstr ""
+
+#: src/prefs.js:37
+msgid "Active color"
+msgstr "Actieve kleur"
+
+#: src/prefs.js:38
+msgid "Outline color"
+msgstr "Contourkleur"
+
+#: src/prefs.js:39
+msgid "Inactive color"
+msgstr "Inactieve kleur"
+
+#: src/prefs.js:40
+msgid "Horizontal"
+msgstr "Horizontaal"
+
+#: src/prefs.js:40
+msgid "Vertical"
+msgstr "Verticaal"
+
+#: src/prefs.js:42
+msgid "Left"
+msgstr ""
+
+#: src/prefs.js:42
+msgid "Center"
+msgstr ""
+
+#: src/prefs.js:42
+msgid "Right"
+msgstr ""
+
+#: src/prefs.js:49 src/extension.js:229
+msgid "Mobilize"
+msgstr ""
+
+#: src/prefs.js:49
+msgid "Allow dragging to displace"
+msgstr ""
+
+#: src/prefs.js:50
+msgid "Systray position"
+msgstr ""
+
+#: src/prefs.js:51
+msgid "Refresh interval"
+msgstr "Ververstussenpoos"
+
+#: src/prefs.js:52
+msgid "Lyric orientation"
+msgstr "Songtekstoriëntatie"
+
+#: src/prefs.js:53
+msgid "Lyric location"
+msgstr "Songtekstlocatie"
+
+#: src/prefs.js:54
+msgid "Lyric colors"
+msgstr "Tekstkleuren"
+
+#: src/prefs.js:55
+msgid "Font name"
+msgstr "Lettertype"
+
+#: src/extension.js:227
+msgid "Invisiblize"
+msgstr ""
+
+#: src/extension.js:228
+msgid "Minimize"
+msgstr ""
+
+#: src/extension.js:231
+msgid "Redownload"
+msgstr ""
+
+#: src/extension.js:232
+msgid "Resynchronize"
+msgstr "Opnieuw synchroniseren"
+
+#: src/extension.js:234
+msgid "Settings"
+msgstr "Voorkeuren"
+
+#~ msgid "Hide lyric"
+#~ msgstr "Songtekst verbergen"
+
+#~ msgid "Unlock position"
+#~ msgstr "Losmaken"
+
+#~ msgid "0.5s Slower"
+#~ msgstr "0.5s langzamer"
+
+#~ msgid "0.5s Faster"
+#~ msgstr "0.5s sneller"
+
+#~ msgid "Enable systray"
+#~ msgstr "Systeemvakpictogram tonen"

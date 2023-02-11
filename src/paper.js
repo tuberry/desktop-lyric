@@ -9,6 +9,7 @@ const Main = imports.ui.main;
 const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
 const { Fields, Field } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
 
+const fg = () => Main.panel.get_theme_node().lookup_color('color', true)[1];
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }) => [red, green, blue, alpha].map(x => x / 255);
 
@@ -24,7 +25,7 @@ class DragMove extends DND._Draggable {
     }
 }
 
-var BasePaper = class extends St.DrawingArea {
+class BasePaper extends St.DrawingArea {
     static {
         GObject.registerClass(this);
     }
@@ -113,7 +114,7 @@ var BasePaper = class extends St.DrawingArea {
         this._field.detach(this);
         super.destroy();
     }
-};
+}
 
 var PanelPaper = class extends BasePaper {
     static {
@@ -135,16 +136,10 @@ var PanelPaper = class extends BasePaper {
         this._font.set_weight(Pango.Weight.BOLD);
     }
 
-    getFgcolor() {
-        let bg = Main.panel.get_background_color();
-        bg.alpha = 255;
-        return Clutter.Color.from_string('#fff')[1].subtract(bg);
-    }
-
     set color([k, v, out]) {
         super.color = [k, v, out];
-        if(k === 'acolor') this._acolor = c2gdk(this.acolor.interpolate(this.getFgcolor(), 0.65));
-        if('acolor' in this && 'icolor' in this) this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(this.getFgcolor());
+        if(k === 'acolor') this._acolor = c2gdk(this.acolor.interpolate(fg(), 0.65));
+        if('acolor' in this && 'icolor' in this) this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg());
     }
 
     set moment(moment) {

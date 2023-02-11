@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-11-01 20:56+0800\n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,97 +17,97 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:254
-msgid "Invisiblize"
-msgstr "隐藏"
-
-#: extension.js:255
-msgid "Minimize"
-msgstr "最小化"
-
-#: extension.js:256 prefs.js:51
-msgid "Mobilize"
-msgstr "解锁位置"
-
-#: extension.js:258
-msgid "Redownload"
-msgstr "重新下载"
-
-#: extension.js:259
-msgid "Resynchronize"
-msgstr "重新同步"
-
-#: extension.js:261
-msgid "Settings"
-msgstr "设置"
-
-#: prefs.js:38
-msgid "Active color"
-msgstr "已唱颜色"
-
-#: prefs.js:39
-msgid "Outline color"
-msgstr "轮廓颜色"
-
-#: prefs.js:40
-msgid "Inactive color"
-msgstr "未唱颜色"
-
-#: prefs.js:41
-msgid "Horizontal"
-msgstr "水平"
-
-#: prefs.js:41
-msgid "Vertical"
-msgstr "竖直"
-
-#: prefs.js:43
-msgid "Left"
-msgstr "左侧"
-
-#: prefs.js:43
-msgid "Center"
-msgstr "中间"
-
-#: prefs.js:43
-msgid "Right"
-msgstr "右侧"
-
-#: prefs.js:51
-msgid "Allow dragging to displace"
-msgstr "允许拖拽以更改位置"
-
-#: prefs.js:52
-msgid "Systray position"
-msgstr "图标位置"
-
-#: prefs.js:53
-msgid "Refresh interval"
-msgstr "刷新间隔"
-
-#: prefs.js:54
-msgid "Lyric orientation"
-msgstr "歌词方向"
-
-#: prefs.js:55
-msgid "Lyric location"
-msgstr "歌词位置"
-
-#: prefs.js:56
-msgid "Lyric colors"
-msgstr "歌词颜色"
-
-#: prefs.js:57
-msgid "Font name"
-msgstr "字体名称"
-
-#: ui.js:32
+#: src/ui.js:32
 msgid "Clear"
 msgstr "清除"
 
-#: ui.js:262
+#: src/ui.js:266
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
+
+#: src/prefs.js:37
+msgid "Active color"
+msgstr "已唱颜色"
+
+#: src/prefs.js:38
+msgid "Outline color"
+msgstr "轮廓颜色"
+
+#: src/prefs.js:39
+msgid "Inactive color"
+msgstr "未唱颜色"
+
+#: src/prefs.js:40
+msgid "Horizontal"
+msgstr "水平"
+
+#: src/prefs.js:40
+msgid "Vertical"
+msgstr "竖直"
+
+#: src/prefs.js:42
+msgid "Left"
+msgstr "左侧"
+
+#: src/prefs.js:42
+msgid "Center"
+msgstr "中间"
+
+#: src/prefs.js:42
+msgid "Right"
+msgstr "右侧"
+
+#: src/prefs.js:49 src/extension.js:229
+msgid "Mobilize"
+msgstr "解锁位置"
+
+#: src/prefs.js:49
+msgid "Allow dragging to displace"
+msgstr "允许拖拽以更改位置"
+
+#: src/prefs.js:50
+msgid "Systray position"
+msgstr "图标位置"
+
+#: src/prefs.js:51
+msgid "Refresh interval"
+msgstr "刷新间隔"
+
+#: src/prefs.js:52
+msgid "Lyric orientation"
+msgstr "歌词方向"
+
+#: src/prefs.js:53
+msgid "Lyric location"
+msgstr "歌词位置"
+
+#: src/prefs.js:54
+msgid "Lyric colors"
+msgstr "歌词颜色"
+
+#: src/prefs.js:55
+msgid "Font name"
+msgstr "字体名称"
+
+#: src/extension.js:227
+msgid "Invisiblize"
+msgstr "隐藏"
+
+#: src/extension.js:228
+msgid "Minimize"
+msgstr "最小化"
+
+#: src/extension.js:231
+msgid "Redownload"
+msgstr "重新下载"
+
+#: src/extension.js:232
+msgid "Resynchronize"
+msgstr "重新同步"
+
+#: src/extension.js:234
+msgid "Settings"
+msgstr "设置"
 
 #~ msgid "left"
 #~ msgstr "左侧"
