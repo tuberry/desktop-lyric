@@ -5,7 +5,7 @@ project(
 )
 
 NAME = 'Desktop Lyric'
-DESCRIPTION = 'Show the lyric of playing songs on the desktop\\n\\nFor support, please report any issues via the homepage link below.'
+INFO = 'Show the lyric of playing songs on the desktop'
 EID = meson.project_name().replace('gnome-shell-extension-', '')
 UUID = EID + '@tuberry'
 EGO = 'EGO=4006' / EID
