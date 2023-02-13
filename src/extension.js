@@ -135,6 +135,10 @@ class DesktopLyric {
 
     set index(index) {
         if(this._index === index) return;
+        if(!index) Main.panel.statusArea.appMenu.connectObject('changed', () => {
+                Main.panel.statusArea.appMenu._visible ? Main.panel.statusArea.appMenu.show() : Main.panel.statusArea.appMenu.hide();
+            }, this);
+        else Main.panel.statusArea.appMenu.disconnectObject(this);
         this._index = index;
         this.systray = false;
         this.systray = true;
@@ -240,6 +244,7 @@ class DesktopLyric {
         this._field.detach(this);
         this.systray = this.playing = null;
         Main.overview.disconnectObject(this);
+        if(!this._index) Main.panel.statusArea.appMenu.disconnectObject(this);
         ['_mpris', '_lyric', '_paper'].forEach(x => { this[x]?.destroy(); this[x] = null; });
     }
 }
