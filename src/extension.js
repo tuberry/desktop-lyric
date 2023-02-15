@@ -6,7 +6,7 @@
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const { St, Gio, GObject, Clutter } = imports.gi;
+const { St, Gio, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const _ = ExtensionUtils.gettext;
@@ -174,8 +174,12 @@ class DesktopLyric {
         this._appMenuHidden = appMenuHidden;
         if(appMenuHidden) {
             Main.panel.statusArea.appMenu.connectObject('changed', a => {
-                clearTimeout(this._appMenuId);
-                this._appMenuId = setTimeout(() => a[a._visible ? 'show' : 'hide'](), 20); // delay 20ms to avoid the glitch when closing panelMenus
+                if(Meta.is_wayland_compositor()) {
+                    a[a._visible ? 'show' : 'hide']();
+                } else { // delay 20ms to avoid the glitch when closing panelMenus on Xorg
+                    clearTimeout(this._appMenuId);
+                    this._appMenuId = setTimeout(() => a[a._visible ? 'show' : 'hide'](), 20);
+                }
             }, this);
         } else {
             clearTimeout(this._appMenuId);
