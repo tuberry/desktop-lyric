@@ -16,6 +16,7 @@ const { Lyric } = Me.imports.lyric;
 const { MprisPlayer } = Me.imports.mpris;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
 
+const xnor = (x, y) => !x === !y;
 const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}.svg`).get_path());
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
@@ -118,15 +119,14 @@ class DesktopLyric {
     }
 
     set systray(systray) {
+        if(xnor(systray, this._button)) return;
         if(systray) {
-            if(this._button) return;
             this._button = new LyricButton(() => this.syncPosition(x => x + 50));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button, this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._addMenuItems();
             this._button.visible = this._showing;
             if(this._mini) this.mini = this._mini;
         } else {
-            if(!this._button) return;
             this._button.destroy();
             this._menus = this._button = null;
             if(this._mini) this._paper = null;
@@ -172,10 +172,15 @@ class DesktopLyric {
     set appMenuHidden(appMenuHidden) {
         if(this._appMenuHidden === appMenuHidden) return;
         this._appMenuHidden = appMenuHidden;
-        if(appMenuHidden) Main.panel.statusArea.appMenu.connectObject('changed', () => {
-                Main.panel.statusArea.appMenu._visible ? Main.panel.statusArea.appMenu.show() : Main.panel.statusArea.appMenu.hide();
+        if(appMenuHidden) {
+            Main.panel.statusArea.appMenu.connectObject('changed', a => {
+                clearTimeout(this._appMenuId);
+                this._appMenuId = setTimeout(() => a[a._visible ? 'show' : 'hide'](), 20); // delay 20ms to avoid the glitch when closing panelMenus
             }, this);
-        else Main.panel.statusArea.appMenu.disconnectObject(this);
+        } else {
+            clearTimeout(this._appMenuId);
+            Main.panel.statusArea.appMenu.disconnectObject(this);
+        }
     }
 
     syncPosition(cb) {
