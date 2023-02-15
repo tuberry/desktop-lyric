@@ -63,11 +63,11 @@ var Lyric = class {
     }
 
     info({ title, artist }) {
-        return [title, artist.join(' ')].filter(Boolean).join(' ');
+        return [title, artist.join(' ')].filter(x => x).join(' ');
     }
 
     path({ title, artist, album }) { // default to $XDG_CACHE_DIR/desktop-lyric if exists
-        let fn = [title, artist.join(','), album].filter(Boolean).join('-').replaceAll('/', ',').concat('.lrc');
+        let fn = [title, artist.join(','), album].filter(x => x).join('-').replaceAll('/', ',').concat('.lrc');
         return this.location ? `${this.location}/${fn}` : GLib.build_filenamev([GLib.get_user_cache_dir(), 'desktop-lyric', fn]);
     }
 

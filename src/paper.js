@@ -9,6 +9,7 @@ const Main = imports.ui.main;
 const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
 const { Fields, Field } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
 
+const xnor = (x, y) => !x === !y;
 const fg = () => Main.panel.get_theme_node().lookup_color('color', true)[1];
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }) => [red, green, blue, alpha].map(x => x / 255);
@@ -188,8 +189,8 @@ var DesktopPaper = class extends BasePaper {
     }
 
     set drag(drag) {
+        if(xnor(drag, this._drag)) return;
         if(drag) {
-            if(this._drag) return;
             Main.layoutManager.trackChrome(this);
             this.reactive = true;
             this._drag = new DragMove(this, { dragActorOpacity: 200 });
@@ -199,7 +200,6 @@ var DesktopPaper = class extends BasePaper {
                 this.setf('place', new GLib.Variant('(uu)', this.get_position()));
             });
         } else {
-            if(!this._drag) return;
             this._drag = null;
             this.reactive = false;
         }
