@@ -10,7 +10,6 @@ const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
 const { Fields, Field } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
 
 const xnor = (x, y) => !x === !y;
-const fg = () => Main.panel.get_theme_node().lookup_color('color', true)[1];
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }) => [red, green, blue, alpha].map(x => x / 255);
 
@@ -130,6 +129,14 @@ var PanelPaper = class extends BasePaper {
         let [w, h] = Main.panel.get_size();
         this._pixel_width = this._max_width = w / 4;
         this.set_size(this._max_width, h);
+        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelColor(), this);
+    }
+
+    _syncPanelColor() {
+        if(!('acolor' in this && 'icolor' in this)) return;
+        let fg = Main.panel.get_theme_node().lookup_color('color', true)[1];
+        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.75));
+        this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg);
     }
 
     set font(font) {
@@ -139,8 +146,7 @@ var PanelPaper = class extends BasePaper {
 
     set color([k, v, out]) {
         super.color = [k, v, out];
-        if(k === 'acolor') this._acolor = c2gdk(this.acolor.interpolate(fg(), 0.65));
-        if('acolor' in this && 'icolor' in this) this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg());
+        this._syncPanelColor();
     }
 
     set moment(moment) {
@@ -156,6 +162,7 @@ var PanelPaper = class extends BasePaper {
     }
 
     destroy() {
+        St.ThemeContext.get_for_stage(global.stage).disconnectObject(this);
         this._ffield.detach(this);
         super.destroy();
     }
