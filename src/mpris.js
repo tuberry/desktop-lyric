@@ -55,7 +55,7 @@ var MprisPlayer = class extends EventEmitter {
     async _onProxyReady() {
         let [names] = await this._dbus.ListNamesAsync();
         names.forEach(name => this._setPlayer(name));
-        this._dbus.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => (neo && !old) && this._setPlayer(name));
+        this._dbus.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { (neo && !old) && this._setPlayer(name); });
     }
 
     async getPosition() {

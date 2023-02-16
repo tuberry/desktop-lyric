@@ -77,11 +77,11 @@ class DesktopLyric {
         this._lyric = new Lyric();
         this._mpris = new MprisPlayer();
         this._bindSettings();
-        Main.overview.connectObject('showing', () => (this.view = true),
-            'hiding', () => (this.view = false), this);
+        Main.overview.connectObject('showing', () => { this.view = true; },
+            'hiding', () => { this.view = false; }, this);
         this._mpris.connectObject('update', this._update.bind(this),
-            'closed', (_p, closed) => (this.closed = closed),
-            'status', (_p, status) => (this.playing = status === 'Playing'),
+            'closed', (_p, closed) => { this.closed = closed; },
+            'status', (_p, status) => { this.playing = status === 'Playing'; },
             'seeked', (_p, position) => this.setPosition(position / 1000), this);
     }
 

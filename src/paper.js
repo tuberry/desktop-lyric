@@ -7,7 +7,7 @@ const Cairo = imports.cairo;
 const DND = imports.ui.dnd;
 const Main = imports.ui.main;
 const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
-const { Fields, Field } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
+const { Fields } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
 
 const xnor = (x, y) => !x === !y;
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
@@ -122,48 +122,41 @@ var PanelPaper = class extends BasePaper {
     }
 
     _bindSettings(field) {
+        this._natural_width = 0;
         super._bindSettings(field);
-        this._ffield = new Field({
-            font: ['font-name', 'string'],
-        }, 'org.gnome.desktop.interface', this);
-        let [w, h] = Main.panel.get_size();
-        this._pixel_width = this._max_width = w / 4;
-        this.set_size(this._max_width, h);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelColor(), this);
+        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), this);
     }
 
-    _syncPanelColor() {
+    _syncPanelTheme() {
         if(!('acolor' in this && 'icolor' in this)) return;
         let fg = Main.panel.get_theme_node().lookup_color('color', true)[1];
         this._acolor = c2gdk(this.acolor.interpolate(fg, 0.75));
         this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg);
-    }
-
-    set font(font) {
-        this._font = Pango.FontDescription.from_string(font);
-        this._font.set_weight(Pango.Weight.BOLD);
+        this._font = Main.panel.get_theme_node().get_font();
+        let [w, h] = Main.panel.get_size();
+        this._max_width = w / 4;
+        this.set_height(h);
     }
 
     set color([k, v, out]) {
         super.color = [k, v, out];
-        this._syncPanelColor();
+        this._syncPanelTheme();
     }
 
     set moment(moment) {
         super.moment = moment;
-        this.set_width(Math.min(this._max_width, this._pixel_width + 4));
+        this.set_width(Math.min(this._max_width, this._natural_width + 4));
     }
 
     _setupLayout(cr, h, pl) {
         super._setupLayout(cr, h, pl);
         let [pw, ph] = pl.get_pixel_size();
-        this._pixel_width = pw;
+        this._natural_width = pw;
         cr.translate(0, (h - ph) / 2);
     }
 
     destroy() {
         St.ThemeContext.get_for_stage(global.stage).disconnectObject(this);
-        this._ffield.detach(this);
         super.destroy();
     }
 };

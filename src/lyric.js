@@ -11,7 +11,6 @@ const GETLRC = 'https://music.163.com/api/song/lyric?';
 const noop = () => {};
 
 Gio._promisify(Gio.File.prototype, 'delete_async');
-Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.File.prototype, 'replace_contents_async');
 
