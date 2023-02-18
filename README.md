@@ -47,6 +47,7 @@ For older versions, it's recommended to install via:
 
 * [lyrics-finder]: online lyrics
 * [osdlyrics]: some names
+* [NeteaseCloudMusicApi]: search API
 
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
 [LRC]:https://en.wikipedia.org/wiki/LRC_(file_format)
@@ -54,3 +55,4 @@ For older versions, it's recommended to install via:
 [lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
 [osdlyrics]:https://github.com/osdlyrics/osdlyrics
 [EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/
+[NeteaseCloudMusicApi]:https://github.com/Binaryify/NeteaseCloudMusicApi

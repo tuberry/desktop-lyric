@@ -5,8 +5,13 @@
 
 const { Soup, GLib, Gio } = imports.gi;
 
-const SEARCH = 'http://music.163.com/api/search/get/web?';
+const SEARCH = 'https://music.163.com/weapi/search/get';
 const GETLRC = 'https://music.163.com/api/song/lyric?';
+
+const base62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const ivHex = "30313032303330343035303630373038";
+const presetKeyHex = "30436f4a556d365179773857386a7564";
+const publicKey = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----";
 
 const noop = () => {};
 
@@ -28,7 +33,7 @@ var Lyric = class {
 
     async fetch(song) {
         let info = this.info(song);
-        let ans1 = JSON.parse(await this.visit('POST', SEARCH, { s: info, limit: '30', type: '1' }));
+        let ans1 = JSON.parse(await this.visit('POST', SEARCH, this.getEnc({ s: info, limit: '30', type: '1', offset: '0' })));
         if(ans1.code !== Soup.Status.OK) throw new Error(`${info} not found, ${JSON.stringify(ans1, null, 0)}`);
         let ans2 = JSON.parse(await this.visit('GET', GETLRC, { id: this.getSongId(ans1, song), lv: '1' })); // kv: '0', tv: '0'
         if(ans2.code !== Soup.Status.OK) throw new Error(`Lyric of ${info} not found, ${JSON.stringify(ans2, null, 0)}`);
@@ -48,7 +53,7 @@ var Lyric = class {
         let attr = ['title', 'artist', 'album'].filter(x => song[x].toString());
         if(ans.result.abroad) throw new Error('abroad');
         return ans.result.songs.map(({ id, name: title, album: x, artists: y }) => ({ id, title, album: x.name, artist: y.map(z => z.name).sort() }))
-            .find(x => attr.every(y => song[y].toString() === x[y].toString())).id.toString();
+            .find(x => attr.every(y => x[y].toString().includes(song[y].toString()))).id.toString();
     }
 
     async find(song) {
@@ -68,6 +73,39 @@ var Lyric = class {
     path({ title, artist, album }) { // default to $XDG_CACHE_DIR/desktop-lyric if exists
         let fn = [title, artist.join(','), album].filter(x => x).join('-').replaceAll('/', ',').concat('.lrc');
         return this.location ? `${this.location}/${fn}` : GLib.build_filenamev([GLib.get_user_cache_dir(), 'desktop-lyric', fn]);
+    }
+
+    encrypt(mode, text, key, iv) {
+        let enc;
+        let script;
+        if(mode === "aes") script = `echo "${GLib.base64_encode(text)}" | base64 -d | openssl enc -aes-128-cbc -K ${key} -iv ${iv} -a -A`;
+        else if(mode === "rsa") script = `echo "${GLib.base64_encode(text.padStart(128, "\0"))}" | base64 -d | openssl pkeyutl -encrypt -pubin -inkey <(echo "${key}") -pkeyopt rsa_padding_mode:none | base64`;
+        let loop = GLib.MainLoop.new(null, false);
+        let proc = Gio.Subprocess.new(["bash", "-c", script], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
+
+        proc.communicate_utf8_async(null, null, (proc, res) => {
+            try {
+                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                if(proc.get_successful()) enc = stdout;
+                else throw new Error(stderr);
+            } catch (e) {
+                logError(e);
+            } finally {
+                loop.quit();
+            }
+        });
+        loop.run();
+        return enc;
+    }
+
+    getEnc(object) {
+        const text = JSON.stringify(object);
+        let secretKey = "";
+        for(let i = 0; i < 16; i++) secretKey += base62.charAt(Math.floor(Math.random() * base62.length));
+        return {
+            params: this.encrypt("aes", this.encrypt("aes", text, presetKeyHex, ivHex), Array.prototype.map.call(secretKey, (x) => x.charCodeAt(0).toString(16).padStart(2, "0")).join(""), ivHex),
+            encSecKey: Array.prototype.map.call(GLib.base64_decode(this.encrypt("rsa", secretKey.split("").reverse().join(""), publicKey)), (x) => x.toString(16).padStart(2, "0")).join(""),
+        };
     }
 
     destroy() {
