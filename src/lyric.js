@@ -8,10 +8,10 @@ const { Soup, GLib, Gio } = imports.gi;
 const SEARCH = 'https://music.163.com/weapi/search/get';
 const GETLRC = 'https://music.163.com/api/song/lyric?';
 
-const base62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-const ivHex = "30313032303330343035303630373038";
-const presetKeyHex = "30436f4a556d365179773857386a7564";
-const publicKey = "-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----";
+const base62 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+const ivHex = '30313032303330343035303630373038';
+const presetKeyHex = '30436f4a556d365179773857386a7564';
+const publicKey = '-----BEGIN PUBLIC KEY-----\nMIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDgtQn2JZ34ZC28NWYpAUd98iZ37BUrX/aKzmFbt7clFSs6sXqHauqKWqdtLkF2KexO40H1YTX8z2lSgBBOAxLsvaklV8k4cBFK9snQXE9/DDaFt6Rr7iVZMldczhC0JNgTz+SHXT6CBHuX3e9SdB1Ua44oncaTWz7OBGLbCiK45wIDAQAB\n-----END PUBLIC KEY-----';
 
 const noop = () => {};
 
@@ -44,8 +44,7 @@ var Lyric = class {
     }
 
     delete(song) {
-        let info = encodeURIComponent(this.info(song));
-        console.warn(`Desktop Lyric: failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
+        console.warn(`Desktop Lyric: failed to download lyric for <${song.title}>`);
         Gio.File.new_for_path(this.path(song)).delete_async(GLib.PRIORITY_DEFAULT, null).catch(noop); // ignore NOT_FOUND
     }
 
@@ -78,10 +77,10 @@ var Lyric = class {
     encrypt(mode, text, key, iv) {
         let enc;
         let script;
-        if(mode === "aes") script = `echo "${GLib.base64_encode(text)}" | base64 -d | openssl enc -aes-128-cbc -K ${key} -iv ${iv} -a -A`;
-        else if(mode === "rsa") script = `echo "${GLib.base64_encode(text.padStart(128, "\0"))}" | base64 -d | openssl pkeyutl -encrypt -pubin -inkey <(echo "${key}") -pkeyopt rsa_padding_mode:none | base64`;
+        if(mode === 'aes') script = `echo "${GLib.base64_encode(text)}" | base64 -d | openssl enc -aes-128-cbc -K ${key} -iv ${iv} -a -A`;
+        else if(mode === 'rsa') script = `echo "${GLib.base64_encode(text.padStart(128, '\0'))}" | base64 -d | openssl pkeyutl -encrypt -pubin -inkey <(echo "${key}") -pkeyopt rsa_padding_mode:none | base64`;
         let loop = GLib.MainLoop.new(null, false);
-        let proc = Gio.Subprocess.new(["bash", "-c", script], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
+        let proc = Gio.Subprocess.new(['bash', '-c', script], Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE);
 
         proc.communicate_utf8_async(null, null, (proc, res) => {
             try {
@@ -100,11 +99,11 @@ var Lyric = class {
 
     getEnc(object) {
         const text = JSON.stringify(object);
-        let secretKey = "";
+        let secretKey = '';
         for(let i = 0; i < 16; i++) secretKey += base62.charAt(Math.floor(Math.random() * base62.length));
         return {
-            params: this.encrypt("aes", this.encrypt("aes", text, presetKeyHex, ivHex), Array.prototype.map.call(secretKey, (x) => x.charCodeAt(0).toString(16).padStart(2, "0")).join(""), ivHex),
-            encSecKey: Array.prototype.map.call(GLib.base64_decode(this.encrypt("rsa", secretKey.split("").reverse().join(""), publicKey)), (x) => x.toString(16).padStart(2, "0")).join(""),
+            params: this.encrypt('aes', this.encrypt('aes', text, presetKeyHex, ivHex), Array.prototype.map.call(secretKey, (x) => x.charCodeAt(0).toString(16).padStart(2, '0')).join(''), ivHex),
+            encSecKey: Array.prototype.map.call(GLib.base64_decode(this.encrypt('rsa', secretKey.split('').reverse().join(''), publicKey)), (x) => x.toString(16).padStart(2, '0')).join(''),
         };
     }
 
