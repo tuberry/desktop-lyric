@@ -130,7 +130,7 @@ var PanelPaper = class extends BasePaper {
     _syncPanelTheme() {
         if(!('acolor' in this && 'icolor' in this)) return;
         let fg = Main.panel.get_theme_node().lookup_color('color', true)[1];
-        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.75));
+        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.7));
         this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg);
         this._font = Main.panel.get_theme_node().get_font();
         let [w, h] = Main.panel.get_size();

@@ -27,15 +27,12 @@ var Lyric = class {
     }
 
     async fetch(song) {
-        let info = this.info(song);
-        let ans1 = JSON.parse(await this.visit('POST', SEARCH, { s: info, limit: '30', type: '1' }));
-        if(ans1.code !== Soup.Status.OK) throw new Error(`${info} not found, ${JSON.stringify(ans1, null, 0)}`);
-        let ans2 = JSON.parse(await this.visit('GET', GETLRC, { id: this.getSongId(ans1, song), lv: '1' })); // kv: '0', tv: '0'
-        if(ans2.code !== Soup.Status.OK) throw new Error(`Lyric of ${info} not found, ${JSON.stringify(ans2, null, 0)}`);
-        if(!ans2.lrc?.lyric) throw new Error('Empty lyric');
-        Gio.File.new_for_path(this.path(song))
-            .replace_contents_async(new TextEncoder().encode(ans2.lrc.lyric), null, false, Gio.FileCreateFlags.NONE, null).catch(noop);
-        return ans2.lrc.lyric;
+        let { result } = JSON.parse(await this.visit('POST', SEARCH, { s: this.info(song), limit: '30', type: '1' }));
+        if(result.abroad) throw new Error('abroad');
+        let attr = ['title', 'artist', 'album'].filter(x => song[x].length);
+        let songId = result.songs.map(({ id, name: title, album: x, artists: y }) => ({ id, title, album: x.name, artist: y.map(z => z.name).sort() }))
+            .find(x => attr.every(y => song[y].toString() === x[y].toString())).id.toString();
+        return JSON.parse(await this.visit('GET', GETLRC, { id: songId, lv: '1' })).lrc; // kv: '0', tv: '0'
     }
 
     delete(song) {
@@ -44,20 +41,16 @@ var Lyric = class {
         Gio.File.new_for_path(this.path(song)).delete_async(GLib.PRIORITY_DEFAULT, null).catch(noop); // ignore NOT_FOUND
     }
 
-    getSongId(ans, song) {
-        let attr = ['title', 'artist', 'album'].filter(x => song[x].toString());
-        if(ans.result.abroad) throw new Error('abroad');
-        return ans.result.songs.map(({ id, name: title, album: x, artists: y }) => ({ id, title, album: x.name, artist: y.map(z => z.name).sort() }))
-            .find(x => attr.every(y => song[y].toString() === x[y].toString())).id.toString();
-    }
-
-    async find(song) {
+    async find(song, fetch) {
         let file = Gio.File.new_for_path(this.path(song));
-        if(await file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null).catch(noop)) {
+        try {
+            if(fetch) throw new Error();
             let [contents] = await file.load_contents_async(null);
             return new TextDecoder().decode(contents);
-        } else {
-            return this.fetch(song);
+        } catch(e) {
+            let { lyric } = await this.fetch(song);
+            file.replace_contents_async(new TextEncoder().encode(lyric), null, false, Gio.FileCreateFlags.NONE, null).catch(noop);
+            return lyric;
         }
     }
 

@@ -121,7 +121,7 @@ class DesktopLyric {
     set systray(systray) {
         if(xnor(systray, this._button)) return;
         if(systray) {
-            this._button = new LyricButton(() => this.syncPosition(x => x + 50));
+            this._button = new LyricButton(() => this.syncPosition());
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button, this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._addMenuItems();
             this._button.visible = this._showing;
@@ -176,7 +176,7 @@ class DesktopLyric {
             Main.panel.statusArea.appMenu.connectObject('changed', a => {
                 if(Meta.is_wayland_compositor()) {
                     a[a._visible ? 'show' : 'hide']();
-                } else { // delay 20ms to avoid the glitch when closing panelMenus on Xorg
+                } else { // NOTE: delay 20ms to avoid the glitch when closing panelMenus on Xorg
                     clearTimeout(this._appMenuId);
                     this._appMenuId = setTimeout(() => a[a._visible ? 'show' : 'hide'](), 20);
                 }
@@ -187,13 +187,22 @@ class DesktopLyric {
         }
     }
 
-    syncPosition(cb) {
-        this._mpris.getPosition().then(scc => this.setPosition(cb(scc / 1000))).catch(() => this.setPosition(0));
+    async syncPosition() {
+        if(this._syncing) return;
+        this._syncing = true;
+        let pos = await this._mpris.getPosition() / 1000;
+        for(let i = 0; pos === this._pos && pos && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
+            clearTimeout(this._syncId);
+            await new Promise(resolve => { this._syncId = setTimeout(resolve, 10 * this._interval); });
+            pos = await this._mpris.getPosition() / 1000;
+        }
+        this.setPosition((this._pos = pos) + 50);
+        this._syncing = false;
     }
 
     _update(_player, song, length) {
         if(JSON.stringify(song) === JSON.stringify(this._song)) {
-            this.syncPosition(x => length - x > 5000 || !length ? x : 50);
+            this.syncPosition();
         } else {
             this._length = length;
             this._song = song;
@@ -215,7 +224,7 @@ class DesktopLyric {
 
     async reloadLyric() {
         try {
-            this.setLyric(await this._lyric.fetch(this._song));
+            this.setLyric(await this._lyric.find(this._song, true));
         } catch(e) {
             logError(e);
             this.clearLyric();
@@ -228,8 +237,8 @@ class DesktopLyric {
         let span = this._length ?? 0;
         this._paper.span = span;
         this._paper.text = text;
-        this.syncPosition(x => span - x > 5000 || !span ? x : 50); // some buggy mpris
         this.playing = this._mpris.status === 'Playing';
+        this.syncPosition();
     }
 
     clearLyric() {
@@ -239,7 +248,7 @@ class DesktopLyric {
 
     _updateViz() {
         let viz = this._mpris.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
-        if(this._paper && this._paper.visible ^ viz) this._paper.visible = !this._paper.visible;
+        if(this._paper && this._paper.visible ^ viz) this._paper.visible = viz;
     }
 
     _addMenuItems() {
@@ -249,7 +258,7 @@ class DesktopLyric {
             drag:   new SwitchItem(_('Mobilize'), this._drag, () => this.setf('drag', !this._drag)),
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             reload: new MenuItem(_('Redownload'), () => this.reloadLyric()),
-            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition(x => x + 50)),
+            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
