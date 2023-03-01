@@ -7,10 +7,10 @@ const { Gio } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 
 var Fields = {
-    PLACE:    'place',
     MINI:     'minimize',
     DRAG:     'draggable',
     FONT:     'font-name',
+    PLACE:    'lyric-place',
     ACTIVE:   'active-color',
     INDEX:    'systray-index',
     OUTLINE:  'outline-color',

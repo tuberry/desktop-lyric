@@ -11,7 +11,7 @@ const { Fields } = imports.misc.extensionUtils.getCurrentExtension().imports.fie
 
 const xnor = (x, y) => !x === !y;
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
-const c2gdk = ({ red, green, blue, alpha }) => [red, green, blue, alpha].map(x => x / 255);
+const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
 
 class DragMove extends DND._Draggable {
     _dragActorDropped(event) {
@@ -47,6 +47,7 @@ class BasePaper extends St.DrawingArea {
 
     set color([k, v, out]) {
         this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out)[1];
+        if('acolor' in this && 'icolor' in this) this._homochromy = this.acolor.equal(this.icolor);
         this[`_${k}`] = c2gdk(this[k]);
     }
 
@@ -54,7 +55,7 @@ class BasePaper extends St.DrawingArea {
         this._moment = moment;
         let lrc = this._lrc;
         [this._pos, this._lrc] = this.getLyric();
-        if(!this.visible || this.icolor.equal(this.acolor) && this._lrc === lrc) return;
+        if(!this.visible || this._homochromy && this._lrc === lrc) return;
         this.queue_repaint();
     }
 
@@ -130,8 +131,8 @@ var PanelPaper = class extends BasePaper {
     _syncPanelTheme() {
         if(!('acolor' in this && 'icolor' in this)) return;
         let fg = Main.panel.get_theme_node().lookup_color('color', true)[1];
-        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.7));
-        this._icolor = this.acolor.equal(this.icolor) ? this._acolor : c2gdk(fg);
+        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.65), fg.alpha);
+        this._icolor = this._homochromy ? this._acolor : c2gdk(fg);
         this._font = Main.panel.get_theme_node().get_font();
         let [w, h] = Main.panel.get_size();
         this._max_width = w / 4;

@@ -37,7 +37,7 @@ var Lyric = class {
 
     delete(song) {
         let info = encodeURIComponent(this.info(song));
-        console.warn(`Desktop Lyric: failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
+        log(`Desktop Lyric: failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
         Gio.File.new_for_path(this.path(song)).delete_async(GLib.PRIORITY_DEFAULT, null).catch(noop); // ignore NOT_FOUND
     }
 
@@ -49,8 +49,12 @@ var Lyric = class {
             return new TextDecoder().decode(contents);
         } catch(e) {
             let { lyric } = await this.fetch(song);
-            file.replace_contents_async(new TextEncoder().encode(lyric), null, false, Gio.FileCreateFlags.NONE, null).catch(noop);
-            return lyric;
+            if(lyric) {
+                file.replace_contents_async(new TextEncoder().encode(lyric), null, false, Gio.FileCreateFlags.NONE, null).catch(noop);
+                return lyric;
+            } else {
+                throw new Error('Empty lyric');
+            }
         }
     }
 

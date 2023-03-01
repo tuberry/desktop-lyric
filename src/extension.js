@@ -159,7 +159,7 @@ class DesktopLyric {
     set playing(playing) {
         this._updateViz();
         clearInterval(this._refreshId);
-        if(playing && this._paper) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 1), this._interval);
+        if(playing && this._paper) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 0.625), this._interval);
     }
 
     set closed(closed) {
@@ -191,9 +191,9 @@ class DesktopLyric {
         if(this._syncing) return;
         this._syncing = true;
         let pos = await this._mpris.getPosition() / 1000;
-        for(let i = 0; pos === this._pos && pos && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
+        for(let i = 0; pos === this._pos && pos && i < 10; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
             clearTimeout(this._syncId);
-            await new Promise(resolve => { this._syncId = setTimeout(resolve, 10 * this._interval); });
+            await new Promise(resolve => { this._syncId = setTimeout(resolve, 500); });
             pos = await this._mpris.getPosition() / 1000;
         }
         this.setPosition((this._pos = pos) + 50);

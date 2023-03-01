@@ -41,7 +41,7 @@ For older versions, it's recommended to install via:
 * High CPU usage;
 * The missing lyrics will be downloaded from [NetEase];
 * The lyric ([LRC] format) filename format is ~~`Title-Artist1,Artist2.lrc`~~(**no longer in use, please delete them**)`Title-Artist1,Artist2-Album.lrc`;
-* Draw at an even pace so that exact synchronization with the song is impossible;
+* Draw at an even pace so that exact synchronization with the song is not guaranteed;
 
 ## Acknowledgements
 

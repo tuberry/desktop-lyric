@@ -43,7 +43,7 @@
         <default>"rgba(0, 0, 0, 0)"</default>
         <summary>lyric outline color</summary>
     </key>
-    <key type="(uu)" name="place">
+    <key type="(uu)" name="lyric-place">
         <default>(200, 200)</default>
         <summary>lyric place</summary>
     </key>

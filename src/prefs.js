@@ -31,7 +31,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     }
 
     _buildWidgets() {
-        this._block = new Block({
+        this._blk = new Block({
             drag:   [Fields.DRAG,     'active',   new Gtk.CheckButton()],
             span:   [Fields.INTERVAL, 'value',    new UI.Spin(50, 500, 10)],
             acolor: [Fields.ACTIVE,   'colour',   new UI.Color(_('Active color'))],
@@ -46,13 +46,13 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     _buildUI() {
         [
-            [this._block.drag,      [_('Mobilize'), _('Allow dragging to displace')]],
-            [[_('Systray position')],  this._block.index],
-            [[_('Refresh interval')],  this._block.span],
-            [[_('Lyric orientation')], this._block.orient],
-            [[_('Lyric location')],    this._block.path],
-            [[_('Lyric colors')],      this._block.acolor, this._block.icolor, this._block.ocolor],
-            [[_('Font name')],         this._block.font],
+            [this._blk.drag,           [_('Mobilize'), _('Allow dragging to displace')]],
+            [[_('Systray position')],  this._blk.index],
+            [[_('Refresh interval')],  this._blk.span],
+            [[_('Lyric orientation')], this._blk.orient],
+            [[_('Lyric location')],    this._blk.path],
+            [[_('Lyric colors')],      this._blk.acolor, this._blk.icolor, this._blk.ocolor],
+            [[_('Font name')],         this._blk.font],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
 }

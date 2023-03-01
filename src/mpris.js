@@ -6,7 +6,6 @@
 const { Shell, Gio, GLib } = imports.gi;
 const { EventEmitter } = imports.misc.signals;
 const { loadInterfaceXML } = imports.misc.fileUtils;
-const noop = () => {};
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -20,15 +19,17 @@ const MPRIS_PLAYER_IFACE =
   </interface>
 </node>`;
 
+const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
+const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
+const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
+
 Gio._promisify(Gio.File.prototype, 'load_contents_async');
 Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
 
 var MprisPlayer = class extends EventEmitter {
     constructor() {
         super();
-        let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
-        this._dbus = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
-        this._dbus.init_async(GLib.PRIORITY_DEFAULT, null).catch(noop);
+        this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
     }
 
     _isMusicApp(app) {
@@ -46,16 +47,14 @@ var MprisPlayer = class extends EventEmitter {
     _setPlayer(app) {
         if(this._app || !this._isMusicApp(app)) return;
         this._app = app;
-        let MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
-        this._mpris = new MprisProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onMprisProxyReady());
-        let PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
-        this._player = new PlayerProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onPlayerProxyReady());
+        this._mpris = new MprisProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onMprisReady());
+        this._player = new PlayerProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onPlayerReady());
     }
 
     async _onProxyReady() {
-        let [names] = await this._dbus.ListNamesAsync();
+        this._proxy.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { (neo && !old) && this._setPlayer(name); });
+        let [names] = await this._proxy.ListNamesAsync();
         names.forEach(name => this._setPlayer(name));
-        this._dbus.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { (neo && !old) && this._setPlayer(name); });
     }
 
     async getPosition() {
@@ -66,20 +65,20 @@ var MprisPlayer = class extends EventEmitter {
     }
 
     _closePlayer() {
-        this._player?.disconnectObject(this);
         this._mpris?.disconnectObject(this);
+        this._player?.disconnectObject(this);
         if(this._playerId) this._player.disconnectSignal(this._playerId), this._playerId = 0;
         this._player = this._mpris = this._app = null;
         this.emit('closed', true);
-        if(this._dbus) this._onProxyReady();
+        if(this._proxy) this._onProxyReady();
     }
 
-    _onMprisProxyReady() {
-        this._mpris.connectObject('notify::g-name-owner', () => this._mpris?.g_name_owner || this._closePlayer(), this);
-        if(!this._mpris?.g_name_owner) this._closePlayer();
+    _onMprisReady() {
+        this._mpris.connectObject('notify::g-name-owner', () => this._mpris.g_name_owner || this._closePlayer(), this);
+        if(!this._mpris.g_name_owner) this._closePlayer();
     }
 
-    _onPlayerProxyReady() {
+    _onPlayerReady() {
         this.emit('closed', false);
         this._player.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
         this._playerId = this._player.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
@@ -111,7 +110,7 @@ var MprisPlayer = class extends EventEmitter {
     }
 
     destroy() {
-        this._dbus = null;
+        this._proxy = null;
         this._closePlayer();
     }
 };
