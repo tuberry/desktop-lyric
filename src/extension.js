@@ -9,14 +9,14 @@ const PopupMenu = imports.ui.popupMenu;
 const { St, Gio, GObject, Clutter, Meta } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
-const _ = ExtensionUtils.gettext;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fields, Field } = Me.imports.fields;
-const { Lyric } = Me.imports.lyric;
-const { MprisPlayer } = Me.imports.mpris;
+const { Fulu, Extension, Symbiont, DEventEmitter } = Me.imports.fubar;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
+const { MprisPlayer } = Me.imports.mpris;
+const { _, xnor } = Me.imports.util;
+const { Field } = Me.imports.const;
+const { Lyric } = Me.imports.lyric;
 
-const xnor = (x, y) => !x === !y;
 const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}.svg`).get_path());
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
@@ -72,27 +72,41 @@ class LyricButton extends PanelMenu.Button {
     }
 }
 
-class DesktopLyric {
+class DesktopLyric extends DEventEmitter {
     constructor() {
+        super();
+        this._buildWidgets();
+        this._bindSettings();
+    }
+
+    _buildWidgets() {
         this._lyric = new Lyric();
         this._mpris = new MprisPlayer();
-        this._bindSettings();
+        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
         Main.overview.connectObject('showing', () => { this.view = true; },
             'hiding', () => { this.view = false; }, this);
         this._mpris.connectObject('update', this._update.bind(this),
             'closed', (_p, closed) => { this.closed = closed; },
             'status', (_p, status) => { this.playing = status === 'Playing'; },
             'seeked', (_p, position) => this.setPosition(position / 1000), this);
+        new Symbiont(() => {
+            Main.overview.disconnectObject(this);
+            this.systray = this.playing = this.appMenuHidden = null;
+            ['_mpris', '_lyric', '_paper'].forEach(x => { this[x]?.destroy(); this[x] = null; });
+        }, this);
+        this._sbt_a = new Symbiont(x => clearTimeout(x), this, x => setTimeout(x, 20));
+        this._sbt_s = new Symbiont(x => clearTimeout(x), this, x => setTimeout(x, 500));
+        this._sbt_r = new Symbiont(x => clearInterval(x), this,
+            x => x && setInterval(() => this.setPosition(this._paper._moment + this._interval + 0.625), this._interval));
     }
 
     _bindSettings() {
-        this._field = new Field({}, ExtensionUtils.getSettings(), this);
-        this._field.attach({
-            mini:     [Fields.MINI,     'boolean'],
-            drag:     [Fields.DRAG,     'boolean'],
-            index:    [Fields.INDEX,    'uint'],
-            location: [Fields.LOCATION, 'string'],
-            interval: [Fields.INTERVAL, 'uint'],
+        this._fulu.attach({
+            mini:     [Field.MINI,     'boolean'],
+            drag:     [Field.DRAG,     'boolean'],
+            index:    [Field.INDEX,    'uint'],
+            location: [Field.LOCATION, 'string'],
+            interval: [Field.INTERVAL, 'uint'],
         }, this);
     }
 
@@ -108,11 +122,11 @@ class DesktopLyric {
             this._paper = null;
         }
         if(mini) {
-            this._paper = new PanelPaper(this._field);
+            this._paper = new PanelPaper(this._fulu);
             this._button?.set_paper(this._paper);
             this._menus?.drag.hide();
         } else {
-            this._paper = new DesktopPaper(this._field);
+            this._paper = new DesktopPaper(this._fulu);
             this._menus?.drag.show();
         }
         if(this._song) this.loadLyric();
@@ -153,36 +167,29 @@ class DesktopLyric {
 
     set interval(interval) {
         this._interval = interval;
-        if(this._refreshId) this.playing = true;
+        if(this._sbt_r._delegate) this.playing = true;
     }
 
     set playing(playing) {
         this._updateViz();
-        clearInterval(this._refreshId);
-        if(playing && this._paper) this._refreshId = setInterval(() => this.setPosition(this._paper._moment + this._interval + 0.625), this._interval);
+        this._sbt_r.reset(playing && this._paper);
     }
 
     set closed(closed) {
         this._showing = !closed;
-        if(closed) this.status = 'Stopped';
+        if(closed) this.clearLyric();
         if(this._button) this._button.visible = !closed;
         this.appMenuHidden = !this._index & !closed;
     }
 
     set appMenuHidden(appMenuHidden) {
-        if(this._appMenuHidden === appMenuHidden) return;
-        this._appMenuHidden = appMenuHidden;
-        if(appMenuHidden) {
+        if(xnor(this._appMenuHidden, appMenuHidden)) return;
+        if((this._appMenuHidden = appMenuHidden)) {
             Main.panel.statusArea.appMenu.connectObject('changed', a => {
-                if(Meta.is_wayland_compositor()) {
-                    a[a._visible ? 'show' : 'hide']();
-                } else { // NOTE: delay 20ms to avoid the glitch when closing panelMenus on Xorg
-                    clearTimeout(this._appMenuId);
-                    this._appMenuId = setTimeout(() => a[a._visible ? 'show' : 'hide'](), 20);
-                }
+                if(Meta.is_wayland_compositor()) a[a._visible ? 'show' : 'hide']();
+                else this._sbt_a.reset(() => a[a._visible ? 'show' : 'hide']()); // NOTE: delay 20ms to avoid the glitch when closing panelMenus on Xorg
             }, this);
         } else {
-            clearTimeout(this._appMenuId);
             Main.panel.statusArea.appMenu.disconnectObject(this);
         }
     }
@@ -191,9 +198,8 @@ class DesktopLyric {
         if(this._syncing) return;
         this._syncing = true;
         let pos = await this._mpris.getPosition() / 1000;
-        for(let i = 0; pos === this._pos && pos && i < 10; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
-            clearTimeout(this._syncId);
-            await new Promise(resolve => { this._syncId = setTimeout(resolve, 500); });
+        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 500) && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
+            await new Promise(resolve => this._sbt_s.reset(resolve));
             pos = await this._mpris.getPosition() / 1000;
         }
         this.setPosition((this._pos = pos) + 50);
@@ -264,31 +270,8 @@ class DesktopLyric {
         };
         for(let p in this._menus) this._button.menu.addMenuItem(this._menus[p]);
     }
-
-    destroy() {
-        this._field.detach(this);
-        this.systray = this.playing = null;
-        Main.overview.disconnectObject(this);
-        this.appMenuHidden = false;
-        ['_mpris', '_lyric', '_paper'].forEach(x => { this[x]?.destroy(); this[x] = null; });
-    }
-}
-
-class Extension {
-    constructor() {
-        ExtensionUtils.initTranslations();
-    }
-
-    enable() {
-        this._ext = new DesktopLyric();
-    }
-
-    disable() {
-        this._ext.destroy();
-        this._ext = null;
-    }
 }
 
 function init() {
-    return new Extension();
+    return new Extension(DesktopLyric);
 }

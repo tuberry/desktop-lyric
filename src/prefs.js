@@ -7,8 +7,8 @@ const { Adw, Gtk, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const _ = ExtensionUtils.gettext;
-const { Fields, Block } = Me.imports.fields;
+const { Field } = Me.imports.const;
+const { _ } = Me.imports.util;
 const UI = Me.imports.ui;
 
 function buildPrefsWidget() {
@@ -31,16 +31,16 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     }
 
     _buildWidgets() {
-        this._blk = new Block({
-            drag:   [Fields.DRAG,     'active',   new Gtk.CheckButton()],
-            span:   [Fields.INTERVAL, 'value',    new UI.Spin(50, 500, 10)],
-            acolor: [Fields.ACTIVE,   'colour',   new UI.Color(_('Active color'))],
-            ocolor: [Fields.OUTLINE,  'colour',   new UI.Color(_('Outline color'))],
-            icolor: [Fields.INACTIVE, 'colour',   new UI.Color(_('Inactive color'))],
-            orient: [Fields.ORIENT,   'selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
-            font:   [Fields.FONT,     'font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
-            index:  [Fields.INDEX,    'selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
-            path:   [Fields.LOCATION, 'file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
+        this._blk = new UI.Block({
+            drag:   [Field.DRAG,     'active',   new Gtk.CheckButton()],
+            span:   [Field.INTERVAL, 'value',    new UI.Spin(50, 500, 10)],
+            acolor: [Field.ACTIVE,   'colour',   new UI.Color(_('Active color'))],
+            ocolor: [Field.OUTLINE,  'colour',   new UI.Color(_('Outline color'))],
+            icolor: [Field.INACTIVE, 'colour',   new UI.Color(_('Inactive color'))],
+            orient: [Field.ORIENT,   'selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
+            font:   [Field.FONT,     'font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
+            index:  [Field.INDEX,    'selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
+            path:   [Field.LOCATION, 'file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
         });
     }
 

@@ -4,8 +4,10 @@
 'use strict';
 
 const { Shell, Gio, GLib } = imports.gi;
-const { EventEmitter } = imports.misc.signals;
 const { loadInterfaceXML } = imports.misc.fileUtils;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const { Symbiont, DEventEmitter } = Me.imports.fubar;
+const { omap } = Me.imports.util;
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -23,13 +25,13 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedeskt
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
 const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 
-Gio._promisify(Gio.File.prototype, 'load_contents_async');
-Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
-
-var MprisPlayer = class extends EventEmitter {
+var MprisPlayer = class extends DEventEmitter {
     constructor() {
         super();
         this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
+        this._sbt_p = new Symbiont(x => x && this._player?.disconnectSignal(x), this,
+            () => this._player?.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos)));
+        new Symbiont(() => { this._proxy = null; this._closePlayer(); }, this);
     }
 
     _isMusicApp(app) {
@@ -59,15 +61,15 @@ var MprisPlayer = class extends EventEmitter {
 
     async getPosition() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
-        let prop = new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']);
-        let pos = await this._player.call('org.freedesktop.DBus.Properties.Get', prop, Gio.DBusCallFlags.NONE, -1, null);
+        let pos = await Gio.DBus.session.call(this._app, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties', 'Get',
+            new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), null, Gio.DBusCallFlags.NONE, -1, null);
         return pos.recursiveUnpack().at(0);
     }
 
     _closePlayer() {
+        this._sbt_p.dispel();
         this._mpris?.disconnectObject(this);
         this._player?.disconnectObject(this);
-        if(this._playerId) this._player.disconnectSignal(this._playerId), this._playerId = 0;
         this._player = this._mpris = this._app = null;
         this.emit('closed', true);
         if(this._proxy) this._onProxyReady();
@@ -80,16 +82,13 @@ var MprisPlayer = class extends EventEmitter {
 
     _onPlayerReady() {
         this.emit('closed', false);
+        this._sbt_p.reset();
         this._player.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
-        this._playerId = this._player.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos)); // some bad mpris do not emit
-        this._updateMetadata();
+        this._updateMetadata(omap(this._player?.Metadata ?? {}, ([k, v]) => [k, v.deepUnpack()]));
     }
 
-    _updateMetadata() {
-        let data = {};
-        for(let prop in this._player?.Metadata) data[prop] = this._player.Metadata[prop].deepUnpack();
-        // Validate according to the spec; some clients send buggy metadata:
-        // https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
+    _updateMetadata(data) {
+        // filter dirty data; https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         let length = (data['mpris:length'] ?? 0) / 1000,
             title = typeof data['xesam:title'] === 'string' ? data['xesam:title'] : '',
             album = typeof data['xesam:album'] === 'string' ? data['xesam:album'] : '',
@@ -103,14 +102,8 @@ var MprisPlayer = class extends EventEmitter {
     }
 
     _propsChanged(_p, changed) {
-        for(let name in changed.deepUnpack()) {
-            if(name === 'Metadata') this._updateMetadata();
-            else if(name === 'PlaybackStatus') this.emit('status', this.status);
-        }
-    }
-
-    destroy() {
-        this._proxy = null;
-        this._closePlayer();
+        let props = changed.recursiveUnpack();
+        if('Metadata' in props) this._updateMetadata(props.Metadata);
+        if('PlaybackStatus' in props) this.emit('status', this.status);
     }
 };

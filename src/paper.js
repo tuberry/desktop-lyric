@@ -7,9 +7,11 @@ const Cairo = imports.cairo;
 const DND = imports.ui.dnd;
 const Main = imports.ui.main;
 const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
-const { Fields } = imports.misc.extensionUtils.getCurrentExtension().imports.fields;
+const Me = imports.misc.extensionUtils.getCurrentExtension();
+const { Symbiont } = Me.imports.fubar;
+const { Field } = Me.imports.const;
+const { xnor } = Me.imports.util;
 
-const xnor = (x, y) => !x === !y;
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
 
@@ -30,23 +32,23 @@ class BasePaper extends St.DrawingArea {
         GObject.registerClass(this);
     }
 
-    constructor(field) {
+    constructor(fulu) {
         super({ reactive: false });
         this._text = new Map();
         this.span = 0;
         this.text = '';
-        this._bindSettings(field);
+        this._bindSettings(fulu);
     }
 
-    _bindSettings(field) {
-        this._field = field.attach({
-            acolor: [Fields.ACTIVE,   'string', '#643296'],
-            icolor: [Fields.INACTIVE, 'string', '#f5f5f5'],
+    _bindSettings(fulu) {
+        this._fulu = fulu.attach({
+            acolor: [Field.ACTIVE,   'string', '#643296'],
+            icolor: [Field.INACTIVE, 'string', '#f5f5f5'],
         }, this, 'color');
     }
 
     set color([k, v, out]) {
-        this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out)[1];
+        this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out).at(1);
         if('acolor' in this && 'icolor' in this) this._homochromy = this.acolor.equal(this.icolor);
         this[`_${k}`] = c2gdk(this[k]);
     }
@@ -110,11 +112,6 @@ class BasePaper extends St.DrawingArea {
     _showLayout(cr, pl) {
         PangoCairo.show_layout(cr, pl);
     }
-
-    destroy() {
-        this._field.detach(this);
-        super.destroy();
-    }
 }
 
 var PanelPaper = class extends BasePaper {
@@ -122,15 +119,16 @@ var PanelPaper = class extends BasePaper {
         GObject.registerClass(this);
     }
 
-    _bindSettings(field) {
+    _bindSettings(fulu) {
         this._natural_width = 0;
-        super._bindSettings(field);
+        super._bindSettings(fulu);
         St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), this);
+        new Symbiont(() => St.ThemeContext.get_for_stage(global.stage).disconnectObject(this), this);
     }
 
     _syncPanelTheme() {
         if(!('acolor' in this && 'icolor' in this)) return;
-        let fg = Main.panel.get_theme_node().lookup_color('color', true)[1];
+        let fg = Main.panel.get_theme_node().lookup_color('color', true).at(1);
         this._acolor = c2gdk(this.acolor.interpolate(fg, 0.65), fg.alpha);
         this._icolor = this._homochromy ? this._acolor : c2gdk(fg);
         this._font = Main.panel.get_theme_node().get_font();
@@ -155,11 +153,6 @@ var PanelPaper = class extends BasePaper {
         this._natural_width = pw;
         cr.translate(0, (h - ph) / 2);
     }
-
-    destroy() {
-        St.ThemeContext.get_for_stage(global.stage).disconnectObject(this);
-        super.destroy();
-    }
 };
 
 var DesktopPaper = class extends BasePaper {
@@ -173,15 +166,15 @@ var DesktopPaper = class extends BasePaper {
         this.set_position(...this.place.deepUnpack());
     }
 
-    _bindSettings(field) {
-        super._bindSettings(field);
-        this._field.attach({
-            drag:   [Fields.DRAG,    'boolean'],
-            orient: [Fields.ORIENT,  'uint'],
-            font:   [Fields.FONT,    'string'],
-            place:  [Fields.PLACE,   'value'],
+    _bindSettings(fulu) {
+        super._bindSettings(fulu);
+        this._fulu.attach({
+            drag:   [Field.DRAG,    'boolean'],
+            orient: [Field.ORIENT,  'uint'],
+            font:   [Field.FONT,    'string'],
+            place:  [Field.PLACE,   'value'],
         }, this).attach({
-            ocolor: [Fields.OUTLINE, 'string'],
+            ocolor: [Field.OUTLINE, 'string'],
         }, this, 'color');
     }
 
@@ -215,7 +208,7 @@ var DesktopPaper = class extends BasePaper {
     _showLayout(cr, pl) {
         if(this._orient) {
             pl.get_context().set_base_gravity(Pango.Gravity.EAST);
-            cr.moveTo(pl.get_pixel_size()[1], 0);
+            cr.moveTo(pl.get_pixel_size().at(1), 0);
             cr.rotate(Math.PI / 2);
         }
         super._showLayout(cr, pl);
