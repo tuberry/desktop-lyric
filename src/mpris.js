@@ -6,8 +6,8 @@
 const { Shell, Gio, GLib } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { Symbiont, DEventEmitter } = Me.imports.fubar;
-const { omap } = Me.imports.util;
+const { DEventEmitter, omit, onus, symbiose } = Me.imports.fubar;
+const { id, omap } = Me.imports.util;
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -28,35 +28,65 @@ const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 var MprisPlayer = class extends DEventEmitter {
     constructor() {
         super();
-        this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', () => this._onProxyReady());
-        this._sbt_p = new Symbiont(x => x && this._player?.disconnectSignal(x), this,
-            () => this._player?.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos)));
-        new Symbiont(() => { this._proxy = null; this._closePlayer(); }, this);
+        this._buildWidgets();
+    }
+
+    async _buildWidgets() {
+        this._proxy = await DBusProxy.newAsync(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus');
+        this._sbt = symbiose(this, () => this.emit('closed', true), {
+            player: [x => x && this._player?.disconnectSignal(x),
+                () => this._player?.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos))],
+            dbus: [x => x && this._proxy.disconnectSignal(x),
+                () => this._proxy.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { (neo && !old) && this._setPlayer(name); })],
+        });
+        this._sbt.dbus.revive();
+        this._onProxyReady();
     }
 
     _isMusicApp(app) {
         if(!app.startsWith(MPRIS_PLAYER_PREFIX)) return false;
-        let name = app.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), '');
-        let [appid] = Shell.AppSystem.search(name).toString().split(',');
         try {
-            let cat = Shell.AppSystem.get_default().lookup_app(appid || `${name}.desktop`).get_app_info().get_string('Categories').split(';');
-            return cat.includes('AudioVideo') && !cat.includes('Video');
+            let sfx = app.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), ''),
+                dsk = Shell.AppSystem.search(sfx).at(0).at(0) || `${sfx}.desktop`,
+                ctg = Shell.AppSystem.get_default().lookup_app(dsk).get_app_info().get_string('Categories').split(';');
+            return ctg.includes('AudioVideo') && !ctg.includes('Video');
         } catch(e) {
             return false;
         }
     }
 
-    _setPlayer(app) {
+    async _setPlayer(app) {
         if(this._app || !this._isMusicApp(app)) return;
         this._app = app;
-        this._mpris = new MprisProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onMprisReady());
-        this._player = new PlayerProxy(Gio.DBus.session, app, '/org/mpris/MediaPlayer2', () => this._onPlayerReady());
+        try {
+            this._mpris = await MprisProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
+            this._player = await PlayerProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
+            this._mpris.connectObject('notify::g-name-owner', () => this._onMprisOwn(), onus(this));
+            this._player.connectObject('g-properties-changed', this._onPropsChanged.bind(this), onus(this));
+            this._onPlayerReady();
+            this._onMprisOwn();
+        } catch(e) {
+            logError(e);
+        }
     }
 
-    async _onProxyReady() {
-        this._proxy.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { (neo && !old) && this._setPlayer(name); });
-        let [names] = await this._proxy.ListNamesAsync();
-        names.forEach(name => this._setPlayer(name));
+    _onProxyReady() {
+        this._proxy.ListNamesAsync(([xs]) => xs.forEach(x => this._setPlayer(x)));
+    }
+
+    _onMprisOwn() {
+        if(this._mpris?.g_name_owner) return;
+        this._sbt.player.dispel();
+        ['_mpris', '_player'].forEach(x => this[x]?.disconnectObject(onus(this)));
+        omit(this, '_app', '_mpris', '_player');
+        this.emit('closed', true);
+        this._onProxyReady();
+    }
+
+    _onPlayerReady() {
+        this._sbt.player.revive();
+        this.emit('closed', false);
+        this._updateMetadata(omap(this._player.Metadata ?? {}, ([k, v]) => [[k, v.deepUnpack()]]));
     }
 
     async getPosition() {
@@ -66,34 +96,13 @@ var MprisPlayer = class extends DEventEmitter {
         return pos.recursiveUnpack().at(0);
     }
 
-    _closePlayer() {
-        this._sbt_p.dispel();
-        this._mpris?.disconnectObject(this);
-        this._player?.disconnectObject(this);
-        this._player = this._mpris = this._app = null;
-        this.emit('closed', true);
-        if(this._proxy) this._onProxyReady();
-    }
-
-    _onMprisReady() {
-        this._mpris.connectObject('notify::g-name-owner', () => this._mpris.g_name_owner || this._closePlayer(), this);
-        if(!this._mpris.g_name_owner) this._closePlayer();
-    }
-
-    _onPlayerReady() {
-        this.emit('closed', false);
-        this._sbt_p.reset();
-        this._player.connectObject('g-properties-changed', this._propsChanged.bind(this), this);
-        this._updateMetadata(omap(this._player?.Metadata ?? {}, ([k, v]) => [k, v.deepUnpack()]));
-    }
-
     _updateMetadata(data) {
         // filter dirty data; https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata
         let length = (data['mpris:length'] ?? 0) / 1000,
             title = typeof data['xesam:title'] === 'string' ? data['xesam:title'] : '',
             album = typeof data['xesam:album'] === 'string' ? data['xesam:album'] : '',
             artist = data['xesam:artist']?.every?.(x => typeof x === 'string')
-                ? data['xesam:artist'].flatMap(x => x.split('/')).filter(x => x).sort() : [];
+                ? data['xesam:artist'].flatMap(x => x.split('/')).filter(id).sort() : [];
         if(title) this.emit('update', { title, artist, album }, length);
     }
 
@@ -101,7 +110,7 @@ var MprisPlayer = class extends DEventEmitter {
         return this._player?.PlaybackStatus ?? 'Stopped';
     }
 
-    _propsChanged(_p, changed) {
+    _onPropsChanged(_p, changed) {
         let props = changed.recursiveUnpack();
         if('Metadata' in props) this._updateMetadata(props.Metadata);
         if('PlaybackStatus' in props) this.emit('status', this.status);

@@ -6,10 +6,10 @@
 const Cairo = imports.cairo;
 const DND = imports.ui.dnd;
 const Main = imports.ui.main;
-const { Clutter, Meta, PangoCairo, Pango, St, GObject, GLib } = imports.gi;
+const { Clutter, Meta, PangoCairo, Pango, Shell, St, GObject, GLib } = imports.gi;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { Symbiont } = Me.imports.fubar;
 const { Field } = Me.imports.const;
+const { onus } = Me.imports.fubar;
 const { xnor } = Me.imports.util;
 
 const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
@@ -19,10 +19,9 @@ class DragMove extends DND._Draggable {
     _dragActorDropped(event) {
         // override for moving only
         this._dragCancellable = false;
-        this._dragState = DND.DragState.INIT;
+        this._dragComplete(); // emit after this to assure hidden
         global.display.set_cursor(Meta.Cursor.DEFAULT);
         this.emit('drag-end', event.get_time(), true);
-        this._dragComplete();
         return true;
     }
 }
@@ -33,31 +32,31 @@ class BasePaper extends St.DrawingArea {
     }
 
     constructor(fulu) {
-        super({ reactive: false });
-        this._text = new Map();
+        super();
         this.span = 0;
-        this.text = '';
+        this._text = new Map();
+        this.text = this.song = '';
         this._bindSettings(fulu);
     }
 
     _bindSettings(fulu) {
         this._fulu = fulu.attach({
-            acolor: [Field.ACTIVE,   'string', '#643296'],
-            icolor: [Field.INACTIVE, 'string', '#f5f5f5'],
+            acolor: [Field.ACLR, 'string', '#643296'],
+            icolor: [Field.ICLR, 'string', '#f5f5f5'],
         }, this, 'color');
     }
 
     set color([k, v, out]) {
         this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out).at(1);
-        if('acolor' in this && 'icolor' in this) this._homochromy = this.acolor.equal(this.icolor);
+        if(['acolor', 'icolor'].every(x => x in this)) this._homochromy = this.acolor.equal(this.icolor);
         this[`_${k}`] = c2gdk(this[k]);
     }
 
     set moment(moment) {
         this._moment = moment;
-        let lrc = this._lrc;
+        let { _pos, _lrc } = this;
         [this._pos, this._lrc] = this.getLyric();
-        if(!this.visible || this._homochromy && this._lrc === lrc) return;
+        if(!this.visible || (this._pos === _pos || this._homochromy) && this._lrc === _lrc) return;
         this.queue_repaint();
     }
 
@@ -82,7 +81,7 @@ class BasePaper extends St.DrawingArea {
     }
 
     clear() {
-        this.text = '';
+        this.text = this.song = '';
         [this._pos, this._lrc] = this.getLyric();
         this.queue_repaint();
     }
@@ -90,7 +89,7 @@ class BasePaper extends St.DrawingArea {
     getLyric() {
         let now = this._moment;
         let key = this._tags.find(x => x <= now);
-        if(key === undefined) return [0, ''];
+        if(key === undefined) return [0, this.song];
         let [end, lrc] = this._text.get(key);
         return [now >= end || key === end ? 1 : (now - key) / (end - key), lrc];
     }
@@ -122,12 +121,11 @@ var PanelPaper = class extends BasePaper {
     _bindSettings(fulu) {
         this._natural_width = 0;
         super._bindSettings(fulu);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), this);
-        new Symbiont(() => St.ThemeContext.get_for_stage(global.stage).disconnectObject(this), this);
+        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), onus(this));
     }
 
     _syncPanelTheme() {
-        if(!('acolor' in this && 'icolor' in this)) return;
+        if(!['acolor', 'icolor'].every(x => x in this)) return;
         let fg = Main.panel.get_theme_node().lookup_color('color', true).at(1);
         this._acolor = c2gdk(this.acolor.interpolate(fg, 0.65), fg.alpha);
         this._icolor = this._homochromy ? this._acolor : c2gdk(fg);
@@ -169,12 +167,12 @@ var DesktopPaper = class extends BasePaper {
     _bindSettings(fulu) {
         super._bindSettings(fulu);
         this._fulu.attach({
-            drag:   [Field.DRAG,    'boolean'],
-            orient: [Field.ORIENT,  'uint'],
-            font:   [Field.FONT,    'string'],
-            place:  [Field.PLACE,   'value'],
+            drag:   [Field.DRAG, 'boolean'],
+            orient: [Field.ORNT, 'uint'],
+            font:   [Field.FONT, 'string'],
+            place:  [Field.SITE, 'value'],
         }, this).attach({
-            ocolor: [Field.OUTLINE, 'string'],
+            ocolor: [Field.OCLR, 'string'],
         }, this, 'color');
     }
 
@@ -183,19 +181,16 @@ var DesktopPaper = class extends BasePaper {
     }
 
     set drag(drag) {
+        this.reactive = drag;
+        Shell.util_set_hidden_from_pick(this, !drag);
         if(xnor(drag, this._drag)) return;
-        if(drag) {
+        if((this._drag = drag)) {
             Main.layoutManager.trackChrome(this);
-            this.reactive = true;
-            this._drag = new DragMove(this, { dragActorOpacity: 200 });
-            this._drag.connect('drag-end', () => {
-                Main.layoutManager.untrackChrome(this);
-                this.setf('drag', false);
-                this.setf('place', new GLib.Variant('(uu)', this.get_position()));
-            });
+            let draggable = new DragMove(this, { dragActorOpacity: 200 });
+            draggable.connect('drag-end', () => this._fulu.set('drag', false, this));
         } else {
-            this._drag = null;
-            this.reactive = false;
+            Main.layoutManager.untrackChrome(this);
+            this._fulu.set('place', new GLib.Variant('(uu)', this.get_position()), this);
         }
     }
 

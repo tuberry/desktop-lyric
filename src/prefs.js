@@ -7,7 +7,6 @@ const { Adw, Gtk, GObject } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Field } = Me.imports.const;
 const { _ } = Me.imports.util;
 const UI = Me.imports.ui;
 
@@ -31,28 +30,28 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     }
 
     _buildWidgets() {
-        this._blk = new UI.Block({
-            drag:   [Field.DRAG,     'active',   new Gtk.CheckButton()],
-            span:   [Field.INTERVAL, 'value',    new UI.Spin(50, 500, 10)],
-            acolor: [Field.ACTIVE,   'colour',   new UI.Color(_('Active color'))],
-            ocolor: [Field.OUTLINE,  'colour',   new UI.Color(_('Outline color'))],
-            icolor: [Field.INACTIVE, 'colour',   new UI.Color(_('Inactive color'))],
-            orient: [Field.ORIENT,   'selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
-            font:   [Field.FONT,     'font',     new Gtk.FontButton({ valign: Gtk.Align.CENTER })],
-            index:  [Field.INDEX,    'selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
-            path:   [Field.LOCATION, 'file',     new UI.File({ action: Gtk.FileChooserAction.SELECT_FOLDER })],
+        this._blk = UI.block({
+            FONT: ['value',    new UI.Font()],
+            DRAG: ['active',   new Gtk.CheckButton()],
+            SPAN: ['value',    new UI.Spin(50, 500, 10)],
+            PATH: ['value',    new UI.File({ select_folder: true })],
+            ACLR: ['value',    new UI.Color({ title: _('Active color') })],
+            OCLR: ['value',    new UI.Color({ title: _('Outline color') })],
+            ICLR: ['value',    new UI.Color({ title: _('Inactive color') })],
+            ORNT: ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
+            TIDX: ['selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
         });
     }
 
     _buildUI() {
         [
-            [this._blk.drag,           [_('Mobilize'), _('Allow dragging to displace')]],
-            [[_('Systray position')],  this._blk.index],
-            [[_('Refresh interval')],  this._blk.span],
-            [[_('Lyric orientation')], this._blk.orient],
-            [[_('Lyric location')],    this._blk.path],
-            [[_('Lyric colors')],      this._blk.acolor, this._blk.icolor, this._blk.ocolor],
-            [[_('Font name')],         this._blk.font],
+            [this._blk.DRAG,           [_('Mobilize'), _('Allow dragging to displace')]],
+            [[_('Systray position')],  this._blk.TIDX],
+            [[_('Refresh interval')],  this._blk.SPAN],
+            [[_('Lyric orientation')], this._blk.ORNT],
+            [[_('Lyric location')],    this._blk.PATH],
+            [[_('Lyric colors')],      this._blk.ACLR, this._blk.ICLR, this._blk.OCLR],
+            [[_('Font name')],         this._blk.FONT],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
 }

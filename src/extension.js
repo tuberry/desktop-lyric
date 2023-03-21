@@ -6,44 +6,17 @@
 const Main = imports.ui.main;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const { St, Gio, GObject, Clutter, Meta } = imports.gi;
+const { St, GObject, Clutter } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, Symbiont, DEventEmitter } = Me.imports.fubar;
+const { Fulu, Extension, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
+const { SwitchItem, MenuItem, TrayIcon } = Me.imports.menu;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
+const { _, id, xnor } = Me.imports.util;
 const { MprisPlayer } = Me.imports.mpris;
-const { _, xnor } = Me.imports.util;
 const { Field } = Me.imports.const;
 const { Lyric } = Me.imports.lyric;
-
-const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}.svg`).get_path());
-
-class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(text, active, callback, params) {
-        super(text, active, params);
-        this.connect('toggled', (_x, y) => callback(y));
-    }
-}
-
-class MenuItem extends PopupMenu.PopupMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(text, callback, params) {
-        super(text, params);
-        this.connect('activate', callback);
-    }
-
-    setLabel(label) {
-        if(this.label.text !== label) this.label.set_text(label);
-    }
-}
 
 class LyricButton extends PanelMenu.Button {
     static {
@@ -55,7 +28,7 @@ class LyricButton extends PanelMenu.Button {
         this._xbutton_cb = callback;
         this.menu.actor.add_style_class_name('app-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        this._box.add_actor(new St.Icon({ gicon: genIcon('lyric-symbolic'), style_class: 'system-status-icon' }));
+        this._box.add_actor(new TrayIcon('lyric-symbolic', true));
         this.add_actor(this._box);
     }
 
@@ -82,48 +55,38 @@ class DesktopLyric extends DEventEmitter {
     _buildWidgets() {
         this._lyric = new Lyric();
         this._mpris = new MprisPlayer();
-        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
-        Main.overview.connectObject('showing', () => { this.view = true; },
-            'hiding', () => { this.view = false; }, this);
-        this._mpris.connectObject('update', this._update.bind(this),
-            'closed', (_p, closed) => { this.closed = closed; },
-            'status', (_p, status) => { this.playing = status === 'Playing'; },
-            'seeked', (_p, position) => this.setPosition(position / 1000), this);
-        new Symbiont(() => {
-            Main.overview.disconnectObject(this);
-            this.systray = this.playing = this.appMenuHidden = null;
-            ['_mpris', '_lyric', '_paper'].forEach(x => { this[x]?.destroy(); this[x] = null; });
-        }, this);
-        this._sbt_a = new Symbiont(x => clearTimeout(x), this, x => setTimeout(x, 20));
-        this._sbt_s = new Symbiont(x => clearTimeout(x), this, x => setTimeout(x, 500));
-        this._sbt_r = new Symbiont(x => clearInterval(x), this,
-            x => x && setInterval(() => this.setPosition(this._paper._moment + this._interval + 0.625), this._interval));
+        this._sbt = symbiose(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
+            sync: [x => clearTimeout(x), x => setTimeout(x, 500)],
+            tray: [() => { this.systray = false; }, () => { this.systray = true; }],
+            play: [x => clearInterval(x), x => x && setInterval(() => this.setPosition(this._paper._moment + this._span + 0.625), this._span)],
+        });
     }
 
     _bindSettings() {
+        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
         this._fulu.attach({
-            mini:     [Field.MINI,     'boolean'],
-            drag:     [Field.DRAG,     'boolean'],
-            index:    [Field.INDEX,    'uint'],
-            location: [Field.LOCATION, 'string'],
-            interval: [Field.INTERVAL, 'uint'],
+            mini:  [Field.MINI, 'boolean'],
+            drag:  [Field.DRAG, 'boolean'],
+            index: [Field.TIDX, 'uint'],
+            path:  [Field.PATH, 'string'],
+            span:  [Field.SPAN, 'uint'],
         }, this);
+        this._mpris.connectObject('update', this._update.bind(this),
+            'closed', (_p, closed) => { this.closed = closed; },
+            'status', (_p, status) => { this.playing = status === 'Playing'; },
+            'seeked', (_p, position) => this.setPosition(position / 1000), onus(this));
     }
 
-    set location(location) {
-        this._lyric.location = location;
+    set path(path) {
+        this._lyric.location = path;
     }
 
     set mini(mini) {
         this._mini = mini;
-        if(this._paper) {
-            this.playing = false;
-            this._paper.destroy();
-            this._paper = null;
-        }
+        if(this._paper) omit(this, 'playing', '_paper');
         if(mini) {
             this._paper = new PanelPaper(this._fulu);
-            this._button?.set_paper(this._paper);
+            this._btn?.set_paper(this._paper);
             this._menus?.drag.hide();
         } else {
             this._paper = new DesktopPaper(this._fulu);
@@ -133,31 +96,24 @@ class DesktopLyric extends DEventEmitter {
     }
 
     set systray(systray) {
-        if(xnor(systray, this._button)) return;
+        if(xnor(systray, this._btn)) return;
         if(systray) {
-            this._button = new LyricButton(() => this.syncPosition());
-            Main.panel.addToStatusArea(Me.metadata.uuid, this._button, this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
+            this._btn = Main.panel.addToStatusArea(Me.metadata.uuid, new LyricButton(() => this.syncPosition()),
+                this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._addMenuItems();
-            this._button.visible = this._showing;
+            this._btn.visible = this._showing;
             if(this._mini) this.mini = this._mini;
         } else {
-            this._button.destroy();
-            this._menus = this._button = null;
-            if(this._mini) this._paper = null;
+            if(this._mini) omit(this, '_paper');
+            omit(this, '_btn', '_menus');
         }
     }
 
     set index(index) {
         if(this._index === index) return;
         this._index = index;
-        this.systray = false;
-        this.systray = true;
+        this._sbt.tray.revive();
         this.appMenuHidden = !index & this._showing;
-    }
-
-    set view(view) {
-        this._view = view;
-        this._updateViz();
     }
 
     set drag(drag) {
@@ -165,33 +121,27 @@ class DesktopLyric extends DEventEmitter {
         this._menus?.drag.setToggleState(drag);
     }
 
-    set interval(interval) {
-        this._interval = interval;
-        if(this._sbt_r._delegate) this.playing = true;
+    set span(span) {
+        this._span = span;
+        if(this._sbt.play._delegate) this.playing = true;
     }
 
     set playing(playing) {
         this._updateViz();
-        this._sbt_r.reset(playing && this._paper);
+        this._sbt.play.revive(playing && this._paper);
     }
 
     set closed(closed) {
         this._showing = !closed;
         if(closed) this.clearLyric();
-        if(this._button) this._button.visible = !closed;
+        if(this._btn) this._btn.visible = !closed;
         this.appMenuHidden = !this._index & !closed;
     }
 
     set appMenuHidden(appMenuHidden) {
         if(xnor(this._appMenuHidden, appMenuHidden)) return;
-        if((this._appMenuHidden = appMenuHidden)) {
-            Main.panel.statusArea.appMenu.connectObject('changed', a => {
-                if(Meta.is_wayland_compositor()) a[a._visible ? 'show' : 'hide']();
-                else this._sbt_a.reset(() => a[a._visible ? 'show' : 'hide']()); // NOTE: delay 20ms to avoid the glitch when closing panelMenus on Xorg
-            }, this);
-        } else {
-            Main.panel.statusArea.appMenu.disconnectObject(this);
-        }
+        if((this._appMenuHidden = appMenuHidden)) Main.panel.statusArea.appMenu.connectObject('changed', a => a[a._visible ? 'show' : 'hide'](), onus(this));
+        else Main.panel.statusArea.appMenu.disconnectObject(onus(this));
     }
 
     async syncPosition() {
@@ -199,7 +149,7 @@ class DesktopLyric extends DEventEmitter {
         this._syncing = true;
         let pos = await this._mpris.getPosition() / 1000;
         for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 500) && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
-            await new Promise(resolve => this._sbt_s.reset(resolve));
+            await new Promise(resolve => this._sbt.sync.revive(resolve));
             pos = await this._mpris.getPosition() / 1000;
         }
         this.setPosition((this._pos = pos) + 50);
@@ -210,6 +160,8 @@ class DesktopLyric extends DEventEmitter {
         if(JSON.stringify(song) === JSON.stringify(this._song)) {
             this.syncPosition();
         } else {
+            let { title, artist } = song;
+            this._subject = [title, artist.join('/')].filter(id).join(' - ');
             this._length = length;
             this._song = song;
             this.loadLyric();
@@ -222,9 +174,9 @@ class DesktopLyric extends DEventEmitter {
 
     async loadLyric() {
         try {
-            this.setLyric(await this._lyric.find(this._song));
+            this.setLyric(await this._lyric.find(this._song), this._song);
         } catch(e) {
-            this.clearLyric();
+            this.setLyric('');
         }
     }
 
@@ -233,7 +185,7 @@ class DesktopLyric extends DEventEmitter {
             this.setLyric(await this._lyric.find(this._song, true));
         } catch(e) {
             logError(e);
-            this.clearLyric();
+            this.setLyric('');
             this._lyric.delete(this._song);
         }
     }
@@ -243,6 +195,7 @@ class DesktopLyric extends DEventEmitter {
         let span = this._length ?? 0;
         this._paper.span = span;
         this._paper.text = text;
+        this._paper.song = this._mini ? this._subject : '';
         this.playing = this._mpris.status === 'Playing';
         this.syncPosition();
     }
@@ -253,22 +206,22 @@ class DesktopLyric extends DEventEmitter {
     }
 
     _updateViz() {
-        let viz = this._mpris.status === 'Playing' && !this._menus?.hide.state && !(this._view && !this._mini);
+        let viz = this._mpris.status === 'Playing' && !this._menus?.hide.state;
         if(this._paper && this._paper.visible ^ viz) this._paper.visible = viz;
     }
 
     _addMenuItems() {
         this._menus = {
             hide:   new SwitchItem(_('Invisiblize'), false, () => this._updateViz()),
-            mini:   new SwitchItem(_('Minimize'), this._mini, () => this.setf('mini', !this._mini)),
-            drag:   new SwitchItem(_('Mobilize'), this._drag, () => this.setf('drag', !this._drag)),
+            mini:   new SwitchItem(_('Minimize'), this._mini, x => this._fulu.set('mini', x, this)),
+            drag:   new SwitchItem(_('Mobilize'), this._drag, x => this._fulu.set('drag', x, this)),
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             reload: new MenuItem(_('Redownload'), () => this.reloadLyric()),
             resync: new MenuItem(_('Resynchronize'), () => this.syncPosition()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
-        for(let p in this._menus) this._button.menu.addMenuItem(this._menus[p]);
+        for(let p in this._menus) this._btn.menu.addMenuItem(this._menus[p]);
     }
 }
 
