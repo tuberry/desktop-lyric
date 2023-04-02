@@ -25,7 +25,7 @@ class LyricButton extends PanelMenu.Button {
 
     constructor(callback) {
         super(0.5, Me.metadata.uuid);
-        this._xbutton_cb = callback;
+        this._onXbuttonClick = callback;
         this.menu.actor.add_style_class_name('app-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
         this._box.add_actor(new TrayIcon('lyric-symbolic', true));
@@ -38,7 +38,7 @@ class LyricButton extends PanelMenu.Button {
 
     vfunc_event(event) {
         if(event.type() === Clutter.EventType.BUTTON_PRESS && (event.get_button() === 8 || event.get_button() === 9)) {
-            this._xbutton_cb();
+            this._onXbuttonClick();
             return Clutter.EVENT_STOP;
         }
         return super.vfunc_event(event);
@@ -56,9 +56,9 @@ class DesktopLyric extends DEventEmitter {
         this._lyric = new Lyric();
         this._mpris = new MprisPlayer();
         this._sbt = symbiose(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
-            sync: [x => clearTimeout(x), x => setTimeout(x, 500)],
+            sync: [clearTimeout, x => setTimeout(x, 500)],
             tray: [() => { this.systray = false; }, () => { this.systray = true; }],
-            play: [x => clearInterval(x), x => x && setInterval(() => this.setPosition(this._paper._moment + this._span + 0.625), this._span)],
+            play: [clearInterval, x => x && setInterval(() => this.setPosition(this._paper._moment + this._span + 0.625), this._span)],
         });
     }
 
