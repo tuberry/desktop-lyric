@@ -6,12 +6,12 @@
 const { Soup, GLib } = imports.gi;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const { noop, id, raise, dc, fl, fn, fwrite, fread, fdelete, access } = Me.imports.util;
-const { DEventEmitter, symbiose } = Me.imports.fubar;
+const { DummyActor, symbiose } = Me.imports.fubar;
 
 const SEARCH = 'http://music.163.com/api/search/get/web?';
 const GETLRC = 'https://music.163.com/api/song/lyric?';
 
-var Lyric = class extends DEventEmitter {
+var Lyric = class extends DummyActor {
     constructor() {
         super();
         this._session = new Soup.Session({ timeout: 30 });

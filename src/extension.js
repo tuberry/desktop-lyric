@@ -10,7 +10,7 @@ const { St, GObject, Clutter } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
+const { Fulu, Extension, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
 const { SwitchItem, MenuItem, TrayIcon } = Me.imports.menu;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
 const { _, id, xnor } = Me.imports.util;
@@ -45,7 +45,7 @@ class LyricButton extends PanelMenu.Button {
     }
 }
 
-class DesktopLyric extends DEventEmitter {
+class DesktopLyric extends DummyActor {
     constructor() {
         super();
         this._buildWidgets();

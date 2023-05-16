@@ -6,8 +6,8 @@
 const { Shell, Gio, GLib } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { DEventEmitter, omit, onus, symbiose } = Me.imports.fubar;
-const { id, omap } = Me.imports.util;
+const { DummyActor, omit, onus, symbiose } = Me.imports.fubar;
+const { id, amap } = Me.imports.util;
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -25,7 +25,7 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedeskt
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
 const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 
-var MprisPlayer = class extends DEventEmitter {
+var MprisPlayer = class extends DummyActor {
     constructor() {
         super();
         this._buildWidgets();
@@ -47,7 +47,7 @@ var MprisPlayer = class extends DEventEmitter {
         if(!app.startsWith(MPRIS_PLAYER_PREFIX)) return false;
         try {
             let sfx = app.replace(new RegExp(`^${MPRIS_PLAYER_PREFIX}`), ''),
-                dsk = Shell.AppSystem.search(sfx).at(0).at(0) || `${sfx}.desktop`,
+                dsk = Shell.AppSystem.search(sfx).at(0)?.at(0) || `${sfx}.desktop`,
                 ctg = Shell.AppSystem.get_default().lookup_app(dsk).get_app_info().get_string('Categories').split(';');
             return ctg.includes('AudioVideo') && !ctg.includes('Video');
         } catch(e) {
@@ -86,7 +86,7 @@ var MprisPlayer = class extends DEventEmitter {
     _onPlayerReady() {
         this._sbt.player.revive();
         this.emit('closed', false);
-        this._updateMetadata(omap(this._player.Metadata ?? {}, ([k, v]) => [[k, v.deepUnpack()]]));
+        this._updateMetadata(amap(this._player.Metadata ?? {}, v => v.deepUnpack()));
     }
 
     async getPosition() {

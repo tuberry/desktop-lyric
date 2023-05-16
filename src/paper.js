@@ -12,7 +12,7 @@ const { Field } = Me.imports.const;
 const { onus } = Me.imports.fubar;
 const { xnor } = Me.imports.util;
 
-const t2ms = x => x?.split(':').reverse().reduce((p, v, i) => p + parseFloat(v) * 60 ** i, 0) * 1000; // 1:1 => 61000 ms
+const t2ms = x => x?.split(':').reduce((a, v) => parseFloat(v) + a * 60, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
 
 class DragMove extends DND._Draggable {
@@ -64,9 +64,9 @@ class BasePaper extends St.DrawingArea {
         this._text.clear();
         text.split(/\n/)
             .flatMap(x => (i => i > 0 ? [[x.slice(0, i), x.slice(i)]] : [])(x.lastIndexOf(']') + 1))
-            .flatMap(x => x[0].match(/(?<=\[)[^\][]+(?=])/g).map(y => [Math.round(t2ms(y)), x[1].trim()]))
+            .flatMap(([t, l]) => t.match(/(?<=\[)[^\][]+(?=])/g).map(x => [Math.round(t2ms(x)), l.trim()]))
             .sort(([x], [y]) => x - y)
-            .forEach((v, i, a) => this._text.set(v[0], [a[i + 1] ? a[i + 1][0] : Math.max(this.span, v[0]), v[1]]));
+            .forEach(([t, l], i, a) => this._text.set(t, [a[i + 1]?.[0] ?? Math.max(this.span, t), l]));
         this._tags = Array.from(this._text.keys()).reverse();
     }
 
