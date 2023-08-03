@@ -10,7 +10,7 @@ const { St, GObject, Clutter } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
+const { Fulu, Extension, Destroyable, symbiose, omit } = Me.imports.fubar;
 const { SwitchItem, MenuItem, TrayIcon } = Me.imports.menu;
 const { DesktopPaper, PanelPaper } = Me.imports.paper;
 const { _, id, xnor } = Me.imports.util;
@@ -26,7 +26,7 @@ class LyricButton extends PanelMenu.Button {
     constructor(callback) {
         super(0.5, Me.metadata.uuid);
         this._onXbuttonClick = callback;
-        this.menu.actor.add_style_class_name('app-menu');
+        this.menu.actor.add_style_class_name('desktop-lyric-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
         this._box.add_actor(new TrayIcon('lyric-symbolic', true));
         this.add_actor(this._box);
@@ -45,7 +45,7 @@ class LyricButton extends PanelMenu.Button {
     }
 }
 
-class DesktopLyric extends DummyActor {
+class DesktopLyric extends Destroyable {
     constructor() {
         super();
         this._buildWidgets();
@@ -74,7 +74,7 @@ class DesktopLyric extends DummyActor {
         this._mpris.connectObject('update', this._update.bind(this),
             'closed', (_p, closed) => { this.closed = closed; },
             'status', (_p, status) => { this.playing = status === 'Playing'; },
-            'seeked', (_p, position) => this.setPosition(position / 1000), onus(this));
+            'seeked', (_p, position) => this.setPosition(position / 1000), this);
     }
 
     set path(path) {
@@ -113,7 +113,6 @@ class DesktopLyric extends DummyActor {
         if(this._index === index) return;
         this._index = index;
         this._sbt.tray.revive();
-        this.appMenuHidden = !index & this._showing;
     }
 
     set drag(drag) {
@@ -135,13 +134,6 @@ class DesktopLyric extends DummyActor {
         this._showing = !closed;
         if(closed) this.clearLyric();
         if(this._btn) this._btn.visible = !closed;
-        this.appMenuHidden = !this._index & !closed;
-    }
-
-    set appMenuHidden(appMenuHidden) {
-        if(xnor(this._appMenuHidden, appMenuHidden)) return;
-        if((this._appMenuHidden = appMenuHidden)) Main.panel.statusArea.appMenu.connectObject('changed', a => a[a._visible ? 'show' : 'hide'](), onus(this));
-        else Main.panel.statusArea.appMenu.disconnectObject(onus(this));
     }
 
     async syncPosition() {

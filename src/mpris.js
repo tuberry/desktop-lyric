@@ -6,7 +6,7 @@
 const { Shell, Gio, GLib } = imports.gi;
 const { loadInterfaceXML } = imports.misc.fileUtils;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { DummyActor, omit, onus, symbiose } = Me.imports.fubar;
+const { Destroyable, omit, symbiose } = Me.imports.fubar;
 const { id, amap } = Me.imports.util;
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
@@ -25,7 +25,7 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedeskt
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
 const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 
-var MprisPlayer = class extends DummyActor {
+var MprisPlayer = class extends Destroyable {
     constructor() {
         super();
         this._buildWidgets();
@@ -61,8 +61,8 @@ var MprisPlayer = class extends DummyActor {
         try {
             this._mpris = await MprisProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
             this._player = await PlayerProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
-            this._mpris.connectObject('notify::g-name-owner', () => this._onMprisOwn(), onus(this));
-            this._player.connectObject('g-properties-changed', this._onPropsChanged.bind(this), onus(this));
+            this._mpris.connectObject('notify::g-name-owner', () => this._onMprisOwn(), this);
+            this._player.connectObject('g-properties-changed', this._onPropsChanged.bind(this), this);
             this._onPlayerReady();
             this._onMprisOwn();
         } catch(e) {
@@ -77,7 +77,7 @@ var MprisPlayer = class extends DummyActor {
     _onMprisOwn() {
         if(this._mpris?.g_name_owner) return;
         this._sbt.player.dispel();
-        ['_mpris', '_player'].forEach(x => this[x]?.disconnectObject(onus(this)));
+        ['_mpris', '_player'].forEach(x => this[x]?.disconnectObject(this));
         omit(this, '_app', '_mpris', '_player');
         this.emit('closed', true);
         this._onProxyReady();

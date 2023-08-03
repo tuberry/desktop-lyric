@@ -9,7 +9,6 @@ const Main = imports.ui.main;
 const { Clutter, Meta, PangoCairo, Pango, Shell, St, GObject, GLib } = imports.gi;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
 const { Field } = Me.imports.const;
-const { onus } = Me.imports.fubar;
 const { xnor } = Me.imports.util;
 
 const t2ms = x => x?.split(':').reduce((a, v) => parseFloat(v) + a * 60, 0) * 1000; // 1:1 => 61000 ms
@@ -121,7 +120,7 @@ var PanelPaper = class extends BasePaper {
     _bindSettings(fulu) {
         this._natural_width = 0;
         super._bindSettings(fulu);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), onus(this));
+        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), this);
     }
 
     _syncPanelTheme() {

@@ -5,13 +5,13 @@
 
 const { Soup, GLib } = imports.gi;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { noop, id, raise, dc, fl, fn, fwrite, fread, fdelete, access } = Me.imports.util;
-const { DummyActor, symbiose } = Me.imports.fubar;
+const { noop, id, raise, decode, fopen, fname, fwrite, fread, fdelete, access } = Me.imports.util;
+const { Destroyable, symbiose } = Me.imports.fubar;
 
 const SEARCH = 'http://music.163.com/api/search/get/web?';
 const GETLRC = 'https://music.163.com/api/song/lyric?';
 
-var Lyric = class extends DummyActor {
+var Lyric = class extends Destroyable {
     constructor() {
         super();
         this._session = new Soup.Session({ timeout: 30 });
@@ -30,15 +30,15 @@ var Lyric = class extends DummyActor {
     delete(song) {
         let info = encodeURIComponent(this.info(song));
         log(`Desktop Lyric: failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
-        fdelete(fl(this.path(song))).catch(noop); // ignore NOT_FOUND
+        fdelete(fopen(this.path(song))).catch(noop); // ignore NOT_FOUND
     }
 
     async find(song, fetch) {
-        let file = fl(this.path(song));
+        let file = fopen(this.path(song));
         try {
             if(fetch) raise();
             let [contents] = await fread(file);
-            return dc(contents);
+            return decode(contents);
         } catch(e) {
             let { lyric } = await this.fetch(song);
             if(lyric) {
@@ -56,6 +56,6 @@ var Lyric = class extends DummyActor {
 
     path({ title, artist, album }) { // default to $XDG_CACHE_DIR/desktop-lyric if exists
         let name = [title, artist.join(','), album].filter(id).join('-').replaceAll('/', ',').concat('.lrc');
-        return this.location ? `${this.location}/${name}` : fn(GLib.get_user_cache_dir(), 'desktop-lyric', name);
+        return this.location ? `${this.location}/${name}` : fname(GLib.get_user_cache_dir(), 'desktop-lyric', name);
     }
 };
