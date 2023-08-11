@@ -1,17 +1,16 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Lyric */
-'use strict';
 
-const { Soup, GLib } = imports.gi;
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { noop, id, raise, decode, fopen, fname, fwrite, fread, fdelete, access } = Me.imports.util;
-const { Destroyable, symbiose } = Me.imports.fubar;
+import Soup from 'gi://Soup';
+import GLib from 'gi://GLib';
 
-const SEARCH = 'http://music.163.com/api/search/get/web?';
+import { Destroyable, symbiose } from './fubar.js';
+import { noop, id, raise, decode, fopen, fname, fwrite, fread, fdelete, access } from './util.js';
+
 const GETLRC = 'https://music.163.com/api/song/lyric?';
+const SEARCH = 'http://music.163.com/api/search/get/web?';
 
-var Lyric = class extends Destroyable {
+export class Lyric extends Destroyable {
     constructor() {
         super();
         this._session = new Soup.Session({ timeout: 30 });
@@ -58,4 +57,4 @@ var Lyric = class extends Destroyable {
         let name = [title, artist.join(','), album].filter(id).join('-').replaceAll('/', ',').concat('.lrc');
         return this.location ? `${this.location}/${name}` : fname(GLib.get_user_cache_dir(), 'desktop-lyric', name);
     }
-};
+}

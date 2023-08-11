@@ -1,13 +1,14 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported MprisPlayer */
-'use strict';
 
-const { Shell, Gio, GLib } = imports.gi;
-const { loadInterfaceXML } = imports.misc.fileUtils;
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { Destroyable, omit, symbiose } = Me.imports.fubar;
-const { id, amap } = Me.imports.util;
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
+
+import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
+
+import { id, amap } from './util.js';
+import { Destroyable, omit, onus, symbiose } from './fubar.js';
 
 const MPRIS_PLAYER_PREFIX = 'org.mpris.MediaPlayer2.';
 const MPRIS_PLAYER_IFACE =
@@ -25,7 +26,7 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedeskt
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
 const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 
-var MprisPlayer = class extends Destroyable {
+export class MprisPlayer extends Destroyable {
     constructor() {
         super();
         this._buildWidgets();
@@ -61,8 +62,8 @@ var MprisPlayer = class extends Destroyable {
         try {
             this._mpris = await MprisProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
             this._player = await PlayerProxy.newAsync(Gio.DBus.session, app, '/org/mpris/MediaPlayer2');
-            this._mpris.connectObject('notify::g-name-owner', () => this._onMprisOwn(), this);
-            this._player.connectObject('g-properties-changed', this._onPropsChanged.bind(this), this);
+            this._mpris.connectObject('notify::g-name-owner', () => this._onMprisOwn(), onus(this));
+            this._player.connectObject('g-properties-changed', this._onPropsChanged.bind(this), onus(this));
             this._onPlayerReady();
             this._onMprisOwn();
         } catch(e) {
@@ -77,7 +78,7 @@ var MprisPlayer = class extends Destroyable {
     _onMprisOwn() {
         if(this._mpris?.g_name_owner) return;
         this._sbt.player.dispel();
-        ['_mpris', '_player'].forEach(x => this[x]?.disconnectObject(this));
+        ['_mpris', '_player'].forEach(x => this[x]?.disconnectObject(onus(this)));
         omit(this, '_app', '_mpris', '_player');
         this.emit('closed', true);
         this._onProxyReady();
@@ -115,4 +116,4 @@ var MprisPlayer = class extends Destroyable {
         if('Metadata' in props) this._updateMetadata(props.Metadata);
         if('PlaybackStatus' in props) this.emit('status', this.status);
     }
-};
+}

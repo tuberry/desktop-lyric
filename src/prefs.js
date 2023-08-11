@@ -1,35 +1,26 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init buildPrefsWidget */
-'use strict';
 
-const { Adw, Gtk, GObject } = imports.gi;
+import Adw from 'gi://Adw';
+import Gtk from 'gi://Gtk';
+import GObject from 'gi://GObject';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { _ } = Me.imports.util;
-const UI = Me.imports.ui;
+import * as UI from './ui.js';
 
-function buildPrefsWidget() {
-    return new DesktopLyricPrefs();
-}
-
-function init() {
-    ExtensionUtils.initTranslations();
-}
+const { _ } = UI;
 
 class DesktopLyricPrefs extends Adw.PreferencesGroup {
     static {
         GObject.registerClass(this);
     }
 
-    constructor() {
+    constructor(gset) {
         super();
-        this._buildWidgets();
+        this._buildWidgets(gset);
         this._buildUI();
     }
 
-    _buildWidgets() {
+    _buildWidgets(gset) {
         this._blk = UI.block({
             FONT: ['value',    new UI.Font()],
             DRAG: ['active',   new Gtk.CheckButton()],
@@ -40,7 +31,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             ICLR: ['value',    new UI.Color({ title: _('Inactive color') })],
             ORNT: ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
             TIDX: ['selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
-        });
+        }, gset);
     }
 
     _buildUI() {
@@ -55,3 +46,5 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
 }
+
+export default class PrefsWidget extends UI.Prefs { $klass = DesktopLyricPrefs; }

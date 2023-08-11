@@ -1,7 +1,7 @@
 project(
   'gnome-shell-extension-desktop-lyric',
   license: 'GPL3+',
-  version: '45.alpha',
+  version: '45.beta',
 )
 
 NAME = 'Desktop Lyric'

@@ -1,29 +1,24 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported DesktopPaper PanelPaper */
-'use strict';
 
-const Cairo = imports.cairo;
-const DND = imports.ui.dnd;
-const Main = imports.ui.main;
-const { Clutter, Meta, PangoCairo, Pango, Shell, St, GObject, GLib } = imports.gi;
-const Me = imports.misc.extensionUtils.getCurrentExtension();
-const { Field } = Me.imports.const;
-const { xnor } = Me.imports.util;
+import St from 'gi://St';
+import GLib from 'gi://GLib';
+import Meta from 'gi://Meta';
+import Cairo from 'gi://cairo';
+import Pango from 'gi://Pango';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
+import PangoCairo from 'gi://PangoCairo';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import { makeDraggable } from 'resource:///org/gnome/shell/ui/dnd.js';
+
+import { xnor } from './util.js';
+import { Field } from './const.js';
 
 const t2ms = x => x?.split(':').reduce((a, v) => parseFloat(v) + a * 60, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
-
-class DragMove extends DND._Draggable {
-    _dragActorDropped(event) {
-        // override for moving only
-        this._dragCancellable = false;
-        this._dragComplete(); // emit after this to assure hidden
-        global.display.set_cursor(Meta.Cursor.DEFAULT);
-        this.emit('drag-end', event.get_time(), true);
-        return true;
-    }
-}
 
 class BasePaper extends St.DrawingArea {
     static {
@@ -112,7 +107,7 @@ class BasePaper extends St.DrawingArea {
     }
 }
 
-var PanelPaper = class extends BasePaper {
+export class PanelPaper extends BasePaper {
     static {
         GObject.registerClass(this);
     }
@@ -150,9 +145,9 @@ var PanelPaper = class extends BasePaper {
         this._natural_width = pw;
         cr.translate(0, (h - ph) / 2);
     }
-};
+}
 
-var DesktopPaper = class extends BasePaper {
+export class DesktopPaper extends BasePaper {
     static {
         GObject.registerClass(this);
     }
@@ -185,7 +180,14 @@ var DesktopPaper = class extends BasePaper {
         if(xnor(drag, this._drag)) return;
         if((this._drag = drag)) {
             Main.layoutManager.trackChrome(this);
-            let draggable = new DragMove(this, { dragActorOpacity: 200 });
+            let draggable = makeDraggable(this, { dragActorOpacity: 200 });
+            draggable._dragActorDropped = event => {
+                draggable._dragCancellable = false;
+                draggable._dragComplete(); // emit after this to assure hidden
+                global.display.set_cursor(Meta.Cursor.DEFAULT);
+                draggable.emit('drag-end', event.get_time(), true);
+                return true;
+            }; // override for moving only
             draggable.connect('drag-end', () => this._fulu.set('drag', false, this));
         } else {
             Main.layoutManager.untrackChrome(this);
@@ -212,4 +214,4 @@ var DesktopPaper = class extends BasePaper {
             cr.stroke();
         }
     }
-};
+}

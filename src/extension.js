@@ -1,22 +1,21 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init */
-'use strict';
 
-const Main = imports.ui.main;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const { St, GObject, Clutter } = imports.gi;
+import St from 'gi://St';
+import GObject from 'gi://GObject';
+import Clutter from 'gi://Clutter';
 
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, Destroyable, symbiose, omit } = Me.imports.fubar;
-const { SwitchItem, MenuItem, TrayIcon } = Me.imports.menu;
-const { DesktopPaper, PanelPaper } = Me.imports.paper;
-const { _, id, xnor } = Me.imports.util;
-const { MprisPlayer } = Me.imports.mpris;
-const { Field } = Me.imports.const;
-const { Lyric } = Me.imports.lyric;
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+
+import { Field } from './const.js';
+import { Lyric } from './lyric.js';
+import { id, xnor } from './util.js';
+import { MprisPlayer as Mpris } from './mpris.js';
+import { DesktopPaper, PanelPaper } from './paper.js';
+import { SwitchItem, MenuItem, TrayIcon } from './menu.js';
+import { Fulu, BaseExtension, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
 
 class LyricButton extends PanelMenu.Button {
     static {
@@ -24,7 +23,7 @@ class LyricButton extends PanelMenu.Button {
     }
 
     constructor(callback) {
-        super(0.5, Me.metadata.uuid);
+        super(0.5);
         this._onXbuttonClick = callback;
         this.menu.actor.add_style_class_name('desktop-lyric-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
@@ -46,15 +45,15 @@ class LyricButton extends PanelMenu.Button {
 }
 
 class DesktopLyric extends Destroyable {
-    constructor() {
+    constructor(gset) {
         super();
         this._buildWidgets();
-        this._bindSettings();
+        this._bindSettings(gset);
     }
 
     _buildWidgets() {
         this._lyric = new Lyric();
-        this._mpris = new MprisPlayer();
+        this._mpris = new Mpris();
         this._sbt = symbiose(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
             sync: [clearTimeout, x => setTimeout(x, 500)],
             tray: [() => { this.systray = false; }, () => { this.systray = true; }],
@@ -62,8 +61,8 @@ class DesktopLyric extends Destroyable {
         });
     }
 
-    _bindSettings() {
-        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
+    _bindSettings(gset) {
+        this._fulu = new Fulu({}, gset, this);
         this._fulu.attach({
             mini:  [Field.MINI, 'boolean'],
             drag:  [Field.DRAG, 'boolean'],
@@ -74,7 +73,7 @@ class DesktopLyric extends Destroyable {
         this._mpris.connectObject('update', this._update.bind(this),
             'closed', (_p, closed) => { this.closed = closed; },
             'status', (_p, status) => { this.playing = status === 'Playing'; },
-            'seeked', (_p, position) => this.setPosition(position / 1000), this);
+            'seeked', (_p, position) => this.setPosition(position / 1000), onus(this));
     }
 
     set path(path) {
@@ -98,7 +97,7 @@ class DesktopLyric extends Destroyable {
     set systray(systray) {
         if(xnor(systray, this._btn)) return;
         if(systray) {
-            this._btn = Main.panel.addToStatusArea(Me.metadata.uuid, new LyricButton(() => this.syncPosition()),
+            this._btn = Main.panel.addToStatusArea(getSelf().uuid, new LyricButton(() => this.syncPosition()),
                 this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._addMenuItems();
             this._btn.visible = this._showing;
@@ -211,12 +210,10 @@ class DesktopLyric extends Destroyable {
             reload: new MenuItem(_('Redownload'), () => this.reloadLyric()),
             resync: new MenuItem(_('Resynchronize'), () => this.syncPosition()),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
-            prefs:  new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
+            prefs:  new MenuItem(_('Settings'), () => getSelf().openPreferences()),
         };
         for(let p in this._menus) this._btn.menu.addMenuItem(this._menus[p]);
     }
 }
 
-function init() {
-    return new Extension(DesktopLyric);
-}
+export default class Extension extends BaseExtension { $klass = DesktopLyric; }

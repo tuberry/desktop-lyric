@@ -1,9 +1,7 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported Field */
-'use strict';
 
-var Field = {
+export const Field = {
     MINI: 'minimize',
     DRAG: 'draggable',
     FONT: 'font-name',
