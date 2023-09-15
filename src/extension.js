@@ -15,7 +15,7 @@ import { id, xnor } from './util.js';
 import { MprisPlayer as Mpris } from './mpris.js';
 import { DesktopPaper, PanelPaper } from './paper.js';
 import { SwitchItem, MenuItem, TrayIcon } from './menu.js';
-import { Fulu, BaseExtension, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
+import { Fulu, BaseExtension, Destroyable, manageSource, omit, getSignalHolder, getSelf, _ } from './fubar.js';
 
 class LyricButton extends PanelMenu.Button {
     static {
@@ -54,7 +54,7 @@ class DesktopLyric extends Destroyable {
     _buildWidgets() {
         this._lyric = new Lyric();
         this._mpris = new Mpris();
-        this._sbt = symbiose(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
+        this._src = manageSource(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
             sync: [clearTimeout, x => setTimeout(x, 500)],
             tray: [() => { this.systray = false; }, () => { this.systray = true; }],
             play: [clearInterval, x => x && setInterval(() => this.setPosition(this._paper._moment + this._span + 0.625), this._span)],
@@ -73,7 +73,7 @@ class DesktopLyric extends Destroyable {
         this._mpris.connectObject('update', this._update.bind(this),
             'closed', (_p, closed) => { this.closed = closed; },
             'status', (_p, status) => { this.playing = status === 'Playing'; },
-            'seeked', (_p, position) => this.setPosition(position / 1000), onus(this));
+            'seeked', (_p, position) => this.setPosition(position / 1000), getSignalHolder(this));
     }
 
     set path(path) {
@@ -111,7 +111,7 @@ class DesktopLyric extends Destroyable {
     set index(index) {
         if(this._index === index) return;
         this._index = index;
-        this._sbt.tray.revive();
+        this._src.tray.refreshSource();
     }
 
     set drag(drag) {
@@ -121,12 +121,12 @@ class DesktopLyric extends Destroyable {
 
     set span(span) {
         this._span = span;
-        if(this._sbt.play._delegate) this.playing = true;
+        if(this._src.play._delegate) this.playing = true;
     }
 
     set playing(playing) {
         this._updateViz();
-        this._sbt.play.revive(playing && this._paper);
+        this._src.play.refreshSource(playing && this._paper);
     }
 
     set closed(closed) {
@@ -139,8 +139,8 @@ class DesktopLyric extends Destroyable {
         if(this._syncing) return;
         this._syncing = true;
         let pos = await this._mpris.getPosition() / 1000;
-        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 500) && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
-            await new Promise(resolve => this._sbt.sync.revive(resolve));
+        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 2500) && i < 10; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
+            await new Promise(resolve => this._src.sync.refreshSource(resolve));
             pos = await this._mpris.getPosition() / 1000;
         }
         this.setPosition((this._pos = pos) + 50);
@@ -194,6 +194,7 @@ class DesktopLyric extends Destroyable {
     clearLyric() {
         this.playing = false;
         this._paper?.clear();
+        this._song = null;
     }
 
     _updateViz() {
@@ -212,7 +213,7 @@ class DesktopLyric extends Destroyable {
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new MenuItem(_('Settings'), () => getSelf().openPreferences()),
         };
-        for(let p in this._menus) this._btn.menu.addMenuItem(this._menus[p]);
+        Object.values(this._menus).forEach(x => this._btn.menu.addMenuItem(x));
     }
 }
 
