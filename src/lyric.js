@@ -4,8 +4,8 @@
 import Soup from 'gi://Soup';
 import GLib from 'gi://GLib';
 
-import { Destroyable, symbiose } from './fubar.js';
-import { noop, id, raise, decode, fopen, fname, fwrite, fread, fdelete, access } from './util.js';
+import { Destroyable, symbiose, getSelf } from './fubar.js';
+import { noop, id, raise, decode, fopen, fpath, fwrite, fread, fdelete, access } from './util.js';
 
 const GETLRC = 'https://music.163.com/api/song/lyric?';
 const SEARCH = 'http://music.163.com/api/search/get/web?';
@@ -28,7 +28,7 @@ export class Lyric extends Destroyable {
 
     delete(song) {
         let info = encodeURIComponent(this.info(song));
-        log(`Desktop Lyric: failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
+        console.log(`[${getSelf().metadata.name}]`, `failed to download lyric for <${song.title}>, see: ${SEARCH}s=${info}&limit=30&type=1`);
         fdelete(fopen(this.path(song))).catch(noop); // ignore NOT_FOUND
     }
 
@@ -55,6 +55,6 @@ export class Lyric extends Destroyable {
 
     path({ title, artist, album }) { // default to $XDG_CACHE_DIR/desktop-lyric if exists
         let name = [title, artist.join(','), album].filter(id).join('-').replaceAll('/', ',').concat('.lrc');
-        return this.location ? `${this.location}/${name}` : fname(GLib.get_user_cache_dir(), 'desktop-lyric', name);
+        return this.location ? `${this.location}/${name}` : fpath(GLib.get_user_cache_dir(), 'desktop-lyric', name);
     }
 }

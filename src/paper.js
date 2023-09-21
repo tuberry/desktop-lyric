@@ -15,12 +15,13 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { makeDraggable } from 'resource:///org/gnome/shell/ui/dnd.js';
 
 import { xnor } from './util.js';
+import { onus } from './fubar.js';
 import { Field } from './const.js';
 
-const t2ms = x => x?.split(':').reduce((a, v) => parseFloat(v) + a * 60, 0) * 1000; // 1:1 => 61000 ms
+const t2ms = t => t?.split(':').reduce((a, x) => parseFloat(x) + a * 60, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
 
-class BasePaper extends St.DrawingArea {
+class PaperBase extends St.DrawingArea {
     static {
         GObject.registerClass(this);
     }
@@ -29,7 +30,7 @@ class BasePaper extends St.DrawingArea {
         super();
         this.span = 0;
         this._text = new Map();
-        this.text = this.song = '';
+        this._lrc = this.text = this.song = '';
         this._bindSettings(fulu);
     }
 
@@ -61,7 +62,7 @@ class BasePaper extends St.DrawingArea {
             .flatMap(([t, l]) => t.match(/(?<=\[)[^\][]+(?=])/g).map(x => [Math.round(t2ms(x)), l.trim()]))
             .sort(([x], [y]) => x - y)
             .forEach(([t, l], i, a) => this._text.set(t, [a[i + 1]?.[0] ?? Math.max(this.span, t), l]));
-        this._tags = Array.from(this._text.keys()).reverse();
+        this._tags = Array.from(this._text.keys());
     }
 
     vfunc_repaint() {
@@ -82,7 +83,7 @@ class BasePaper extends St.DrawingArea {
 
     getLyric() {
         let now = this._moment;
-        let key = this._tags.find(x => x <= now);
+        let key = this._tags.findLast(x => x <= now);
         if(key === undefined) return [0, this.song];
         let [end, lrc] = this._text.get(key);
         return [now >= end || key === end ? 1 : (now - key) / (end - key), lrc];
@@ -90,14 +91,16 @@ class BasePaper extends St.DrawingArea {
 
     _setupLayout(_cr, _h, pl) {
         pl.set_font_description(this._font);
-        pl.set_text(this._lrc ?? '', -1);
+        pl.set_text(this._lrc, -1);
     }
 
     _colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
         let gd = this._orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
-        [[0, this._acolor], [this._pos, this._acolor], [this._pos, this._icolor],
-            [1, this._icolor]].forEach(([x, y]) => gd.addColorStopRGBA(x, ...y));
+        gd.addColorStopRGBA(0, ...this._acolor);
+        gd.addColorStopRGBA(this._pos, ...this._acolor);
+        gd.addColorStopRGBA(this._pos, ...this._icolor);
+        gd.addColorStopRGBA(1, ...this._icolor);
         cr.moveTo(Math.min(w - this._pos * pw, 0), 0);
         cr.setSource(gd);
     }
@@ -107,7 +110,7 @@ class BasePaper extends St.DrawingArea {
     }
 }
 
-export class PanelPaper extends BasePaper {
+export class PanelPaper extends PaperBase {
     static {
         GObject.registerClass(this);
     }
@@ -115,13 +118,17 @@ export class PanelPaper extends BasePaper {
     _bindSettings(fulu) {
         this._natural_width = 0;
         super._bindSettings(fulu);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncPanelTheme(), this);
+        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncTheme(), onus(this));
+        St.Settings.get().connectObject('notify::high-contrast', () => this._syncTheme(),
+            'notify::color-scheme', () => this._syncTheme(), onus(this));
     }
 
-    _syncPanelTheme() {
+    _syncTheme() {
         if(!['acolor', 'icolor'].every(x => x in this)) return;
-        let fg = Main.panel.get_theme_node().lookup_color('color', true).at(1);
-        this._acolor = c2gdk(this.acolor.interpolate(fg, 0.65), fg.alpha);
+        let fg = Main.panel.get_theme_node().lookup_color('color', true).at(1),
+            bg = Main.panel.get_theme_node().lookup_color('background-color', true).at(1),
+            color = Clutter.Color.from_hls(this.acolor.to_hls().at(0), 0.66 * fg.to_hls().at(1) + 0.34 * bg.to_hls().at(1), 0.62);
+        this._acolor = c2gdk(color, fg.alpha);
         this._icolor = this._homochromy ? this._acolor : c2gdk(fg);
         this._font = Main.panel.get_theme_node().get_font();
         let [w, h] = Main.panel.get_size();
@@ -131,7 +138,7 @@ export class PanelPaper extends BasePaper {
 
     set color([k, v, out]) {
         super.color = [k, v, out];
-        this._syncPanelTheme();
+        this._syncTheme();
     }
 
     set moment(moment) {
@@ -147,14 +154,14 @@ export class PanelPaper extends BasePaper {
     }
 }
 
-export class DesktopPaper extends BasePaper {
+export class DesktopPaper extends PaperBase {
     static {
         GObject.registerClass(this);
     }
 
     constructor(gset) {
         super(gset);
-        Main.uiGroup.add_actor(this);
+        Main.uiGroup.add_child(this);
         this.set_position(...this.place.deepUnpack());
     }
 
