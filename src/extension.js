@@ -15,7 +15,7 @@ import { id, xnor } from './util.js';
 import { MprisPlayer as Mpris } from './mpris.js';
 import { DesktopPaper, PanelPaper } from './paper.js';
 import { SwitchItem, MenuItem, TrayIcon } from './menu.js';
-import { Fulu, BaseExtension, Destroyable, manageSource, omit, getSignalHolder, getSelf, _ } from './fubar.js';
+import { Fulu, ExtensionBase, Destroyable, manageSource, omit, getSignalHolder, getSelf, _ } from './fubar.js';
 
 class LyricButton extends PanelMenu.Button {
     static {
@@ -27,12 +27,12 @@ class LyricButton extends PanelMenu.Button {
         this._onXbuttonClick = callback;
         this.menu.actor.add_style_class_name('desktop-lyric-menu');
         this._box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        this._box.add_actor(new TrayIcon('lyric-symbolic', true));
-        this.add_actor(this._box);
+        this._box.add_child(new TrayIcon('lyric-symbolic', true));
+        this.add_child(this._box);
     }
 
     set_paper(paper) {
-        if(paper) this._box.add_actor(paper);
+        if(paper) this._box.add_child(paper);
     }
 
     vfunc_event(event) {
@@ -139,7 +139,7 @@ class DesktopLyric extends Destroyable {
         if(this._syncing) return;
         this._syncing = true;
         let pos = await this._mpris.getPosition() / 1000;
-        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 2500) && i < 10; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
+        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 2000) && i < 7; i++) { // FIXME: workaround for stale positions from buggy NCM mpris when changing songs
             await new Promise(resolve => this._src.sync.refreshSource(resolve));
             pos = await this._mpris.getPosition() / 1000;
         }
@@ -217,4 +217,4 @@ class DesktopLyric extends Destroyable {
     }
 }
 
-export default class Extension extends BaseExtension { $klass = DesktopLyric; }
+export default class Extension extends ExtensionBase { $klass = DesktopLyric; }

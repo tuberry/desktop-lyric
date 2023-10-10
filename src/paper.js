@@ -21,7 +21,7 @@ import { Field } from './const.js';
 const t2ms = t => t?.split(':').reduce((a, x) => parseFloat(x) + a * 60, 0) * 1000; // 1:1 => 61000 ms
 const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
 
-class BasePaper extends St.DrawingArea {
+class PaperBase extends St.DrawingArea {
     static {
         GObject.registerClass(this);
     }
@@ -110,7 +110,7 @@ class BasePaper extends St.DrawingArea {
     }
 }
 
-export class PanelPaper extends BasePaper {
+export class PanelPaper extends PaperBase {
     static {
         GObject.registerClass(this);
     }
@@ -119,8 +119,8 @@ export class PanelPaper extends BasePaper {
         this._natural_width = 0;
         super._bindSettings(fulu);
         St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncTheme(), getSignalHolder(this));
-        St.Settings.get().connectObject('notify::high-contrast', () => this._syncTheme(), getSignalHolder(this));
-        St.Settings.get().connectObject('notify::color-scheme', () => this._syncTheme(), getSignalHolder(this));
+        St.Settings.get().connectObject('notify::high-contrast', () => this._syncTheme(),
+            'notify::color-scheme', () => this._syncTheme(), getSignalHolder(this));
     }
 
     _syncTheme() {
@@ -154,14 +154,14 @@ export class PanelPaper extends BasePaper {
     }
 }
 
-export class DesktopPaper extends BasePaper {
+export class DesktopPaper extends PaperBase {
     static {
         GObject.registerClass(this);
     }
 
     constructor(gset) {
         super(gset);
-        Main.uiGroup.add_actor(this);
+        Main.uiGroup.add_child(this);
         this.set_position(...this.place.deepUnpack());
     }
 
