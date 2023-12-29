@@ -23,12 +23,12 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     _buildWidgets(gset) {
         this._blk = UI.block({
             FONT: ['value',    new UI.Font()],
-            DRAG: ['active',   new Gtk.CheckButton()],
             SPAN: ['value',    new UI.Spin(50, 500, 10)],
             PATH: ['value',    new UI.File({ select_folder: true })],
             ACLR: ['value',    new UI.Color({ title: _('Active color') })],
             OCLR: ['value',    new UI.Color({ title: _('Outline color') })],
             ICLR: ['value',    new UI.Color({ title: _('Inactive color') })],
+            DRAG: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             ORNT: ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
             TIDX: ['selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
         }, gset);
@@ -36,7 +36,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     _buildUI() {
         [
-            [this._blk.DRAG,           [_('Mobilize'), _('Allow dragging to displace')]],
+            [[_('Mobilize'), _('Allow dragging to displace')], this._blk.DRAG],
             [[_('Systray position')],  this._blk.TIDX],
             [[_('Refresh interval')],  this._blk.SPAN],
             [[_('Lyric orientation')], this._blk.ORNT],
