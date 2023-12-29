@@ -15,11 +15,25 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { makeDraggable } from 'resource:///org/gnome/shell/ui/dnd.js';
 
 import { xnor } from './util.js';
-import { onus } from './fubar.js';
 import { Field } from './const.js';
+import { connect } from './fubar.js';
 
-const t2ms = t => t?.split(':').reduce((a, x) => parseFloat(x) + a * 60, 0) * 1000; // 1:1 => 61000 ms
-const c2gdk = ({ red, green, blue, alpha }, tp) => [red, green, blue, tp ?? alpha].map(x => x / 255);
+const toMs = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
+const toRGBA = ({ red, green, blue, alpha }, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
+
+function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
+    if(sorted[upper] <= value) {
+        return upper;
+    } else {
+        while(lower <= upper) {
+            let index = (lower + upper) >>> 1;
+            if(sorted[index] <= value && sorted[index + 1] > value) return index;
+            else if(sorted[index] > value) upper = index - 1;
+            else lower = index + 1;
+        }
+        return -1;
+    }
+}
 
 class PaperBase extends St.DrawingArea {
     static {
@@ -44,7 +58,7 @@ class PaperBase extends St.DrawingArea {
     set color([k, v, out]) {
         this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out).at(1);
         if(['acolor', 'icolor'].every(x => x in this)) this._homochromy = this.acolor.equal(this.icolor);
-        this[`_${k}`] = c2gdk(this[k]);
+        this[`_${k}`] = toRGBA(this[k]);
     }
 
     set moment(moment) {
@@ -58,10 +72,10 @@ class PaperBase extends St.DrawingArea {
     set text(text) {
         this._text.clear();
         text.split(/\n/)
-            .flatMap(x => (i => i > 0 ? [[x.slice(0, i), x.slice(i)]] : [])(x.lastIndexOf(']') + 1))
-            .flatMap(([t, l]) => t.match(/(?<=\[)[^\][]+(?=])/g).map(x => [Math.round(t2ms(x)), l.trim()]))
+            .flatMap(x => (i => i > 0 ? [[x.slice(0, i), x.slice(i).trim()]] : [])(x.lastIndexOf(']') + 1))
+            .flatMap(([t, l]) => t.match(/(?<=\[)[.:\d]+(?=])/g)?.map(x => [Math.round(toMs(x)), l]) ?? [])
             .sort(([x], [y]) => x - y)
-            .forEach(([t, l], i, a) => this._text.set(t, [a[i + 1]?.[0] ?? Math.max(this.span, t), l]));
+            .forEach(([t, l], i, a) => this._text.set(t, [(a[i + 1]?.[0] ?? Math.max(this.span, t)) - t, l]));
         this._tags = Array.from(this._text.keys());
     }
 
@@ -81,12 +95,12 @@ class PaperBase extends St.DrawingArea {
         this.queue_repaint();
     }
 
-    getLyric() {
-        let now = this._moment;
-        let key = this._tags.findLast(x => x <= now);
-        if(key === undefined) return [0, this.song];
-        let [end, lrc] = this._text.get(key);
-        return [now >= end || key === end ? 1 : (now - key) / (end - key), lrc];
+    getLyric(now = this._moment) {
+        let index = findMaxLE(this._tags, now);
+        if(index < 0) return [0, this.song];
+        let key = this._tags[index];
+        let [len, lrc] = this._text.get(key);
+        return [len > 0 ? (now - key) / len : 1, lrc];
     }
 
     _setupLayout(_cr, _h, pl) {
@@ -118,19 +132,21 @@ export class PanelPaper extends PaperBase {
     _bindSettings(fulu) {
         this._natural_width = 0;
         super._bindSettings(fulu);
-        St.ThemeContext.get_for_stage(global.stage).connectObject('changed', () => this._syncTheme(), onus(this));
-        St.Settings.get().connectObject('notify::high-contrast', () => this._syncTheme(),
-            'notify::color-scheme', () => this._syncTheme(), onus(this));
+        let sync = () => this._syncWithTheme();
+        connect(this, [Main.overview, 'hidden', sync, 'shown', sync],
+            [St.ThemeContext.get_for_stage(global.stage), 'changed', sync],
+            [St.Settings.get(), 'notify::high-contrast', sync, 'notify::color-scheme', sync]);
     }
 
-    _syncTheme() {
+    _syncWithTheme() {
         if(!['acolor', 'icolor'].every(x => x in this)) return;
-        let fg = Main.panel.get_theme_node().lookup_color('color', true).at(1),
-            bg = Main.panel.get_theme_node().lookup_color('background-color', true).at(1),
-            color = Clutter.Color.from_hls(this.acolor.to_hls().at(0), 0.66 * fg.to_hls().at(1) + 0.34 * bg.to_hls().at(1), 0.62);
-        this._acolor = c2gdk(color, fg.alpha);
-        this._icolor = this._homochromy ? this._acolor : c2gdk(fg);
-        this._font = Main.panel.get_theme_node().get_font();
+        let theme = Main.panel.statusArea.quickSettings.get_theme_node(),
+            fg = theme.lookup_color('color', true).at(1),
+            [hue,, s] = this.acolor.to_hls(),
+            color = Clutter.Color.from_hls(hue, fg.to_hls().at(1) > 0.5 ? 0.6 : 0.4, s);
+        this._acolor = toRGBA(color, fg.alpha);
+        this._icolor = this._homochromy ? this._acolor : toRGBA(fg);
+        this._font = theme.get_font();
         let [w, h] = Main.panel.get_size();
         this._max_width = w / 4;
         this.set_height(h);
@@ -138,7 +154,7 @@ export class PanelPaper extends PaperBase {
 
     set color([k, v, out]) {
         super.color = [k, v, out];
-        this._syncTheme();
+        this._syncWithTheme();
     }
 
     set moment(moment) {
