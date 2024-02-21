@@ -1,55 +1,32 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
-import St from 'gi://St';
-import GObject from 'gi://GObject';
-import Clutter from 'gi://Clutter';
-
-import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { Field } from './const.js';
-import { Lyric } from './lyric.js';
-import { xnor, noop, homolog } from './util.js';
-import { MprisPlayer as Mpris } from './mpris.js';
-import { DesktopPaper, PanelPaper } from './paper.js';
-import { SwitchItem, MenuItem, TrayIcon } from './menu.js';
-import { Fulu, ExtensionBase, Destroyable, symbiose, omit, connect, getSelf, _ } from './fubar.js';
-
-class LyricButton extends PanelMenu.Button {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(callback) {
-        super(0.5);
-        this._onXButtonClick = callback;
-        let box = new St.BoxLayout({ style_class: 'panel-status-menu-box' });
-        box.add_child(new TrayIcon('lyric-symbolic', true));
-        this.set_paper = x => x && box.add_child(x);
-        this.add_child(box);
-    }
-
-    vfunc_event(event) {
-        if(event.type() === Clutter.EventType.BUTTON_PRESS && event.get_button() >>> 1 === 4) {
-            this._onXButtonClick();
-            return Clutter.EVENT_STOP;
-        }
-        return super.vfunc_event(event);
-    }
-}
+import {Field} from './const.js';
+import {Lyric} from './lyric.js';
+import {Mpris} from './mpris.js';
+import {xnor, noop, homolog, hook} from './util.js';
+import {DesktopPaper, PanelPaper} from './paper.js';
+import {SwitchItem, MenuItem, PanelButton} from './menu.js';
+import {Fulu, ExtensionBase, Destroyable, symbiose, omit, getSelf, _} from './fubar.js';
 
 class DesktopLyric extends Destroyable {
     constructor(gset) {
         super();
-        this._buildWidgets();
-        this._bindSettings(gset);
+        this._buildWidgets(gset);
+        this._bindSettings();
     }
 
-    _buildWidgets() {
+    _buildWidgets(gset) {
         this._lyric = new Lyric();
-        this._mpris = new Mpris();
+        this._mpris = hook({
+            update: (_p, song) => this._updateSong(song),
+            closed: (_p, closed) => { this.closed = closed; },
+            status: (_p, status) => { this.playing = status; },
+            seeked: (_p, position) => this.setPosition(position),
+        }, new Mpris());
+        this._fulu = new Fulu({}, gset, this);
         this._sbt = symbiose(this, () => omit(this, '_mpris', '_lyric', '_paper'), {
             sync: [clearTimeout, x => setTimeout(x, 500)],
             tray: [() => { this.systray = false; }, () => { this.systray = true; }],
@@ -57,8 +34,7 @@ class DesktopLyric extends Destroyable {
         });
     }
 
-    _bindSettings(gset) {
-        this._fulu = new Fulu({}, gset, this);
+    _bindSettings() {
         this._fulu.attach({
             mini:  [Field.MINI, 'boolean'],
             drag:  [Field.DRAG, 'boolean'],
@@ -66,10 +42,6 @@ class DesktopLyric extends Destroyable {
             path:  [Field.PATH, 'string'],
             span:  [Field.SPAN, 'uint'],
         }, this);
-        connect(this, [this._mpris, 'update', this._update.bind(this),
-            'closed', (_p, closed) => { this.closed = closed; },
-            'status', (_p, status) => { this.playing = status === 'Playing'; },
-            'seeked', (_p, position) => this.setPosition(position / 1000)]);
     }
 
     set path(path) {
@@ -78,14 +50,15 @@ class DesktopLyric extends Destroyable {
 
     set mini(mini) {
         this._mini = mini;
+        if(!this._btn) return;
         if(this._paper) omit(this, 'playing', '_paper');
         if(mini) {
             this._paper = new PanelPaper(this._fulu);
-            this._btn?.set_paper(this._paper);
-            this._menus?.drag.hide();
+            this._btn._box.add_child(this._paper);
+            this._menus.drag.hide();
         } else {
             this._paper = new DesktopPaper(this._fulu);
-            this._menus?.drag.show();
+            this._menus.drag.show();
         }
         this.loadLyric();
     }
@@ -93,11 +66,10 @@ class DesktopLyric extends Destroyable {
     set systray(systray) {
         if(xnor(systray, this._btn)) return;
         if(systray) {
-            this._btn = Main.panel.addToStatusArea(getSelf().uuid, new LyricButton(() => this.syncPosition()),
-                this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
-            this._addMenuItems();
+            this._btn = new PanelButton('lyric-symbolic', this._index ? 0 : 5, ['left', 'center', 'right'][this._index ?? 0]);
             this._btn.visible = this._showing;
-            if(this._mini) this.mini = this._mini;
+            this._addMenuItems();
+            this.mini = this._mini;
         } else {
             if(this._mini) omit(this, '_paper');
             omit(this, '_btn', '_menus');
@@ -117,38 +89,43 @@ class DesktopLyric extends Destroyable {
 
     set span(span) {
         this._span = span;
-        if(this._sbt.play._delegate) this.playing = true;
+        this._sbt.play.revive(this._sbt.play._delegate);
     }
 
     set playing(playing) {
         this._updateViz();
+        if(xnor(playing, this._sbt.play._delegate)) return;
         this._sbt.play.revive(playing && this._paper);
     }
 
     set closed(closed) {
         this._showing = !closed;
         if(closed) this.clearLyric();
-        if(this._btn) this._btn.visible = !closed;
+        if(this._btn) this._btn.visible = this._showing;
     }
 
     async syncPosition() {
-        if(this._syncing) return;
-        this._syncing = true;
-        let pos = await this._mpris.getPosition() / 1000;
-        for(let i = 0; pos && (pos === this._pos || !this._length || this._length - pos < 2000) && i < 7; i++) { // HACK: workaround for stale positions from buggy NCM mpris when changing songs
+        this._sbt.sync.dispel();
+        let len = this._song.length;
+        let pos = await this._mpris.getPosition().catch(noop);
+        for(let i = 0; pos && (pos === this._pos || !len || len - pos < 2000) && i < 7; i++) {
             await new Promise(resolve => this._sbt.sync.revive(resolve));
-            pos = await this._mpris.getPosition() / 1000;
-        }
+            pos = await this._mpris.getPosition().catch(noop);
+        } // HACK: workaround for stale positions from buggy NCM mpris when changing songs
         this.setPosition((this._pos = pos) + 50);
-        this._syncing = false;
     }
 
-    _update(_player, song, length) {
-        if(homolog(this._song, song, undefined, (x, y, k) => k === 'lyric' ? x?.length === y?.length : x === y)) {
+    _updateSong(song) {
+        if(homolog(this._song, song, undefined, (x, y, k) => {
+            switch(k) {
+            case 'lyric': return x?.length === y?.length;
+            case 'length': return true; // HACK: workaround for jumping lengths from NCM mpris
+            default: return x === y;
+            }
+        })) {
+            if(this._paper) this._paper.span = this._song.length = song.length; // HACK: ditto
             this.syncPosition();
         } else {
-            this._title = Lyric.format(song, ' - ', '/');
-            this._length = length;
             this._song = song;
             this.loadLyric();
         }
@@ -160,28 +137,31 @@ class DesktopLyric extends Destroyable {
 
     loadLyric(reload) {
         if(!this._song) return;
-        this.setLyric('');
-        if(this._song.lyric !== null) this.setLyric(this._song.lyric);
-        else this._lyric.find(this._song, reload).then(x => this.setLyric(x)).catch(noop);
+        if(this._song.lyric === null) {
+            this.setLyric('');
+            this._lyric.load(this._song, reload).then(x => this.setLyric(x)).catch(noop);
+        } else {
+            this.setLyric(this._song.lyric);
+        }
     }
 
     setLyric(text) {
         if(!this._paper) return;
-        this._paper.span = this._length ?? 0;
+        this._paper.song = this._mini ? Lyric.format(this._song, ' - ', '/') : '';
+        this._paper.span = this._song.length;
         this._paper.text = text;
-        this._paper.song = this._mini ? this._title : '';
-        this.playing = this._mpris.status === 'Playing';
+        this.playing = this._mpris.status;
         this.syncPosition();
     }
 
     clearLyric() {
         this.playing = false;
-        this._paper.clear();
+        this._paper.clearLyric();
         this._song = null;
     }
 
     _updateViz() {
-        let viz = this._mpris.status === 'Playing' && !this._menus?.hide.state;
+        let viz = this._mpris.status && !this._menus?.hide.state;
         if(this._paper && this._paper.visible ^ viz) this._paper.visible = viz;
     }
 
@@ -192,7 +172,7 @@ class DesktopLyric extends Destroyable {
             drag:   new SwitchItem(_('Mobilize'), this._drag, x => this._fulu.set('drag', x, this)),
             sep0:   new PopupMenu.PopupSeparatorMenuItem(),
             reload: new MenuItem(_('Redownload'), () => this.loadLyric(true)),
-            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition()),
+            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition().catch(noop)),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new MenuItem(_('Settings'), () => getSelf().openPreferences()),
         };

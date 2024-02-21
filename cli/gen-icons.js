@@ -1,30 +1,29 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
 
-const sp = x => Math.sin(Math.PI * x);
-const cp = x => Math.cos(Math.PI * x);
+const L = 16; // length (side)
+const M = 1 / 16; // margin
+const W = 1 - 2 * M; // width (content)
+const C = 'dimgrey'; // color
+const XFM = `fill="${C}" transform="translate(${M} ${M}) scale(${W} ${W})"`;
+const SVG = `viewBox="0 0 1 1" width="${L}" height="${L}" xmlns="http://www.w3.org/2000/svg"`;
+const save = (text, name) => Gio.File.new_for_path(ARGV.concat(name).join('/'))
+    .replace_contents(text, null, false, Gio.FileCreateFlags.NONE, null);
 
-const L = 16;
-const n = 1 / 16;
-const m = n * L;
-const W = L - 2 * m;
-const fill = 'fill="#444"';
+let a = 1 / 2, // c == e ==> a == 1 / 2
+    b = (1 - Math.cos(Math.PI / 6)) * a,
+    c = (1 - a) / 2,
+    d = a + b,
+    e = a / 2,
+    play = [[a, 1 / 2], [b, 1 / 2 + a / 2], [b, c]];
 
-let g = W / 8,
-    w = W - g,
-    H = (W - g * 2) * 4 / 9,
-    h = H * 9 / 16,
-    r = H * 5 / 8, // H / Math.sqrt(3),
-    pt = (x, y) => [r / 2 + g + x * cp(y), L / 2 + x * sp(y)],
-    T = Array.from({ length: 3 }, (_x, i) => pt(r, i * 2 / 3));
-
-Gio.File.new_for_path(ARGV.join('/')).replace_contents(`<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${L}" version="1.1">
- <path d="M ${T.at(-1).join(' ')}
-\t${T.map(([x, y]) => `A ${H} ${H} 0 0 1 ${x} ${y}`).join('\n\t')}"
- ${fill}/>
- <rect width="${w}" height="${h}" x="${m + g}" y="${m}" rx="${h / 2}" ${fill}/>
- <rect width="${W * 9 / 16}" height="${H}" x="${m + W * 7 / 16}" y="${(L - H) / 2}" rx="${H / 2}" ${fill}/>
- <rect width="${w}" height="${h}" x="${m + g}" y="${L - m - h}" rx="${h / 2}" ${fill}/>
-</svg>`, null, false, Gio.FileCreateFlags.NONE, null);
+save(`<svg ${SVG}>
+  <g ${XFM}>
+    <rect opacity="0.8" width="${1 - b}" height="${c}" x="${b}" y="0" rx="${c / 2}"/>
+    <rect opacity="0.8" width="${1 - b}" height="${c}" x="${b}" y="${1 - c}" rx="${c / 2}"/>
+    <rect width="${1 - d}" height="${e}" x="${d}" y="${1 / 2 - e / 2}" rx="${e / 2}"/>
+    <path d="M ${play.at(-1).join(' ')} ${play.map(([x, y]) => `A ${a} ${a} 0 0 1 ${x} ${y}`).join(' ')} Z"/>
+  </g>
+</svg>`);

@@ -19,7 +19,7 @@
         <summary>lyric orientation (0 - horizontal, 1 - vertical)</summary>
     </key>
     <key type="u" name="refresh-interval">
-        <range min="50" max="500"/>
+        <range min="20" max="500"/>
         <default>60</default>
         <summary>lyric refresh interval (ms)</summary>
     </key>

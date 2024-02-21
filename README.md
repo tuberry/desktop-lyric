@@ -2,7 +2,7 @@
 
 Show the lyric of playing songs on the desktop.
 >很多歌消失了。 —— *汪曾祺 《徙》*<br>
-[![license]](/LICENSE)
+[![license]](/LICENSE.md)
 <br>
 
 ![bee](https://user-images.githubusercontent.com/17917040/107332354-08111f80-6aef-11eb-9c7a-f8799c834501.png)
@@ -36,10 +36,10 @@ For older versions (< 44), it's recommended to install via:
 ![dlpref](https://user-images.githubusercontent.com/17917040/155883047-593e79cb-9647-4c9c-bbbd-665c90719305.png)
 
 
-## Note
+## Notes
 
 * High CPU usage;
-* The missing lyrics will be downloaded from [NetEase];
+* The missing lyrics will be downloaded from [NCM];
 * The lyric ([LRC] format) filename format is ~~`Title-Artist1,Artist2.lrc`~~(**no longer in use, please delete them**)`Title-Artist1,Artist2-Album.lrc`;
 * Draw at an even pace so that exact synchronization with the song is not guaranteed;
 
@@ -48,9 +48,9 @@ For older versions (< 44), it's recommended to install via:
 * [lyrics-finder]: online lyrics
 * [osdlyrics]: some names
 
-[license]:https://img.shields.io/badge/license-GPLv3-green.svg
+[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [LRC]:https://en.wikipedia.org/wiki/LRC_(file_format)
-[NetEase]:http://music.163.com/
+[NCM]:http://music.163.com/
 [lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
 [osdlyrics]:https://github.com/osdlyrics/osdlyrics
 [EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/

@@ -1,17 +1,16 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import Shell from 'gi://Shell';
 
-import { loadInterfaceXML } from 'resource:///org/gnome/shell/misc/fileUtils.js';
+import {loadInterfaceXML} from 'resource:///org/gnome/shell/misc/fileUtils.js';
 
-import { id, vmap } from './util.js';
-import { Destroyable, omit, connect, disconnect, symbiose } from './fubar.js';
+import {Destroyable, symbiose, omit} from './fubar.js';
+import {id, hook, xnor, vmap, noop, has} from './util.js';
 
-const MPRIS_PLAYER_IFACE =
-`<node>
+const MPRIS_PLAYER_IFACE = `<node>
   <interface name="org.mpris.MediaPlayer2.Player">
     <property name="Metadata" type="a{sv}" access="read"/>
     <property name="PlaybackStatus" type="s" access="read"/>
@@ -25,76 +24,66 @@ const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedeskt
 const MprisProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.mpris.MediaPlayer2'));
 const PlayerProxy = Gio.DBusProxy.makeProxyWrapper(MPRIS_PLAYER_IFACE);
 
-export class MprisPlayer extends Destroyable {
+export class Mpris extends Destroyable {
     constructor() {
         super();
         this._buildWidgets();
     }
 
     async _buildWidgets() {
+        symbiose(this, () => omit(this, 'dbus', '_proxy'));
         this._proxy = await DBusProxy.newAsync(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus');
-        this._sbt = symbiose(this, () => this.emit('closed', true), {
-            player: [x => x && this._player?.disconnectSignal(x),
-                () => this._player?.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos))],
-            dbus: [x => x && this._proxy.disconnectSignal(x),
-                () => this._proxy.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { if(neo && !old) this._setPlayer(name); })],
-        });
-        this._sbt.dbus.revive();
-        this._onProxyReady();
+        this._proxy.connectSignal('NameOwnerChanged', (_p, _s, [name, old, neo]) => { if(neo && !old) this.dbus = name; });
+        this._onMprisChange();
     }
 
-    async _buildMprisProxy(bus_name) {
-        if(this._bus_name || !bus_name.startsWith('org.mpris.MediaPlayer2.')) return;
-        try {
-            let mpris = await MprisProxy.newAsync(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2'),
-                app = Shell.AppSystem.get_default().lookup_app(`${mpris.DesktopEntry ?? ''}.desktop`),
-                ctg = app?.get_app_info().get_string('Categories').split(';') ?? [];
-            if(ctg.includes('AudioVideo') && !ctg.includes('Video')) return mpris;
-        } catch(e) {
-            // ignore
-        }
-    }
-
-    async _setPlayer(bus_name) {
-        let mpris = await this._buildMprisProxy(bus_name);
-        if(!mpris) return;
-        this._bus_name = bus_name;
-        try {
-            this._mpris = mpris;
-            this._player = await PlayerProxy.newAsync(Gio.DBus.session, bus_name, '/org/mpris/MediaPlayer2');
-            connect(this, [this._mpris, 'notify::g-name-owner', () => this._onMprisOwn()],
-                [this._player, 'g-properties-changed', this._onPlayerChange.bind(this)]);
-            this._onPlayerReady();
-            this._onMprisOwn();
-        } catch(e) {
-            logError(e);
-        }
-    }
-
-    _onProxyReady() {
-        this._proxy.ListNamesAsync(([xs]) => xs.forEach(x => this._setPlayer(x)));
-    }
-
-    _onMprisOwn() {
+    _onMprisChange() {
         if(this._mpris?.g_name_owner) return;
-        this._sbt.player.dispel();
-        disconnect(this, this._mpris, this._player);
-        omit(this, '_bus_name', '_mpris', '_player');
-        this.emit('closed', true);
-        this._onProxyReady();
+        omit(this, 'dbus');
+        this._proxy.ListNamesAsync(([names]) => names.forEach(x => { this.dbus = x; }));
     }
 
-    _onPlayerReady() {
-        this._sbt.player.revive();
+    _onPlayerChange(data = {}) {
+        let prop = data.recursiveUnpack();
+        if(has(prop, 'Metadata')) this._updateMetadata(prop.Metadata);
+        if(has(prop, 'PlaybackStatus')) this.emit('status', this.status);
+    }
+
+    _notMusical(mpris) {
+        let app = Shell.AppSystem.get_default().lookup_app(`${mpris.DesktopEntry ?? ''}.desktop`);
+        let ctg = app?.get_app_info().get_string('Categories').split(';') ?? [];
+        return ctg.includes('AudioVideo') && !ctg.includes('Video');
+    }
+
+    async _buildDBus(dbus) {
+        if(!dbus.startsWith('org.mpris.MediaPlayer2.')) throw Error('not mpris');
+        let mpris = await MprisProxy.newAsync(Gio.DBus.session, dbus, '/org/mpris/MediaPlayer2');
+        if(!this._notMusical(mpris)) throw Error('not music app');
+        this._dbus = dbus;
+        this._mpris = hook({'notify::g-name-owner': () => this._onMprisChange()}, mpris);
+        this._player = hook({'g-properties-changed': (_p, data) => this._onPlayerChange(data)},
+            await PlayerProxy.newAsync(Gio.DBus.session, dbus, '/org/mpris/MediaPlayer2'));
+        this._player.connectSignal('Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000));
+        this._updateMetadata(vmap(this._player.Metadata, v => v.deepUnpack()));
         this.emit('closed', false);
-        this._updateMetadata(vmap(this._player.Metadata ?? {}, v => v.deepUnpack()));
+        this._onMprisChange();
+    }
+
+    set dbus(dbus) {
+        if(xnor(dbus, this._dbus)) return;
+        if(dbus) {
+            this._buildDBus(dbus).catch(noop);
+        } else {
+            omit(this, '_dbus', '_mpris', '_player');
+            this.emit('closed', true);
+        }
     }
 
     async getPosition() {
         // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
-        let pos = await Gio.DBus.session.call(this._bus_name, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties', 'Get',
+        let pos = await Gio.DBus.session.call(this._dbus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties', 'Get',
             new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), null, Gio.DBusCallFlags.NONE, -1, null);
-        return pos.recursiveUnpack().at(0);
+        return pos.recursiveUnpack().at(0) / 1000;
     }
 
     _updateMetadata(data) {
@@ -105,16 +94,10 @@ export class MprisPlayer extends Destroyable {
             lyric = typeof data['xesam:asText'] === 'string' ? data['xesam:asText'] : null,
             artist = data['xesam:artist']?.every?.(x => typeof x === 'string')
                 ? data['xesam:artist'].flatMap(x => x.split('/')).filter(id).sort() : [];
-        if(title) this.emit('update', { title, album, artist, lyric }, length);
+        if(title) this.emit('update', {title, album, lyric, artist, length});
     }
 
     get status() {
-        return this._player?.PlaybackStatus ?? 'Stopped';
-    }
-
-    _onPlayerChange(_p, data) {
-        let props = data.recursiveUnpack();
-        if('Metadata' in props) this._updateMetadata(props.Metadata);
-        if('PlaybackStatus' in props) this.emit('status', this.status);
+        return this._player?.PlaybackStatus === 'Playing';
     }
 }
