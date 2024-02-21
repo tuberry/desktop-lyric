@@ -1,13 +1,12 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Adw from 'gi://Adw';
-import Gtk from 'gi://Gtk';
 import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
 
-const { _ } = UI;
+const {_} = UI;
 
 class DesktopLyricPrefs extends Adw.PreferencesGroup {
     static {
@@ -22,15 +21,15 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            FONT: ['value',    new UI.Font()],
-            SPAN: ['value',    new UI.Spin(50, 500, 10)],
-            PATH: ['value',    new UI.File({ select_folder: true })],
-            ACLR: ['value',    new UI.Color({ title: _('Active color') })],
-            OCLR: ['value',    new UI.Color({ title: _('Outline color') })],
-            ICLR: ['value',    new UI.Color({ title: _('Inactive color') })],
-            DRAG: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ORNT: ['selected', new UI.Drop([_('Horizontal'), _('Vertical')])],
-            TIDX: ['selected', new UI.Drop([_('Left'), _('Center'), _('Right')])],
+            FONT: [new UI.Font()],
+            DRAG: [new UI.Switch()],
+            SPAN: [new UI.Spin(20, 500, 10)],
+            PATH: [new UI.File({select_folder: true})],
+            ACLR: [new UI.Color({title: _('Active color')})],
+            OCLR: [new UI.Color({title: _('Outline color')})],
+            ICLR: [new UI.Color({title: _('Inactive color')})],
+            ORNT: [new UI.Drop([_('Horizontal'), _('Vertical')])],
+            TIDX: [new UI.Drop([_('Left'), _('Center'), _('Right')])],
         }, gset);
     }
 

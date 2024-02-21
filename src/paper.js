@@ -1,5 +1,5 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';
 import GLib from 'gi://GLib';
@@ -12,14 +12,14 @@ import GObject from 'gi://GObject';
 import PangoCairo from 'gi://PangoCairo';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import { makeDraggable } from 'resource:///org/gnome/shell/ui/dnd.js';
+import {makeDraggable} from 'resource:///org/gnome/shell/ui/dnd.js';
 
-import { xnor } from './util.js';
-import { Field } from './const.js';
-import { connect } from './fubar.js';
+import {Field} from './const.js';
+import {xnor, has} from './util.js';
+import {Fulu, connect} from './fubar.js';
 
-const toMs = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
-const toRGBA = ({ red, green, blue, alpha }, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
+const t2ms = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
+const c2rgba = ({red, green, blue, alpha}, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
     if(sorted[upper] <= value) {
@@ -42,9 +42,7 @@ class PaperBase extends St.DrawingArea {
 
     constructor(fulu) {
         super();
-        this.span = 0;
-        this._text = new Map();
-        this._lrc = this.text = this.song = '';
+        this._clearLyric();
         this._bindSettings(fulu);
     }
 
@@ -55,27 +53,33 @@ class PaperBase extends St.DrawingArea {
         }, this, 'color');
     }
 
-    set color([k, v, out]) {
-        this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(out).at(1);
-        if(['acolor', 'icolor'].every(x => x in this)) this._homochromy = this.acolor.equal(this.icolor);
-        this[`_${k}`] = toRGBA(this[k]);
+    set span(span) {
+        this._span = span;
+        if(!this._text.size) return;
+        let end = this._tags.at(-1);
+        this._text.set(end, [Math.max(span - end, 0), this._text.get(end).at(-1)]);
+    }
+
+    set color([k, v, fallback]) {
+        this[k] = Clutter.Color.from_string(v).reduce((p, x) => p && x) || Clutter.Color.from_string(fallback).at(1);
+        if(has(this, 'acolor', 'icolor')) this._homochromy = this.acolor.equal(this.icolor);
+        this[`_${k}`] = c2rgba(this[k]);
     }
 
     set moment(moment) {
         this._moment = moment;
-        let { _pos, _lrc } = this;
+        let {_pos, _lrc} = this;
         [this._pos, this._lrc] = this.getLyric();
         if(!this.visible || (this._pos === _pos || this._homochromy) && this._lrc === _lrc) return;
         this.queue_repaint();
     }
 
     set text(text) {
-        this._text.clear();
-        text.split(/\n/)
+        this._text = new Map(text.split(/\n/)
             .flatMap(x => (i => i > 0 ? [[x.slice(0, i), x.slice(i).trim()]] : [])(x.lastIndexOf(']') + 1))
-            .flatMap(([t, l]) => t.match(/(?<=\[)[.:\d]+(?=])/g)?.map(x => [Math.round(toMs(x)), l]) ?? [])
+            .flatMap(([t, l]) => t.match(/(?<=\[)[.:\d]+(?=])/g)?.map(x => [Math.round(t2ms(x)), l]) ?? [])
             .sort(([x], [y]) => x - y)
-            .forEach(([t, l], i, a) => this._text.set(t, [(a[i + 1]?.[0] ?? Math.max(this.span, t)) - t, l]));
+            .map(([t, l], i, a) => [t, [(a[i + 1]?.[0] ?? Math.max(this._span, t)) - t, l]]));
         this._tags = Array.from(this._text.keys());
     }
 
@@ -89,9 +93,14 @@ class PaperBase extends St.DrawingArea {
         cr.$dispose();
     }
 
-    clear() {
+    _clearLyric() {
+        this._span = 0;
         this.text = this.song = '';
         [this._pos, this._lrc] = this.getLyric();
+    }
+
+    clearLyric() {
+        this._clearLyric();
         this.queue_repaint();
     }
 
@@ -132,29 +141,26 @@ export class PanelPaper extends PaperBase {
     _bindSettings(fulu) {
         this._natural_width = 0;
         super._bindSettings(fulu);
-        let sync = () => this._syncWithTheme();
-        connect(this, [Main.overview, 'hidden', sync, 'shown', sync],
-            [St.ThemeContext.get_for_stage(global.stage), 'changed', sync],
-            [St.Settings.get(), 'notify::high-contrast', sync, 'notify::color-scheme', sync]);
+        connect(this, [Main.panel.statusArea.quickSettings, 'style-changed', () => this._onStyleChange()]);
     }
 
-    _syncWithTheme() {
-        if(!['acolor', 'icolor'].every(x => x in this)) return;
+    _onStyleChange() {
+        if(!has(this, 'acolor', 'icolor')) return;
         let theme = Main.panel.statusArea.quickSettings.get_theme_node(),
-            fg = theme.lookup_color('color', true).at(1),
+            fg = theme.get_foreground_color(),
             [hue,, s] = this.acolor.to_hls(),
             color = Clutter.Color.from_hls(hue, fg.to_hls().at(1) > 0.5 ? 0.6 : 0.4, s);
-        this._acolor = toRGBA(color, fg.alpha);
-        this._icolor = this._homochromy ? this._acolor : toRGBA(fg);
+        this._acolor = c2rgba(color, fg.alpha);
+        this._icolor = this._homochromy ? this._acolor : c2rgba(fg);
         this._font = theme.get_font();
         let [w, h] = Main.panel.get_size();
         this._max_width = w / 4;
         this.set_height(h);
     }
 
-    set color([k, v, out]) {
-        super.color = [k, v, out];
-        this._syncWithTheme();
+    set color(color) {
+        super.color = color;
+        this._onStyleChange();
     }
 
     set moment(moment) {
@@ -177,12 +183,16 @@ export class DesktopPaper extends PaperBase {
 
     constructor(gset) {
         super(gset);
-        Main.uiGroup.add_child(this);
+        Main.layoutManager.addTopChrome(this);
         this.set_position(...this.place.deepUnpack());
+        connect(this, [St.ThemeContext.get_for_stage(global.stage), 'notify::scale-factor', () => { this.font = []; }]);
     }
 
     _bindSettings(fulu) {
         super._bindSettings(fulu);
+        this._fulu_if = new Fulu({
+            scaling: ['text-scaling-factor', 'double'],
+        }, 'org.gnome.desktop.interface', this, 'font');
         this._fulu.attach({
             drag:   [Field.DRAG, 'boolean'],
             orient: [Field.ORNT, 'uint'],
@@ -190,11 +200,17 @@ export class DesktopPaper extends PaperBase {
             place:  [Field.SITE, 'value'],
         }, this).attach({
             ocolor: [Field.OCLR, 'string'],
-        }, this, 'color');
+        }, this, 'color').attach({
+            fontname: [Field.FONT, 'string'],
+        }, this, 'font');
     }
 
-    set font(font) {
-        this._font = Pango.FontDescription.from_string(font);
+    set font([k, v]) {
+        if(k) this[k] = v;
+        if(!has(this, 'fontname', 'scaling')) return;
+        let factor = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        this._font = Pango.FontDescription.from_string(this.fontname);
+        this._font.set_size(this._font.get_size() * this.scaling * factor);
     }
 
     set drag(drag) {
@@ -203,7 +219,7 @@ export class DesktopPaper extends PaperBase {
         if(xnor(drag, this._drag)) return;
         if((this._drag = drag)) {
             Main.layoutManager.trackChrome(this);
-            let draggable = makeDraggable(this, { dragActorOpacity: 200 });
+            let draggable = makeDraggable(this, {dragActorOpacity: 200});
             draggable._dragActorDropped = event => {
                 draggable._dragCancellable = false;
                 draggable._dragComplete(); // emit after this to assure hidden
