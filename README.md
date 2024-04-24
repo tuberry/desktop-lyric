@@ -19,12 +19,6 @@ meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For contributing translations:
-
-```bash
-bash ./cli/update-po.sh your_lang_code # default to $LANG
-```
-
 For older versions (< 44), it's recommended to install via:
 
 ### E.G.O
@@ -35,13 +29,36 @@ For older versions (< 44), it's recommended to install via:
 
 ![dlpref](https://user-images.githubusercontent.com/17917040/155883047-593e79cb-9647-4c9c-bbbd-665c90719305.png)
 
-
 ## Notes
 
 * High CPU usage;
 * The missing lyrics will be downloaded from [NCM];
-* The lyric ([LRC] format) filename format is ~~`Title-Artist1,Artist2.lrc`~~(**no longer in use, please delete them**)`Title-Artist1,Artist2-Album.lrc`;
+* The lyric ([LRC] format) filename format is `Title-Artist1,Artist2-Album.lrc`;
 * Draw at an even pace so that exact synchronization with the song is not guaranteed;
+
+## Contributions
+
+Any contribution is welcome.
+
+### Ideas
+
+For any question or idea, feel free to open an issue or PR in the repo.
+
+### Translations
+
+To update the po file from sources:
+
+```bash
+bash ./cli/update-po.sh [your_lang_code] # like zh_CN, default to $LANG
+```
+
+### Developments
+
+To install GJS TypeScript type [definitions](https://www.npmjs.com/package/@girs/gnome-shell):
+
+```bash
+npm install @girs/gnome-shell --save-dev
+```
 
 ## Acknowledgements
 
