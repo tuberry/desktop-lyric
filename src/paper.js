@@ -15,7 +15,7 @@ import {makeDraggable} from 'resource:///org/gnome/shell/ui/dnd.js';
 
 import {Field} from './const.js';
 import {homolog, pickle} from './util.js';
-import {Setting, Source, degrade, connect} from './fubar.js';
+import {Setting, Source, connect} from './fubar.js';
 
 const time2ms = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha}, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
@@ -180,7 +180,7 @@ export class DesktopPaper extends PaperBase {
 
     $buildWidgets() {
         Main.uiGroup.add_child(this);
-        this.$src = degrade({drag: new Source(() => this.$genDraggable(), x => x?._dragComplete())}, this);
+        this.$src = Source.fuse({drag: new Source(() => this.$genDraggable(), x => x?._dragComplete())}, this);
         connect(this, St.ThemeContext.get_for_stage(global.stage), 'notify::scale-factor', () => this.$onFontPut());
     }
 

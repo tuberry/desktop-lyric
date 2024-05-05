@@ -3,7 +3,7 @@
 
 import Soup from 'gi://Soup';
 
-import {Mortal, Cancel, degrade, myself} from './fubar.js';
+import {Mortal, Source, myself} from './fubar.js';
 import {noop, id, homolog, decode, fopen, fwrite, fread, request, fdelete} from './util.js';
 
 const GETLRC = 'https://music.163.com/api/song/lyric?';
@@ -17,7 +17,7 @@ export class Lyric extends Mortal {
     constructor() {
         super();
         this.$http = new Soup.Session({timeout: 30});
-        this.$src = degrade({cancel: new Cancel()}, this);
+        this.$src = Source.fuse({cancel: Source.newCancel()}, this);
     }
 
     match({title: x, album: y, artist: z}, {name: u, album: {name: v}, artists: w}) {
@@ -36,7 +36,7 @@ export class Lyric extends Mortal {
             let [contents] = await fread(file, cancel);
             return decode(contents);
         } catch(e) {
-            if(Cancel.cancelled(e)) throw e;
+            if(Source.cancelled(e)) throw e;
             try {
                 let {lyric} = await this.fetch(song, cancel);
                 fwrite(file, lyric || ' ').catch(noop);

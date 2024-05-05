@@ -9,7 +9,7 @@ import {Mpris} from './mpris.js';
 import {noop, homolog, hook} from './util.js';
 import {DesktopPaper, PanelPaper} from './paper.js';
 import {SwitchItem, MenuItem, Systray} from './menu.js';
-import {Setting, Extension, Mortal, Source, view, degrade, myself, _} from './fubar.js';
+import {Setting, Extension, Mortal, Source, view, myself, _} from './fubar.js';
 
 class DesktopLyric extends Mortal {
     constructor(gset) {
@@ -20,7 +20,7 @@ class DesktopLyric extends Mortal {
 
     $buildWidgets(gset) {
         this.$set = new Setting(null, gset, this);
-        this.$src = degrade({
+        this.$src = Source.fuse({
             mpris: hook({
                 update: (_p, x) => this.setSong(x),
                 status: (_p, x) => this.setPlaying(x),
@@ -29,9 +29,9 @@ class DesktopLyric extends Mortal {
             }, new Mpris()),
             lyric: new Lyric(),
             paper: new Source(x => x ? new PanelPaper(this.$set) : new DesktopPaper(this.$set)), // above tray
-            play: new Source((x = this.span) => setInterval(() => this.setPosition(this.paper.moment + x + 0.625), x), clearInterval),
-            sync: new Source(x => setTimeout(x, 500), clearTimeout),
+            play: Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.625), x], false),
             tray: new Source(() => this.$genSystray()),
+            sync: Source.newTimer(x => [x, 500]),
         }, this);
     }
 
