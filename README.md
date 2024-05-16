@@ -32,8 +32,8 @@ For older versions (< 44), it's recommended to install via:
 ## Notes
 
 * High CPU usage;
-* The missing lyrics will be downloaded from [NCM];
-* The lyric ([LRC] format) filename format is `Title-Artist1,Artist2-Album.lrc`;
+* Prefer lyrics from `xseam:asText` in [Mpris metadata];
+* The lyrics ([LRC] format) filename format is `Title-Artist1,Artist2-Album.lrc`;
 * Draw at an even pace so that exact synchronization with the song is not guaranteed;
 
 ## Contributions
@@ -67,7 +67,7 @@ npm install @girs/gnome-shell --save-dev
 
 [license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [LRC]:https://en.wikipedia.org/wiki/LRC_(file_format)
-[NCM]:http://music.163.com/
 [lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
 [osdlyrics]:https://github.com/osdlyrics/osdlyrics
 [EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/
+[Mpris metadata]:https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext

@@ -48,13 +48,13 @@ class PaperBase extends St.DrawingArea {
 
     $bindSettings(set) {
         this.$set = set.attach({
-            acolor: [Field.ACLR, 'string', x => str2color(x, '#643296')],
-            icolor: [Field.ICLR, 'string', x => str2color(x, '#f5f5f5')],
+            activeColor:   [Field.ACLR, 'string', x => str2color(x, '#643296')],
+            inactiveColor: [Field.ICLR, 'string', x => str2color(x, '#f5f5f5')],
         }, this, () => this.$onColorPut());
     }
 
     $onColorPut() {
-        this.$homochromy = homolog(this.icolor, this.acolor);
+        this.$homochromy = homolog(this.inactiveColor, this.activeColor);
     }
 
     setSpan(span) {
@@ -118,10 +118,10 @@ class PaperBase extends St.DrawingArea {
     $colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
         let gd = this.orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
-        gd.addColorStopRGBA(0, ...this.acolor);
-        gd.addColorStopRGBA(this.$pos, ...this.acolor);
-        gd.addColorStopRGBA(this.$pos, ...this.icolor);
-        gd.addColorStopRGBA(1, ...this.icolor);
+        gd.addColorStopRGBA(0, ...this.activeColor);
+        gd.addColorStopRGBA(this.$pos, ...this.activeColor);
+        gd.addColorStopRGBA(this.$pos, ...this.inactiveColor);
+        gd.addColorStopRGBA(1, ...this.inactiveColor);
         cr.moveTo(Math.min(w - this.$pos * pw, 0), 0);
         cr.setSource(gd);
     }
@@ -137,21 +137,21 @@ export class PanelPaper extends PaperBase {
     }
 
     $bindSettings(set) {
-        this.$natural_width = 0;
+        this.$naturalWidth = 0;
         super.$bindSettings(set);
         connect(this, Main.panel.statusArea.quickSettings, 'style-changed', () => this.$onStyleChange());
     }
 
     $onStyleChange() {
         let theme = Main.panel.statusArea.quickSettings.get_theme_node(),
-            fgcolor = theme.get_foreground_color(),
-            [hue,, saturation] = Clutter.Color.new(...this.acolor?.map(x => x * 255) ?? Array(4).fill(255)).to_hls(),
-            color = Clutter.Color.from_hls(hue, fgcolor.to_hls().at(1) > 0.5 ? 0.6 : 0.4, saturation);
-        this.acolor = color2rgba(color, fgcolor.alpha);
-        this.icolor = this.$homochromy ? this.acolor : color2rgba(fgcolor);
+            fgColor = theme.get_foreground_color(),
+            [hue,, saturation] = Clutter.Color.new(...this.activeColor?.map(x => x * 255) ?? Array(4).fill(255)).to_hls(),
+            color = Clutter.Color.from_hls(hue, fgColor.to_hls().at(1) > 0.5 ? 0.6 : 0.4, saturation);
+        this.activeColor = color2rgba(color, fgColor.alpha);
+        this.inactiveColor = this.$homochromy ? this.activeColor : color2rgba(fgColor);
         this.$font = theme.get_font();
         let [w, h] = Main.panel.get_size();
-        this.$max_width = w / 4;
+        this.$maxWidth = w / 4;
         this.set_height(h);
     }
 
@@ -162,13 +162,13 @@ export class PanelPaper extends PaperBase {
 
     setMoment(moment) {
         super.setMoment(moment);
-        this.set_width(Math.min(this.$max_width, this.$natural_width + 4));
+        this.set_width(Math.min(this.$maxWidth, this.$naturalWidth + 4));
     }
 
     $setupLayout(cr, h, pl) {
         super.$setupLayout(cr, h, pl);
         let [pw, ph] = pl.get_pixel_size();
-        this.$natural_width = pw;
+        this.$naturalWidth = pw;
         cr.translate(0, (h - ph) / 2);
     }
 }
@@ -181,28 +181,28 @@ export class DesktopPaper extends PaperBase {
     $buildWidgets() {
         Main.uiGroup.add_child(this);
         this.$src = Source.fuse({drag: new Source(() => this.$genDraggable(), x => x?._dragComplete())}, this);
-        connect(this, St.ThemeContext.get_for_stage(global.stage), 'notify::scale-factor', () => this.$onFontPut());
+        connect(this, St.ThemeContext.get_for_stage(global.stage), 'notify::scale-factor', () => this.$onFontNamePut());
     }
 
     $bindSettings(set) {
         this.$buildWidgets();
         super.$bindSettings(set);
-        this.$set_if = new Setting({
+        this.$setIf = new Setting({
             scaling: ['text-scaling-factor', 'double'],
-        }, 'org.gnome.desktop.interface', this, () => this.$onFontPut());
+        }, 'org.gnome.desktop.interface', this, () => this.$onFontNamePut());
         this.$set.attach({
-            drag:   [Field.DRAG, 'boolean', x => this.$onDragSet(x)],
-            orient: [Field.ORNT, 'uint',    x => this.$onOrientSet(x)],
-            ocolor: [Field.OCLR, 'string',  x => str2color(x, '#000F')],
-            place:  [Field.SITE, 'value',   x => x.deepUnpack(), x => this.set_position(...x)],
+            drag:     [Field.DRAG, 'boolean', x => this.$onDragSet(x)],
+            orient:   [Field.ORNT, 'uint',    x => this.$onOrientSet(x)],
+            outColor: [Field.OCLR, 'string',  x => str2color(x, '#000F')],
+            place:    [Field.SITE, 'value',   x => x.deepUnpack(), x => this.set_position(...x)],
         }, this).attach({
-            font:   [Field.FONT, 'string'],
-        }, this, () => this.$onFontPut());
+            fontName: [Field.FONT, 'string'],
+        }, this, () => this.$onFontNamePut());
     }
 
-    $onFontPut() {
+    $onFontNamePut() {
         let factor = St.ThemeContext.get_for_stage(global.stage).scaleFactor;
-        this.$font = Pango.FontDescription.from_string(this.font ?? 'Sans 11');
+        this.$font = Pango.FontDescription.from_string(this.fontName ?? 'Sans 11');
         this.$font.set_size(this.$font.get_size() * factor * (this.scaling ?? 1));
     }
 
@@ -244,8 +244,8 @@ export class DesktopPaper extends PaperBase {
             cr.rotate(Math.PI / 2);
         }
         super.$showLayout(cr, pl);
-        if(this.ocolor[3] > 0) {
-            cr.setSourceRGBA(...this.ocolor);
+        if(this.outColor[3] > 0) {
+            cr.setSourceRGBA(...this.outColor);
             PangoCairo.layout_path(cr, pl);
             cr.stroke();
         }

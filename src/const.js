@@ -7,6 +7,7 @@ export const Field = {
     FONT: 'font-name',
     SITE: 'lyric-place',
     ACLR: 'active-color',
+    ONLN: 'online-lyrics',
     TIDX: 'systray-index',
     OCLR: 'outline-color',
     ICLR: 'inactive-color',

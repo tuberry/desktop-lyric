@@ -27,7 +27,7 @@ class DesktopLyric extends Mortal {
                 closed: (_p, x) => this.setVisible(!x),
                 seeked: (_p, x) => this.setPosition(x),
             }, new Mpris()),
-            lyric: new Lyric(),
+            lyric: new Lyric(this.$set),
             paper: new Source(x => x ? new PanelPaper(this.$set) : new DesktopPaper(this.$set)), // above tray
             play: Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.625), x], false),
             tray: new Source(() => this.$genSystray()),
@@ -41,7 +41,6 @@ class DesktopLyric extends Mortal {
 
     $bindSettings() {
         this.$set.attach({
-            path: [Field.PATH, 'string',  x => { this.$src.lyric.location = x; }],
             drag: [Field.DRAG, 'boolean', x => this.$menu?.drag.setToggleState(x)],
             mini: [Field.MINI, 'boolean', x => this.$onMiniSet(x)],
             tray: [Field.TIDX, 'uint',    x => this.$onTraySet(x)],

@@ -23,8 +23,9 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
         this.$blk = UI.block({
             FONT: new UI.Font(),
             DRAG: new UI.Switch(),
+            ONLN: new UI.Switch(),
             SPAN: new UI.Spin(20, 500, 10),
-            PATH: new UI.File({select_folder: true}),
+            PATH: new UI.File({folder: true}),
             ACLR: new UI.Color({title: _('Active color')}),
             OCLR: new UI.Color({title: _('Outline color')}),
             ICLR: new UI.Color({title: _('Inactive color')}),
@@ -36,6 +37,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
     $buildUI() {
         [
             [[_('Mobilize'), _('Allow dragging to displace')], this.$blk.DRAG],
+            [[_('Online lyrics'), _('Download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
             [[_('Systray position')],  this.$blk.TIDX],
             [[_('Refresh interval')],  this.$blk.SPAN],
             [[_('Lyric orientation')], this.$blk.ORNT],

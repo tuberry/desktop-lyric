@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-12 14:38+0800\n"
+"POT-Creation-Date: 2024-05-16 17:35+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,111 +17,121 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:342
+#: src/ui.js:339
 msgid "All"
 msgstr "全部"
 
-#: src/ui.js:342
+#: src/ui.js:339
 msgid "Normal"
 msgstr "常规"
 
-#: src/ui.js:342
+#: src/ui.js:339
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:380
+#: src/ui.js:377
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:482
+#: src/ui.js:476
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:625
+#: src/ui.js:619
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
-#: src/prefs.js:28
+#: src/prefs.js:29
 msgid "Active color"
 msgstr "已唱颜色"
 
-#: src/prefs.js:29
+#: src/prefs.js:30
 msgid "Outline color"
 msgstr "轮廓颜色"
 
-#: src/prefs.js:30
+#: src/prefs.js:31
 msgid "Inactive color"
 msgstr "未唱颜色"
 
-#: src/prefs.js:31
+#: src/prefs.js:32
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:31
+#: src/prefs.js:32
 msgid "Vertical"
 msgstr "竖直"
 
-#: src/prefs.js:32
+#: src/prefs.js:33
 msgid "Left"
 msgstr "左侧"
 
-#: src/prefs.js:32
+#: src/prefs.js:33
 msgid "Center"
 msgstr "中间"
 
-#: src/prefs.js:32
+#: src/prefs.js:33
 msgid "Right"
 msgstr "右侧"
 
-#: src/prefs.js:38 src/extension.js:145
+#: src/prefs.js:39 src/extension.js:144
 msgid "Mobilize"
 msgstr "解锁位置"
 
-#: src/prefs.js:38
+#: src/prefs.js:39
 msgid "Allow dragging to displace"
 msgstr "允许拖拽以更改位置"
 
-#: src/prefs.js:39
+#: src/prefs.js:40
+msgid "Online lyrics"
+msgstr "在线歌词"
+
+#: src/prefs.js:40
+msgid ""
+"Download missing lyrics from <a href=\"https://music.163.com\">Netease "
+"Cloud</a>"
+msgstr "从<a href=\"https://music.163.com\">网易云</a>下载缺失歌词"
+
+#: src/prefs.js:41
 msgid "Systray position"
 msgstr "托盘位置"
 
-#: src/prefs.js:40
+#: src/prefs.js:42
 msgid "Refresh interval"
 msgstr "刷新间隔"
 
-#: src/prefs.js:41
+#: src/prefs.js:43
 msgid "Lyric orientation"
 msgstr "歌词方向"
 
-#: src/prefs.js:42
+#: src/prefs.js:44
 msgid "Lyric location"
 msgstr "歌词位置"
 
-#: src/prefs.js:43
+#: src/prefs.js:45
 msgid "Lyric colors"
 msgstr "歌词颜色"
 
-#: src/prefs.js:44
+#: src/prefs.js:46
 msgid "Font name"
 msgstr "字体名称"
 
-#: src/extension.js:143
+#: src/extension.js:142
 msgid "Invisiblize"
 msgstr "隐藏"
 
-#: src/extension.js:144
+#: src/extension.js:143
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/extension.js:147
+#: src/extension.js:146
 msgid "Redownload"
 msgstr "重新下载"
 
-#: src/extension.js:148
+#: src/extension.js:147
 msgid "Resynchronize"
 msgstr "重新同步"
 
-#: src/extension.js:150
+#: src/extension.js:149
 msgid "Settings"
 msgstr "设置"
 
@@ -133,9 +143,6 @@ msgstr "设置"
 
 #~ msgid "Unlock position"
 #~ msgstr "解锁位置"
-
-#~ msgid "Hide lyric"
-#~ msgstr "隐藏歌词"
 
 #~ msgid "0.5s Slower"
 #~ msgstr "减慢半秒"
