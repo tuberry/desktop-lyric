@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-05-16 17:35+0800\n"
+"POT-Creation-Date: 2024-05-21 22:34+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -29,7 +29,7 @@ msgstr "常规"
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:377
+#: src/ui.js:378
 msgid "Clear"
 msgstr "清除"
 
@@ -37,7 +37,7 @@ msgstr "清除"
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:619
+#: src/ui.js:612
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
