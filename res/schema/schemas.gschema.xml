@@ -13,6 +13,10 @@
         <default>true</default>
         <summary>auto download missing lyrics</summary>
     </key>
+    <key type="b" name="show-progress">
+        <default>true</default>
+        <summary>show lyric progress</summary>
+    </key>
     <key type="u" name="systray-index">
         <default>0</default>
         <summary>systray index (0 - left, 1 - middle, 2 - right)</summary>

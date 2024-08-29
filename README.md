@@ -1,9 +1,8 @@
 # desktop-lyric
 
 Show the lyric of playing songs on the desktop.
->很多歌消失了。 —— *汪曾祺 《徙》*<br>
+>很多歌消失了。 —— *汪曾祺 《徙》*\
 [![license]](/LICENSE.md)
-<br>
 
 ![bee](https://user-images.githubusercontent.com/17917040/107332354-08111f80-6aef-11eb-9c7a-f8799c834501.png)
 
@@ -19,7 +18,7 @@ meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For older versions (< 44), it's recommended to install via:
+For older versions, it's recommended to install via:
 
 ### E.G.O
 
@@ -27,7 +26,7 @@ For older versions (< 44), it's recommended to install via:
 
 ## Features
 
-![dlpref](https://user-images.githubusercontent.com/17917040/155883047-593e79cb-9647-4c9c-bbbd-665c90719305.png)
+![dlpref](https://github.com/user-attachments/assets/ec12edb5-d4a0-4e9e-aec6-db37baecb3c6)
 
 ## Notes
 

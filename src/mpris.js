@@ -6,8 +6,8 @@ import Shell from 'gi://Shell';
 
 import {loadInterfaceXML} from 'resource:///org/gnome/shell/misc/fileUtils.js';
 
-import {id, vmap, pickle, noop} from './util.js';
 import {DBusProxy, Mortal, Source} from './fubar.js';
+import {id, vmap, pickle, noop, string} from './util.js';
 
 const MPRIS_IFACE = loadInterfaceXML('org.mpris.MediaPlayer2');
 const MPRIS_PLAYER_IFACE = `<node>
@@ -20,8 +20,6 @@ const MPRIS_PLAYER_IFACE = `<node>
   </interface>
 </node>`;
 
-const isStr = x => typeof x === 'string';
-
 export class Mpris extends Mortal {
     constructor() {
         super();
@@ -29,9 +27,9 @@ export class Mpris extends Mortal {
             dbus: new DBusProxy('org.freedesktop.DBus', '/org/freedesktop/DBus', x => x && this.$onMprisChange(), null,
                 ['NameOwnerChanged', (_p, _s, [name, old, neo]) => { if(neo && !old) this.$buildMpris(name).catch(noop); }]),
             mpris: new Source(x => new DBusProxy(x, '/org/mpris/MediaPlayer2', y => y && this.$src.player.revive(y.gName),
-                ['notify::g-name-owner', this.$onMprisChange.bind(this)], null, MPRIS_IFACE)),
-            player: new Source(x => new DBusProxy(x, '/org/mpris/MediaPlayer2', this.$onPlayerReady.bind(this),
-                ['g-properties-changed', this.$onPlayerChange.bind(this)],
+                ['notify::g-name-owner', (...xs) => this.$onMprisChange(...xs)], null, MPRIS_IFACE)),
+            player: new Source(x => new DBusProxy(x, '/org/mpris/MediaPlayer2', (...xs) => this.$onPlayerReady(...xs),
+                ['g-properties-changed', (...xs) => this.$onPlayerChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)], MPRIS_PLAYER_IFACE)),
         }, this);
     }
@@ -45,8 +43,9 @@ export class Mpris extends Mortal {
     async $buildMpris(name) {
         if(this.$src.mpris.active) return;
         if(!name.startsWith('org.mpris.MediaPlayer2.')) throw Error('non mpris');
-        let {DesktopEntry} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
-        let cat = Shell.AppSystem.get_default().lookup_app(`${DesktopEntry ?? ''}.desktop`)?.get_app_info().get_string('Categories').split(';');
+        let {DesktopEntry, Identity} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2'),
+            app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0] : null,
+            cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_string('Categories').split(';') : null;
         // HACK: allow terminal music apps (no DesktopEntry), see also https://gitlab.gnome.org/GNOME/glib/-/issues/1584
         if(cat && (!cat.includes('AudioVideo') || cat.includes('Video'))) throw Error('non musical');
         this.$src.mpris.summon(name);
@@ -71,10 +70,10 @@ export class Mpris extends Mortal {
             'xesam:title': title, 'xesam:artist': artist, 'xesam:asText': lyric,
             'xesam:album': album, 'mpris:length': length = 0,
         } = vmap(data, v => v.deepUnpack());
-        if(!isStr(title) || !title) return;
+        if(!string(title) || !title) return;
         this.emit('update', {
-            artist: artist?.every?.(isStr) ? artist.flatMap(x => x.split('/')).filter(id).sort() : [],
-            length: length / 1000, album: isStr(album) ? album : '', lyric: isStr(lyric) ? lyric : null, title,
+            artist: artist?.every?.(string) ? artist.flatMap(x => x.split('/')).filter(id).sort() : [],
+            length: length / 1000, album: string(album) ? album : '', lyric: string(lyric) ? lyric : null, title,
         });
     }
 

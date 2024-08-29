@@ -54,7 +54,7 @@ class DesktopLyric extends Mortal {
             this.$src.paper.revive(mini);
             this.loadLyric();
         }
-        if(mini) this.$src.tray.hub.append(this.paper);
+        if(mini) this.$src.tray.hub.addToBox(this.paper);
         view(!mini, this.$menu?.drag);
     }
 
