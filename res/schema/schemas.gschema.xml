@@ -39,18 +39,6 @@
         <default>"Sans 12"</default>
         <summary>font of text</summary>
     </key>
-    <key type="s" name="active-color">
-        <default>"rgba(150, 100, 200, 1)"</default>
-        <summary>active lyric color</summary>
-    </key>
-    <key type="s" name="inactive-color">
-        <default>"rgba(240, 240, 240, 1)"</default>
-        <summary>inactive lyric color</summary>
-    </key>
-    <key type="s" name="outline-color">
-        <default>"rgba(0, 0, 0, 0)"</default>
-        <summary>lyric outline color</summary>
-    </key>
     <key type="(uu)" name="lyric-place">
         <default>(200, 200)</default>
         <summary>lyric place</summary>
