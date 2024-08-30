@@ -14,9 +14,7 @@ import {makeDraggable} from 'resource:///org/gnome/shell/ui/dnd.js';
 
 import {Field} from './const.js';
 import {pickle} from './util.js';
-import {Setting, Source, connect} from './fubar.js';
-
-const ThemeContext = St.ThemeContext.get_for_stage(global.stage);
+import {Setting, Source, connect, stageTheme} from './fubar.js';
 
 const time2ms = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha}, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
@@ -49,7 +47,7 @@ class PaperBase extends St.DrawingArea {
     $buildWidgets() {
         this.$clearLyric();
         this.$onColorChange();
-        connect(this, ThemeContext, 'changed', () => this.$onColorChange());
+        connect(this, stageTheme(), 'changed', () => this.$onColorChange());
     }
 
     $bindSettings(set) {
@@ -163,7 +161,7 @@ export class PanelPaper extends PaperBase {
     }
 
     $onColorChange() {
-        this.activeColor = color2rgba(ThemeContext.get_accent_color()[0]);
+        this.activeColor = color2rgba(stageTheme().get_accent_color()[0]);
     }
 
     setMoment(moment) {
@@ -187,7 +185,7 @@ export class DesktopPaper extends PaperBase {
     $buildWidgets() {
         super.$buildWidgets();
         Main.uiGroup.add_child(this);
-        connect(this, ThemeContext, 'notify::scale-factor', () => this.$onFontNamePut());
+        connect(this, stageTheme(), 'notify::scale-factor', () => this.$onFontNamePut());
         this.$src = Source.fuse({drag: new Source(() => this.$genDraggable(), x => x?._dragComplete())}, this);
     }
 
@@ -210,14 +208,13 @@ export class DesktopPaper extends PaperBase {
     }
 
     $onColorChange() {
-        [this.activeColor, this.inactiveColor] = ThemeContext.get_accent_color().map(x => color2rgba(x, 128));
+        [this.activeColor, this.inactiveColor] = stageTheme().get_accent_color().map(x => color2rgba(x, 128));
         this.outlineColor = this.inactiveColor.map(x => 1 - x).with(3, 0.2);
     }
 
     $onFontNamePut() {
-        let factor = ThemeContext.scaleFactor;
         this.$font = Pango.FontDescription.from_string(this.fontName ?? 'Sans 11');
-        this.$font.set_size(this.$font.get_size() * factor * (this.scaling ?? 1));
+        this.$font.set_size(this.$font.get_size() * stageTheme().scaleFactor * (this.scaling ?? 1));
     }
 
     $genDraggable() {
