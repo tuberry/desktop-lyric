@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-29 02:27+0800\n"
+"POT-Creation-Date: 2024-08-31 00:29+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -41,13 +41,17 @@ msgstr "文件类型不匹配"
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/prefs.js:30
+#: src/prefs.js:29
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:30
+#: src/prefs.js:29
 msgid "Vertical"
 msgstr "竖直"
+
+#: src/prefs.js:30
+msgid "Unit: millisecond"
+msgstr "单位: 毫秒"
 
 #: src/prefs.js:31
 msgid "Left"
@@ -61,17 +65,17 @@ msgstr "中间"
 msgid "Right"
 msgstr "右侧"
 
-#: src/prefs.js:37 src/extension.js:144
-msgid "Mobilize"
-msgstr "解锁位置"
+#: src/prefs.js:37
+msgid "_Mobilize"
+msgstr "解锁位置(_M)"
 
 #: src/prefs.js:37
 msgid "Allow dragging to displace"
 msgstr "允许拖拽以变更位置"
 
 #: src/prefs.js:38
-msgid "Online lyrics"
-msgstr "在线歌词"
+msgid "_Online lyrics"
+msgstr "在线歌词(_O)"
 
 #: src/prefs.js:38
 msgid ""
@@ -80,28 +84,28 @@ msgid ""
 msgstr "从<a href=\"https://music.163.com\">网易云</a>下载缺失歌词"
 
 #: src/prefs.js:39
-msgid "Show progress"
-msgstr "显示进度"
+msgid "_Show progress"
+msgstr "显示进度(_S)"
 
 #: src/prefs.js:40
-msgid "Systray position"
-msgstr "托盘位置"
+msgid "S_ystray position"
+msgstr "托盘位置(_Y)"
 
 #: src/prefs.js:41
-msgid "Refresh interval"
-msgstr "刷新间隔"
+msgid "_Refresh interval"
+msgstr "刷新间隔(_R)"
 
 #: src/prefs.js:42
-msgid "Lyric orientation"
-msgstr "歌词方向"
+msgid "_Lyric orientation"
+msgstr "歌词方向(_L)"
 
 #: src/prefs.js:43
-msgid "Lyric location"
-msgstr "歌词位置"
+msgid "Lyr_ic location"
+msgstr "歌词位置(_I)"
 
 #: src/prefs.js:44
-msgid "Font name"
-msgstr "字体名称"
+msgid "_Font name"
+msgstr "字体名称(_F)"
 
 #: src/extension.js:142
 msgid "Invisiblize"
@@ -110,6 +114,10 @@ msgstr "隐藏"
 #: src/extension.js:143
 msgid "Minimize"
 msgstr "最小化"
+
+#: src/extension.js:144
+msgid "Mobilize"
+msgstr "解锁位置"
 
 #: src/extension.js:146
 msgid "Redownload"

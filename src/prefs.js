@@ -25,23 +25,23 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             DRAG: new UI.Switch(),
             ONLN: new UI.Switch(),
             PRGR: new UI.Switch(),
-            SPAN: new UI.Spin(20, 500, 10),
             PATH: new UI.File({folder: true}),
             ORNT: new UI.Drop([_('Horizontal'), _('Vertical')]),
+            SPAN: new UI.Spin(20, 500, 10, _('Unit: millisecond')),
             TIDX: new UI.Drop([_('Left'), _('Center'), _('Right')]),
         }, gset);
     }
 
     $buildUI() {
         [
-            [[_('Mobilize'),           _('Allow dragging to displace')], this.$blk.DRAG],
-            [[_('Online lyrics'),      _('Download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
-            [[_('Show progress')],     this.$blk.PRGR],
-            [[_('Systray position')],  this.$blk.TIDX],
-            [[_('Refresh interval')],  this.$blk.SPAN],
-            [[_('Lyric orientation')], this.$blk.ORNT],
-            [[_('Lyric location')],    this.$blk.PATH],
-            [[_('Font name')],         this.$blk.FONT],
+            [[_('_Mobilize'),           _('Allow dragging to displace')], this.$blk.DRAG],
+            [[_('_Online lyrics'),      _('Download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
+            [[_('_Show progress')],     this.$blk.PRGR],
+            [[_('S_ystray position')],  this.$blk.TIDX],
+            [[_('_Refresh interval')],  this.$blk.SPAN],
+            [[_('_Lyric orientation')], this.$blk.ORNT],
+            [[_('Lyr_ic location')],    this.$blk.PATH],
+            [[_('_Font name')],         this.$blk.FONT],
         ].forEach(xs => this.add(new UI.PrefRow(...xs)));
     }
 }
