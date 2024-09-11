@@ -16,7 +16,7 @@ import {Field} from './const.js';
 import {pickle} from './util.js';
 import {Setting, Source, connect, stageTheme} from './fubar.js';
 
-const time2ms = time => time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000; // '1:1' => 61000 ms
+const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha}, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
@@ -72,11 +72,15 @@ class PaperBase extends St.DrawingArea {
     }
 
     setText(text) {
-        this.$text = new Map(text.split(/\n/)
-            .flatMap(x => (i => i > 0 ? [[x.slice(0, i), x.slice(i).trim()]] : [])(x.lastIndexOf(']') + 1))
-            .flatMap(([t, l]) => t.match(/(?<=\[)[.:\d]+(?=])/g)?.map(x => [Math.round(time2ms(x)), l]) ?? [])
+        this.$text = text.split(/\n/)
+            .flatMap(x => {
+                let i = x.lastIndexOf(']') + 1;
+                if(i === 0) return [];
+                let l = x.slice(i).trim();
+                return x.slice(0, i).match(/(?<=\[)[.:\d]+(?=])/g)?.map(t => [time2ms(t), l]) ?? [];
+            })
             .sort(([x], [y]) => x - y)
-            .map(([t, l], i, a) => [t, [(a[i + 1]?.[0] ?? Math.max(this.$span, t)) - t, l]]));
+            .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$span, t)) - t, l]), new Map());
         this.$tags = Array.from(this.$text.keys());
     }
 
@@ -107,7 +111,7 @@ class PaperBase extends St.DrawingArea {
         if(index < 0) return [0, this.song];
         let key = this.$tags[index];
         let [len, lrc] = this.$text.get(key);
-        return [len > 0 ? (now - key) / len : 1, lrc];
+        return [len > 0 ? (now - key) / len : 0, lrc];
     }
 
     $setupLayout(_cr, _h, pl) {
@@ -117,7 +121,7 @@ class PaperBase extends St.DrawingArea {
 
     $colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
-        cr.moveTo(Math.min(w - this.$pos * pw, 0), 0);
+        cr.moveTo(pw > w ? this.$pos * (w - pw) : 0, 0);
         if(this.homochromy) {
             cr.setSourceRGBA(...this.homochromyColor);
         } else {
@@ -152,7 +156,7 @@ export class PanelPaper extends PaperBase {
         this.$font = theme.get_font();
         this.inactiveColor = color2rgba(theme.get_foreground_color());
         let [w, h] = Main.panel.get_size();
-        this.$maxWidth = w / 4;
+        this.$maxWidth = w / 3;
         this.set_height(h);
     }
 
@@ -231,13 +235,8 @@ export class DesktopPaper extends PaperBase {
 
     $onDragSet(drag) {
         if(drag === this.drag) return;
-        if(drag) {
-            Main.layoutManager.trackChrome(this);
-            this.set_style('border: 0.2em blue;');
-        } else {
-            Main.layoutManager.untrackChrome(this);
-            this.set_style('');
-        }
+        if(drag) Main.layoutManager.trackChrome(this);
+        else Main.layoutManager.untrackChrome(this);
         this.reactive = drag;
         this.$src.drag.toggle(drag);
         Shell.util_set_hidden_from_pick(this, !drag);

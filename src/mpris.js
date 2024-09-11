@@ -47,7 +47,7 @@ export class Mpris extends Mortal {
             app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0] : null,
             cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_string('Categories').split(';') : null;
         // HACK: allow terminal music apps (no DesktopEntry), see also https://gitlab.gnome.org/GNOME/glib/-/issues/1584
-        if(cat && (!cat.includes('AudioVideo') || cat.includes('Video'))) throw Error('non musical');
+        if(cat?.reduce((p, x) => { p[0] &&= x !== 'AudioVideo'; p[1] ||= x === 'Video'; return p; }, [true, false]).some(id)) throw Error('non musical');
         this.$src.mpris.summon(name);
     }
 

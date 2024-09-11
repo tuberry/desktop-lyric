@@ -11,7 +11,7 @@ const GETLRC = 'https://music.163.com/api/song/lyric?';
 const SEARCH = 'https://music.163.com/api/search/get/web?';
 
 export class Lyric extends Mortal {
-    static format({title, artist, album}, sepTile = ' ', sepArtist = ' ', useAlbum = false) {
+    static name({title, artist, album}, sepTile = ' ', sepArtist = ' ', useAlbum = false) {
         return [title, artist.join(sepArtist), useAlbum ? album : ''].filter(id).join(sepTile);
     }
 
@@ -32,7 +32,7 @@ export class Lyric extends Mortal {
     }
 
     async fetch(song, client, cancel = null) {
-        let {songs} = JSON.parse(await request('POST', SEARCH, {s: Lyric.format(song), limit: '30', type: '1'}, cancel, client)).result;
+        let {songs} = JSON.parse(await request('POST', SEARCH, {s: Lyric.name(song), limit: '30', type: '1'}, cancel, client)).result;
         return JSON.parse(await request('GET', GETLRC, {id: songs.find(x => this.match(song, x)).id.toString(), lv: '1'}, cancel, client)).lrc; // kv: '0', tv: '0'
     }
 
@@ -59,11 +59,11 @@ export class Lyric extends Mortal {
         fdelete(file).catch(noop); // ignore NOT_FOUND
         let {uuid} = myself(),
             path = this.filename(song) || song.title,
-            info = encodeURIComponent(Lyric.format(song));
+            info = encodeURIComponent(Lyric.name(song));
         console.warn(`[${uuid}]`, `failed to download <${path}>, see: ${SEARCH}s=${info}&limit=30&type=1 and ${GETLRC}&id=&lv=1`);
     }
 
     filename(song) {
-        return this.path ? `${this.path}/${Lyric.format(song, '-', ',', true).replaceAll('/', '／')}.lrc` : '';
+        return this.path ? `${this.path}/${Lyric.name(song, '-', ',', true).replaceAll('/', '／')}.lrc` : '';
     }
 }

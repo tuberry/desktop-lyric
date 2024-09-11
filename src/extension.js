@@ -30,7 +30,7 @@ class DesktopLyric extends Mortal {
             lyric: new Lyric(this.$set),
             paper: new Source(x => x ? new PanelPaper(this.$set) : new DesktopPaper(this.$set)), // above tray
             play: Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.625), x], false),
-            tray: new Source(() => this.$genSystray()),
+            tray: new Source(x => this.$genSystray(x)),
             sync: Source.newTimer(x => [x, 500]),
         }, this);
     }
@@ -64,7 +64,7 @@ class DesktopLyric extends Mortal {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
-        this.$src.tray.revive();
+        this.$src.tray.revive(tray);
         this.$onMiniSet(this.mini);
     }
 
@@ -116,7 +116,7 @@ class DesktopLyric extends Mortal {
 
     setLyric(text) {
         if(!this.paper) return;
-        this.paper.song = this.mini ? Lyric.format(this.song, ' - ', '/') : '';
+        this.paper.song = this.mini ? Lyric.name(this.song, ' - ', '/') : '';
         this.paper.setSpan(this.song.length);
         this.paper.setText(text);
         this.setPlaying(this.$src.mpris.status);
@@ -137,7 +137,7 @@ class DesktopLyric extends Mortal {
         return this.$src.tray.hub?.$menu;
     }
 
-    $genSystray() {
+    $genSystray(tray) {
         return new Systray({
             hide:   new SwitchItem(_('Invisiblize'), false, () => this.$viewPaper()),
             mini:   new SwitchItem(_('Minimize'), this.mini, x => this.$set.set('mini', x, this)),
@@ -147,7 +147,7 @@ class DesktopLyric extends Mortal {
             resync: new MenuItem(_('Resynchronize'), () => this.syncPosition().catch(noop)),
             sep1:   new PopupMenu.PopupSeparatorMenuItem(),
             prefs:  new MenuItem(_('Settings'), () => myself().openPreferences()),
-        }, 'lyric-symbolic', this.tray ? 0 : 5, ['left', 'center', 'right'][this.tray] ?? 'left', {visible: this.visible});
+        }, 'lyric-symbolic', tray ? 0 : 5, ['left', 'center', 'right'][tray] ?? 'left', {visible: this.visible});
     }
 }
 
