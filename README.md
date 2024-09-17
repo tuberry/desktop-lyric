@@ -31,17 +31,11 @@ For older versions, it's recommended to install via:
 ## Notes
 
 * High CPU usage;
-* Prefer lyrics from `xseam:asText` in [Mpris metadata];
-* The lyrics ([LRC] format) filename format is `Title-Artist1,Artist2-Album.lrc`;
 * Draw at an even pace so that exact synchronization with the song is not guaranteed;
 
 ## Contributions
 
-Any contribution is welcome.
-
-### Ideas
-
-For any question or idea, feel free to open an issue or PR in the repo.
+Feel free to open an issue or PR in the repo for any question or idea.
 
 ### Translations
 
@@ -65,8 +59,6 @@ npm install @girs/gnome-shell --save-dev
 * [osdlyrics]: some names
 
 [license]:https://img.shields.io/badge/license-GPLv3+-green.svg
-[LRC]:https://en.wikipedia.org/wiki/LRC_(file_format)
 [lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
 [osdlyrics]:https://github.com/osdlyrics/osdlyrics
 [EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/
-[Mpris metadata]:https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext

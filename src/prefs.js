@@ -15,35 +15,35 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
 
     constructor(gset) {
         super();
-        this.$buildWidgets(gset);
-        this.$buildUI();
+        this.#buildWidgets(gset);
+        this.#buildUI();
     }
 
-    $buildWidgets(gset) {
-        this.$blk = UI.block({
+    #buildWidgets(gset) {
+        this.$blk = UI.tie({
             FONT: new UI.Font(),
             DRAG: new UI.Switch(),
             ONLN: new UI.Switch(),
             PRGR: new UI.Switch(),
+            SPAN: new UI.Spin(20, 500, 10),
             PATH: new UI.File({folder: true}),
             ORNT: new UI.Drop([_('Horizontal'), _('Vertical')]),
-            SPAN: new UI.Spin(20, 500, 10, _('Unit: millisecond')),
-            TIDX: new UI.Drop([_('Left'), _('Center'), _('Right')]),
+            AREA: new UI.Drop([_('Left'), _('Center'), _('Right')]),
         }, gset);
     }
 
-    $buildUI() {
-        [
-            [[_('_Mobilize'),           _('Allow dragging to displace')], this.$blk.DRAG],
-            [[_('_Online lyrics'),      _('Download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
-            [[_('_Show progress')],     this.$blk.PRGR],
-            [[_('S_ystray position')],  this.$blk.TIDX],
-            [[_('_Refresh interval')],  this.$blk.SPAN],
+    #buildUI() {
+        UI.addActRows([
+            [[_('_Mobilize'), _('Allow dragging to displace')], this.$blk.DRAG],
+            [[_('_Show progress'), _('Prefer <a href="https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext">lyrics from Mpris metadata</a>')], this.$blk.PRGR],
+            [[_('_Online lyrics'), _('Try to download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
+            [[_('S_ystray position')], this.$blk.AREA],
+            [[_('_Refresh interval'), _('Unit: millisecond')], this.$blk.SPAN],
             [[_('_Lyric orientation')], this.$blk.ORNT],
-            [[_('Lyr_ic location')],    this.$blk.PATH],
-            [[_('_Font name')],         this.$blk.FONT],
-        ].forEach(xs => this.add(new UI.PrefRow(...xs)));
+            [[_('Lyr_ic location'), _('<a href="https://en.wikipedia.org/wiki/LRC_(file_format)">LRC</a> filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], this.$blk.PATH],
+            [[_('_Font name')], this.$blk.FONT],
+        ], this);
     }
 }
 
-export default class PrefsWidget extends UI.Prefs { $klass = DesktopLyricPrefs; }
+export default class Prefs extends UI.Prefs { $klass = DesktopLyricPrefs; }

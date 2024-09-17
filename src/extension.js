@@ -6,86 +6,106 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Field} from './const.js';
 import {Lyric} from './lyric.js';
 import {Mpris} from './mpris.js';
-import {noop, homolog, hook} from './util.js';
-import {DesktopPaper, PanelPaper} from './paper.js';
-import {SwitchItem, MenuItem, Systray} from './menu.js';
-import {Setting, Extension, Mortal, Source, view, myself, _} from './fubar.js';
+import * as Util from './util.js';
+import * as Menu from './menu.js';
+import * as Fubar from './fubar.js';
+import * as Paper from './paper.js';
 
-class DesktopLyric extends Mortal {
+const {_} = Fubar;
+
+class DesktopLyric extends Fubar.Mortal {
     constructor(gset) {
         super();
-        this.$buildWidgets(gset);
-        this.$bindSettings();
+        this.#bindSettings(gset);
+        this.#buildSources();
     }
 
-    $buildWidgets(gset) {
-        this.$set = new Setting(null, gset, this);
-        this.$src = Source.fuse({
-            mpris: hook({
+    #bindSettings(gset) {
+        this.$set = new Fubar.Setting(gset, {
+            area: [Field.AREA, 'uint',    null, () => this.#onAreaSet()],
+            mini: [Field.MINI, 'boolean', null, () => this.#onMiniSet()],
+            span: [Field.SPAN, 'uint',    null, x => this.$src.play.reload(x)],
+            drag: [Field.DRAG, 'boolean', null, x => this.tray.$menu.drag.setToggleState(x)],
+        }, this);
+    }
+
+    #buildSources() {
+        let sync  = Fubar.Source.newTimer(x => [x, 500]),
+            tray  = Fubar.Source.new(() => this.#genSystray(), true),
+            play  = Fubar.Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.225), x], false),
+            paper = Fubar.Source.new(() => this.mini ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this.$set), true),
+            lyric = new Lyric(this.$set),
+            mpris = Util.hook({
                 update: (_p, x) => this.setSong(x),
                 status: (_p, x) => this.setPlaying(x),
                 closed: (_p, x) => this.setVisible(!x),
                 seeked: (_p, x) => this.setPosition(x),
-            }, new Mpris()),
-            lyric: new Lyric(this.$set),
-            paper: new Source(x => x ? new PanelPaper(this.$set) : new DesktopPaper(this.$set)), // above tray
-            play: Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.625), x], false),
-            tray: new Source(x => this.$genSystray(x)),
-            sync: Source.newTimer(x => [x, 500]),
-        }, this);
+            }, new Mpris());
+        this.$src = Fubar.Source.tie({play, paper, tray, sync, lyric, mpris}, this); // NOTE: `paper` prior `tray` to avoid double free
     }
 
     get paper() {
         return this.$src.paper.hub;
     }
 
-    $bindSettings() {
-        this.$set.attach({
-            drag: [Field.DRAG, 'boolean', x => this.$menu?.drag.setToggleState(x)],
-            mini: [Field.MINI, 'boolean', x => this.$onMiniSet(x)],
-            tray: [Field.TIDX, 'uint',    x => this.$onTraySet(x)],
-            span: [Field.SPAN, 'uint',    x => this.$src.play.reload(x)],
-        }, this);
+    get tray() {
+        return this.$src.tray.hub;
     }
 
-    $onMiniSet(mini) {
-        if(!this.$src.tray.active) return;
-        if(this.mini !== mini || !this.paper) {
-            this.$src.paper.revive(mini);
-            this.loadLyric();
-        }
-        if(mini) this.$src.tray.hub.addToBox(this.paper);
-        view(!mini, this.$menu?.drag);
+    #genSystray() {
+        return new Menu.Systray({
+            hide: new Menu.SwitchItem(_('Invisiblize'), false, () => this.#viewPaper()),
+            mini: new Menu.SwitchItem(_('Minimize'), this.mini, x => this.$set.set('mini', x, this)),
+            drag: this.mini ? null : this.#genDragItem(),
+            sep0: new PopupMenu.PopupSeparatorMenuItem(),
+            sync: new Menu.Item(_('Resynchronize'), () => this.syncPosition().catch(Util.noop)),
+            load: new Menu.Item(_('Reload'), () => this.loadLyric(true)),
+            sep1: new PopupMenu.PopupSeparatorMenuItem(),
+            sets: new Menu.Item(_('Settings'), () => Fubar.me().openPreferences()),
+        }, 'lyric-symbolic', this.area ? 0 : 5, ['left', 'center', 'right'][this.area] ?? 'left', {visible: this.visible});
     }
 
-    $onTraySet(tray) {
-        if(this.tray === tray) return;
+    #viewPaper() {
+        Fubar.view(this.$src.mpris.status && !this.tray.$menu.hide.state, this.paper);
+    }
+
+    #genDragItem() {
+        return new Menu.SwitchItem(_('Mobilize'), this.drag, x => this.$set.set('drag', x, this));
+    }
+
+    #onMiniSet() {
+        Menu.record(!this.mini, this.tray, () => this.#genDragItem(), 'drag', 'sep0');
+        this.$src.paper.revive(this.mini);
+        this.loadLyric();
+    }
+
+    #onAreaSet() {
         if(this.mini) {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
-        this.$src.tray.revive(tray);
-        this.$onMiniSet(this.mini);
+        this.$src.tray.revive();
+        this.#onMiniSet();
     }
 
     setPlaying(playing) {
-        this.$viewPaper();
+        this.#viewPaper();
         this.$src.play.toggle(playing && this.paper);
     }
 
     setVisible(visible) {
         this.visible = visible;
+        Fubar.view(visible, this.tray);
         if(!visible) this.clearLyric();
-        view(visible, this.$src.tray.hub);
     }
 
     async syncPosition() {
         this.$src.sync.dispel();
         let len = this.song.length;
-        let pos = await this.$src.mpris.getPosition().catch(noop);
+        let pos = await this.$src.mpris.getPosition().catch(Util.noop);
         for(let i = 0; pos && (pos === this.$pos || !len || len - pos < 2000) && i < 7; i++) {
             await new Promise(resolve => this.$src.sync.revive(resolve));
-            pos = await this.$src.mpris.getPosition().catch(noop);
+            pos = await this.$src.mpris.getPosition().catch(Util.noop);
         } // HACK: workaround for stale positions from buggy NCM mpris when changing songs
         this.setPosition((this.$pos = pos) + 50);
     }
@@ -95,8 +115,8 @@ class DesktopLyric extends Mortal {
     }
 
     setSong(song) {
-        if(homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
-            this.paper?.setSpan(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
+        if(Util.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
+            this.paper?.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
             this.syncPosition();
         } else {
             this.song = song;
@@ -108,17 +128,17 @@ class DesktopLyric extends Mortal {
         if(!this.song) return;
         if(this.song.lyric === null) {
             this.setLyric('');
-            this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(noop);
+            this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(Util.noop);
         } else {
             this.setLyric(this.song.lyric);
         }
     }
 
-    setLyric(text) {
+    setLyric(lyrics) {
         if(!this.paper) return;
         this.paper.song = this.mini ? Lyric.name(this.song, ' - ', '/') : '';
-        this.paper.setSpan(this.song.length);
-        this.paper.setText(text);
+        this.paper.setLength(this.song.length);
+        this.paper.setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
         this.syncPosition();
     }
@@ -128,27 +148,6 @@ class DesktopLyric extends Mortal {
         this.paper.clearLyric();
         delete this.song;
     }
-
-    $viewPaper() {
-        view(this.$src.mpris.status && !this.$menu?.hide.state, this.paper);
-    }
-
-    get $menu() {
-        return this.$src.tray.hub?.$menu;
-    }
-
-    $genSystray(tray) {
-        return new Systray({
-            hide:   new SwitchItem(_('Invisiblize'), false, () => this.$viewPaper()),
-            mini:   new SwitchItem(_('Minimize'), this.mini, x => this.$set.set('mini', x, this)),
-            drag:   new SwitchItem(_('Mobilize'), this.drag, x => this.$set.set('drag', x, this)),
-            sep0:   new PopupMenu.PopupSeparatorMenuItem(),
-            reload: new MenuItem(_('Redownload'), () => this.loadLyric(true)),
-            resync: new MenuItem(_('Resynchronize'), () => this.syncPosition().catch(noop)),
-            sep1:   new PopupMenu.PopupSeparatorMenuItem(),
-            prefs:  new MenuItem(_('Settings'), () => myself().openPreferences()),
-        }, 'lyric-symbolic', tray ? 0 : 5, ['left', 'center', 'right'][tray] ?? 'left', {visible: this.visible});
-    }
 }
 
-export default class MyExtension extends Extension { $klass = DesktopLyric; }
+export default class Extension extends Fubar.Extension { $klass = DesktopLyric; }

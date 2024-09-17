@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-09-04 07:26+0800\n"
+"POT-Creation-Date: 2021-08-18 14:05+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,41 +17,37 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "All"
 msgstr "全部"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "Normal"
 msgstr "常规"
 
-#: src/ui.js:329
+#: src/ui.js:343
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:368
+#: src/ui.js:382
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:466
+#: src/ui.js:480
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:600
+#: src/ui.js:615
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/prefs.js:29
+#: src/prefs.js:30
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:29
+#: src/prefs.js:30
 msgid "Vertical"
 msgstr "竖直"
-
-#: src/prefs.js:30
-msgid "Unit: millisecond"
-msgstr "单位: 毫秒"
 
 #: src/prefs.js:31
 msgid "Left"
@@ -74,18 +70,26 @@ msgid "Allow dragging to displace"
 msgstr "允许拖拽以变更位置"
 
 #: src/prefs.js:38
-msgid "_Online lyrics"
-msgstr "在线歌词(_O)"
+msgid "_Show progress"
+msgstr "显示进度(_S)"
 
 #: src/prefs.js:38
 msgid ""
-"Download missing lyrics from <a href=\"https://music.163.com\">Netease "
-"Cloud</a>"
-msgstr "从<a href=\"https://music.163.com\">网易云</a>下载缺失歌词"
+"Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
+"metadata/#xesam:astext\">lyrics from Mpris metadata</a>"
+msgstr ""
+"<a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
+"metadata/#xesam:astext\">Mpris 元数据提供的歌词</a>优先"
 
 #: src/prefs.js:39
-msgid "_Show progress"
-msgstr "显示进度(_S)"
+msgid "_Online lyrics"
+msgstr "在线歌词(_O)"
+
+#: src/prefs.js:39
+msgid ""
+"Try to download missing lyrics from <a href=\"https://music.163."
+"com\">Netease Cloud</a>"
+msgstr "尝试从<a href=\"https://music.163.com\">网易云</a>下载缺失歌词"
 
 #: src/prefs.js:40
 msgid "S_ystray position"
@@ -95,6 +99,10 @@ msgstr "托盘位置(_Y)"
 msgid "_Refresh interval"
 msgstr "刷新间隔(_R)"
 
+#: src/prefs.js:41
+msgid "Unit: millisecond"
+msgstr "单位: 毫秒"
+
 #: src/prefs.js:42
 msgid "_Lyric orientation"
 msgstr "歌词方向(_L)"
@@ -103,33 +111,41 @@ msgstr "歌词方向(_L)"
 msgid "Lyr_ic location"
 msgstr "歌词位置(_I)"
 
+#: src/prefs.js:43
+msgid ""
+"<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">LRC</a> filename "
+"format: <i>Title-Artist1,Artist2-Album.lrc</i>"
+msgstr ""
+"<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">歌词</a>文件名格"
+"式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
+
 #: src/prefs.js:44
 msgid "_Font name"
 msgstr "字体名称(_F)"
 
-#: src/extension.js:142
+#: src/extension.js:57
 msgid "Invisiblize"
 msgstr "隐藏"
 
-#: src/extension.js:143
+#: src/extension.js:58
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/extension.js:144
-msgid "Mobilize"
-msgstr "解锁位置"
-
-#: src/extension.js:146
-msgid "Redownload"
-msgstr "重新下载"
-
-#: src/extension.js:147
+#: src/extension.js:61
 msgid "Resynchronize"
 msgstr "重新同步"
 
-#: src/extension.js:149
+#: src/extension.js:62
+msgid "Reload"
+msgstr "重新加载"
+
+#: src/extension.js:64
 msgid "Settings"
 msgstr "设置"
+
+#: src/extension.js:73
+msgid "Mobilize"
+msgstr "解锁位置"
 
 #~ msgid "Active color"
 #~ msgstr "已唱颜色"
