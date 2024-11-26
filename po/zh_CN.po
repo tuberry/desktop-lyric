@@ -123,6 +123,15 @@ msgstr ""
 msgid "_Font name"
 msgstr "字体名称(_F)"
 
+#: src/prefs.js:46
+msgid "F_allback"
+msgstr "备选歌词(_a)"
+
+#: src/prefs.js: 46
+msgid ""
+"Use the first search result when lyrics can not be matched precisely."
+msgstr "当搜索结果不能精确匹配时使用第一个搜索结果"
+
 #: src/extension.js:57
 msgid "Invisiblize"
 msgstr "隐藏"

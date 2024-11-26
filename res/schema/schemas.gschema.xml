@@ -31,6 +31,10 @@
         <default>60</default>
         <summary>lyric refresh interval (ms)</summary>
     </key>
+    <key type="b" name="lyric-fallback">
+        <default>true</default>
+        <summary>fallback when not match</summary>
+    </key>
     <key type="s" name="lyric-location">
         <default>""</default>
         <summary>location to save and read lyrics</summary>

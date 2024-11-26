@@ -29,6 +29,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             PATH: new UI.File({folder: true}),
             ORNT: new UI.Drop([_('Horizontal'), _('Vertical')]),
             AREA: new UI.Drop([_('Left'), _('Center'), _('Right')]),
+            FABK: new UI.Switch(),
         }, gset);
     }
 
@@ -42,6 +43,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             [[_('_Lyric orientation')], this.$blk.ORNT],
             [[_('Lyr_ic location'), _('<a href="https://en.wikipedia.org/wiki/LRC_(file_format)">LRC</a> filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], this.$blk.PATH],
             [[_('_Font name')], this.$blk.FONT],
+            [[_('F_allback'), _('Use the first search result when lyrics can not be matched precisely.')], this.$blk.FABK],
         ], this);
     }
 }
