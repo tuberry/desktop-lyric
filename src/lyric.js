@@ -56,14 +56,14 @@ export class Lyric extends Fubar.Mortal {
             return Util.decode(contents);
         } catch(e) {
             if(Fubar.Source.cancelled(e) || !this.$src.client.active) throw e;
-            // try {
+            try {
                 let {lyric} = await this.fetch(song, this.$src.client.hub, cancel);
                 Util.fwrite(file, lyric || ' ').catch(Util.noop);
                 return lyric;
-            // } catch(e1) {
-            //     if(reload) this.warn(song, file);
-            //     throw e1;
-            // }
+            } catch(e1) {
+                if(reload) this.warn(song, file);
+                throw e1;
+            }
         }
     }
 
