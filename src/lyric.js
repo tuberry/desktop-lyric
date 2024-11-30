@@ -25,6 +25,7 @@ export class Lyric extends Fubar.Mortal {
         this.$set = set.attach({
             folder: [Field.PATH, 'string'],
             online: [Field.ONLN, 'boolean', null, x => this.$src.client.toggle(x)],
+            fallback: [Field.FABK, 'boolean', null, () => {}],
         }, this);
     }
 
@@ -40,7 +41,11 @@ export class Lyric extends Fubar.Mortal {
 
     async fetch(song, client, cancel = null) {
         let {songs} = JSON.parse(await Util.request('POST', SEARCH, {s: Lyric.name(song), limit: '30', type: '1'}, cancel, client)).result;
-        return JSON.parse(await Util.request('GET', GETLRC, {id: songs.find(x => this.match(song, x)).id.toString(), lv: '1'}, cancel, client)).lrc; // kv: '0', tv: '0'
+        console.warn("Desktop Lyric: fetched", this.online);
+        if(this.fallback)
+            return JSON.parse(await Util.request('GET', GETLRC, {id: songs.find(x => (this.match(song, x)) || songs[0]).id.toString(), lv: '1'}, cancel, client)).lrc; // kv: '0', tv: '0'
+        else
+            return JSON.parse(await Util.request('GET', GETLRC, {id: songs.find(x => this.match(song, x)).id.toString(), lv: '1'}, cancel, client)).lrc; // kv: '0', tv: '0'
     }
 
     async load(song, reload, cancel = this.$src.cancel.reborn()) {

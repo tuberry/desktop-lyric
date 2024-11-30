@@ -12,4 +12,5 @@ export const Field = {
     PATH: 'lyric-location',
     SPAN: 'refresh-interval',
     ORNT: 'lyric-orientation',
+    FABK: 'lyric-fallback',
 };
