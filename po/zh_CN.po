@@ -41,39 +41,43 @@ msgstr "文件类型不匹配"
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/prefs.js:30
+#: src/prefs.js:27
+msgid "NetEase Cloud"
+msgstr "网易云"
+
+#: src/prefs.js:31
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:30
+#: src/prefs.js:31
 msgid "Vertical"
 msgstr "竖直"
 
-#: src/prefs.js:31
+#: src/prefs.js:32
 msgid "Left"
 msgstr "左侧"
 
-#: src/prefs.js:31
+#: src/prefs.js:32
 msgid "Center"
 msgstr "中间"
 
-#: src/prefs.js:31
+#: src/prefs.js:32
 msgid "Right"
 msgstr "右侧"
 
-#: src/prefs.js:37
+#: src/prefs.js:39
 msgid "_Mobilize"
 msgstr "解锁位置(_M)"
 
-#: src/prefs.js:37
+#: src/prefs.js:39
 msgid "Allow dragging to displace"
 msgstr "允许拖拽以变更位置"
 
-#: src/prefs.js:38
+#: src/prefs.js:40
 msgid "_Show progress"
 msgstr "显示进度(_S)"
 
-#: src/prefs.js:38
+#: src/prefs.js:40
 msgid ""
 "Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
 "metadata/#xesam:astext\">lyrics from Mpris metadata</a>"
@@ -81,37 +85,40 @@ msgstr ""
 "<a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
 "metadata/#xesam:astext\">Mpris 元数据提供的歌词</a>优先"
 
-#: src/prefs.js:39
+#: src/prefs.js:41
 msgid "_Online lyrics"
 msgstr "在线歌词(_O)"
 
-#: src/prefs.js:39
+#: src/prefs.js:41
 msgid ""
-"Try to download missing lyrics from <a href=\"https://music.163."
-"com\">Netease Cloud</a>"
-msgstr "尝试从<a href=\"https://music.163.com\">网易云</a>下载缺失歌词"
+"Try to download missing lyrics from the specified online provider"
+msgstr "尝试从指定的在线提供方下载缺失歌词"
 
-#: src/prefs.js:40
+#: src/prefs.js:42
+msgid "Online _provider"
+msgstr "在线提供方(_N)"
+
+#: src/prefs.js:43
 msgid "S_ystray position"
 msgstr "托盘位置(_Y)"
 
-#: src/prefs.js:41
+#: src/prefs.js:44
 msgid "_Refresh interval"
 msgstr "刷新间隔(_R)"
 
-#: src/prefs.js:41
+#: src/prefs.js:44
 msgid "Unit: millisecond"
 msgstr "单位: 毫秒"
 
-#: src/prefs.js:42
+#: src/prefs.js:45
 msgid "_Lyric orientation"
 msgstr "歌词方向(_L)"
 
-#: src/prefs.js:43
+#: src/prefs.js:46
 msgid "Lyr_ic location"
 msgstr "歌词位置(_I)"
 
-#: src/prefs.js:43
+#: src/prefs.js:46
 msgid ""
 "<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">LRC</a> filename "
 "format: <i>Title-Artist1,Artist2-Album.lrc</i>"
@@ -119,15 +126,15 @@ msgstr ""
 "<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">歌词</a>文件名格"
 "式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
 
-#: src/prefs.js:44
+#: src/prefs.js:47
 msgid "_Font name"
 msgstr "字体名称(_F)"
 
-#: src/prefs.js:46
+#: src/prefs.js:48
 msgid "F_allback"
 msgstr "备选歌词(_a)"
 
-#: src/prefs.js: 46
+#: src/prefs.js:48
 msgid ""
 "Use the first search result when lyrics can not be matched precisely."
 msgstr "当搜索结果不能精确匹配时使用第一个搜索结果"

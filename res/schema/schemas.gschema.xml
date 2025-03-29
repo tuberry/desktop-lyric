@@ -13,6 +13,10 @@
         <default>true</default>
         <summary>auto download missing lyrics</summary>
     </key>
+    <key type="u" name="online-provider">
+        <default>0</default>
+        <summary>online lyric provider (0 - ncm, 1 - lrclib)</summary>
+    </key>
     <key type="b" name="show-progress">
         <default>true</default>
         <summary>show lyric playing progress</summary>
