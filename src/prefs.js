@@ -24,6 +24,7 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
             FONT: new UI.Font(),
             DRAG: new UI.Switch(),
             ONLN: new UI.Switch(),
+            PROV: new UI.Drop([_('NetEase Cloud'), _('LRCLIB')]),
             PRGR: new UI.Switch(),
             SPAN: new UI.Spin(20, 500, 10),
             PATH: new UI.File({folder: true}),
@@ -37,7 +38,8 @@ class DesktopLyricPrefs extends Adw.PreferencesGroup {
         UI.addActRows([
             [[_('_Mobilize'), _('Allow dragging to displace')], this.$blk.DRAG],
             [[_('_Show progress'), _('Prefer <a href="https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext">lyrics from Mpris metadata</a>')], this.$blk.PRGR],
-            [[_('_Online lyrics'), _('Try to download missing lyrics from <a href="https://music.163.com">Netease Cloud</a>')], this.$blk.ONLN],
+            [[_('_Online lyrics'), _('Try to download missing lyrics from the specified online provider')], this.$blk.ONLN],
+            [[_('O_nline provider')], this.$blk.PROV],
             [[_('S_ystray position')], this.$blk.AREA],
             [[_('_Refresh interval'), _('Unit: millisecond')], this.$blk.SPAN],
             [[_('_Lyric orientation')], this.$blk.ORNT],

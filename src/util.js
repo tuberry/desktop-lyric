@@ -105,8 +105,9 @@ export function pickle(value, tuple = true, number = 'u') { // value: JSON-compa
     })(value);
 }
 
-export async function request(method, url, param, cancel = null, session = new Soup.Session()) {
+export async function request(method, url, param, header = null, cancel = null, session = new Soup.Session()) {
     let msg = param ? Soup.Message.new_from_encoded_form(method, url, Soup.form_encode_hash(param)) : Soup.Message.new(method, url);
+    header && Object.keys(header).forEach(k => msg.request_headers.append(k, header[k]));
     let ans = await session.send_and_read_async(msg, GLib.PRIORITY_DEFAULT, cancel);
     if(msg.statusCode !== Soup.Status.OK) throw Error(msg.get_reason_phrase());
     return decode(ans.get_data());

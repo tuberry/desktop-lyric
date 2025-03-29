@@ -8,6 +8,7 @@ export const Field = {
     SITE: 'lyric-place',
     AREA: 'systray-area',
     ONLN: 'online-lyrics',
+    PROV: 'online-provider',
     PRGR: 'show-progress',
     PATH: 'lyric-location',
     SPAN: 'refresh-interval',
