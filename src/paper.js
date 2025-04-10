@@ -6,19 +6,18 @@ import Meta from 'gi://Meta';
 import Cairo from 'gi://cairo';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
-import GObject from 'gi://GObject';
 import PangoCairo from 'gi://PangoCairo';
 
+import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import {lerp} from 'resource:///org/gnome/shell/misc/util.js';
-import {makeDraggable} from 'resource:///org/gnome/shell/ui/dnd.js';
+import * as MiscUtil from 'resource:///org/gnome/shell/misc/util.js';
 
-import {Field} from './const.js';
-import * as Util from './util.js';
-import * as Fubar from './fubar.js';
+import * as T from './util.js';
+import * as F from './fubar.js';
+import {Key as K} from './const.js';
 
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
-const color2rgba = ({red, green, blue, alpha}, alpha0) => [red, green, blue, alpha0 ?? alpha].map(x => x / 255);
+const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255).concat(opacity ?? alpha / 255);
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
     if(sorted[upper] <= value) {
@@ -36,24 +35,22 @@ function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sor
 
 class PaperBase extends St.DrawingArea {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(set, param) {
         super(param);
         this.#clearLyric();
-        this.$buildWidgets();
         this.$bindSettings(set);
+        this.$buildWidgets();
     }
 
     $bindSettings(set) {
-        this.$set = set.attach({
-            homochromy: [Field.PRGR, 'boolean', x => !x],
-        }, this, () => { this.$lrc = `\u200b${this.$lrc}`; this.queue_repaint(); }); // NOTE: force redrawing
+        this.$set = set.tie([[K.PRGR, x => !x]], this, () => { this.$lrc = `\u{200b}${this.$lrc}`; this.queue_repaint(); }); // NOTE: force redrawing
     }
 
     $buildWidgets() {
-        Fubar.connect(this, Fubar.getTheme(), 'changed', Util.thunk(() => this.$onColorChange()));
+        F.connect(this, F.theme(), 'changed', T.thunk(() => this.$onColorChange()));
     }
 
     vfunc_repaint() {
@@ -89,10 +86,10 @@ class PaperBase extends St.DrawingArea {
     $colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
         cr.moveTo(pw > w ? this.$pos * (w - pw) : 0, 0);
-        if(this.homochromy) {
+        if(this[K.PRGR]) {
             cr.setSourceRGBA(...this.homochromyColor);
         } else {
-            let gd = this.orient ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
+            let gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
             gd.addColorStopRGBA(0, ...this.activeColor);
             gd.addColorStopRGBA(this.$pos, ...this.activeColor);
             gd.addColorStopRGBA(this.$pos, ...this.inactiveColor);
@@ -121,19 +118,19 @@ class PaperBase extends St.DrawingArea {
         this.moment = moment;
         let {$pos, $lrc: $txt} = this;
         [this.$pos, this.$lrc] = this.getLyric();
-        if(!this.visible || (this.$pos === $pos || this.homochromy) && this.$lrc === $txt) return;
+        if(!this.visible || (this.$pos === $pos || this[K.PRGR]) && this.$lrc === $txt) return;
         this.queue_repaint();
     }
 
     setLyrics(lyrics) {
         this.$lrcs = lyrics.split(/\n/)
-            .flatMap(x => {
+            .reduce((p, x) => {
                 let i = x.lastIndexOf(']') + 1;
-                if(i === 0) return [];
+                if(i === 0) return p;
                 let l = x.slice(i).trim();
-                return x.slice(0, i).match(/(?<=\[)[.:\d]+(?=])/g)?.map(t => [time2ms(t), l]) ?? [];
-            })
-            .sort(([x], [y]) => x - y)
+                x.slice(0, i).match(/(?<=\[)[.:\d]+(?=])/g)?.forEach(t => p.push([time2ms(t), l]));
+                return p;
+            }, []).sort(([x], [y]) => x - y)
             .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len, t)) - t, l]), new Map());
         this.$tags = Array.from(this.$lrcs.keys());
     }
@@ -141,7 +138,7 @@ class PaperBase extends St.DrawingArea {
 
 export class Panel extends PaperBase {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
     constructor(tray, ...args) {
@@ -150,8 +147,8 @@ export class Panel extends PaperBase {
     }
 
     $buildWidgets() {
+        F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', T.thunk(() => this.$onStyleChange()));
         this.$naturalWidth = 0;
-        Fubar.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', Util.thunk(() => this.$onStyleChange()));
         super.$buildWidgets();
     }
 
@@ -159,10 +156,10 @@ export class Panel extends PaperBase {
         let theme = Main.panel.statusArea.quickSettings.get_theme_node();
         this.$font = theme.get_font();
         this.inactiveColor = color2rgba(theme.get_foreground_color());
-        this.$onColorChange();
         let [w, h] = Main.panel.get_size();
         this.$maxWidth = w / 3;
         this.set_height(h);
+        this.$onColorChange();
     }
 
     get homochromyColor() {
@@ -170,7 +167,7 @@ export class Panel extends PaperBase {
     }
 
     $onColorChange() {
-        this.activeColor = color2rgba(Fubar.getTheme().get_accent_color()[0]).map((x, i) => lerp(x, this.inactiveColor[i], 0.2));
+        this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => MiscUtil.lerp(x, this.inactiveColor[i], 0.2));
     }
 
     setMoment(moment) {
@@ -188,28 +185,31 @@ export class Panel extends PaperBase {
 
 export class Desktop extends PaperBase {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
+    }
+
+    constructor(drag, ...args) {
+        super(...args);
+        this.setDrag(drag);
     }
 
     $buildWidgets() {
         super.$buildWidgets();
         Main.uiGroup.add_child(this);
-        Fubar.connect(this, Fubar.getTheme(), 'notify::scale-factor', () => this.$onFontSet());
-        this.$src = Fubar.Source.tie({drag: new Fubar.Source(() => this.$genDraggable(), x => x?._dragComplete())}, this);
+        F.connect(this, F.theme(), 'notify::scale-factor', T.thunk(() => this.$onFontSet()));
+        this.$src = F.Source.tie({drag: new F.Source(() => this.$genDraggable(), x => x._dragComplete())}, this);
     }
 
     $bindSettings(set) {
         super.$bindSettings(set);
-        this.$setIf = new Fubar.Setting('org.gnome.desktop.interface', {
-            scaling: ['text-scaling-factor', 'double'],
-        }, this, null, () => this.$onFontSet());
-        this.$set.attach({
-            drag:   [Field.DRAG, 'boolean', x => this.$onDragSet(x)],
-            orient: [Field.ORNT, 'uint',    x => this.$onOrientSet(x)],
-            place:  [Field.SITE, 'value',   x => Util.seq(y => this.set_position(...y), x.deepUnpack(), null, true)],
-        }, this).attach({
-            fontName: [Field.FONT, 'string'],
-        }, this, () => this.$onFontSet());
+        this.$setIF = new F.Setting('org.gnome.desktop.interface', [
+            [['scaling', 'text-scaling-factor']],
+        ], this, null, () => this.$onFontSet());
+        this.$set.tie([
+            [K.ORNT, x => this.$onOrientSet(x)],
+            [K.OPCT, x => x / 100, () => this.$onColorChange()],
+            [K.SITE, x => T.seq(y => this.set_position(...y), x), null, true],
+        ], this).tie([K.FONT], this, null, () => this.$onFontSet());
     }
 
     get homochromyColor() {
@@ -217,24 +217,23 @@ export class Desktop extends PaperBase {
     }
 
     $onFontSet() {
-        this.$font = Pango.FontDescription.from_string(this.fontName ?? 'Sans 11');
-        this.$font.set_size(this.$font.get_size() * Fubar.getTheme().scaleFactor * (this.scaling ?? 1));
+        this.$font = Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 11');
+        this.$font.set_size(this.$font.get_size() * F.theme().scaleFactor * (this.scaling ?? 1));
     }
 
     $genDraggable() {
-        let drag = makeDraggable(this, {dragActorOpacity: 200});
-        drag._dragActorDropped = () => {
-            drag._dragComplete();
+        let ret = DND.makeDraggable(this, {dragActorOpacity: 200});
+        ret._dragActorDropped = () => {
+            ret._dragComplete();
             global.display.set_cursor(Meta.Cursor.DEFAULT);
-            this.$set.set('place', Util.pickle(this.get_position()), this);
-            this.$set.set('drag', false, this);
+            this.$set.set(K.SITE, this.get_position());
+            this.$set.set(K.DRAG, false);
             return true;
         };
-        return drag;
+        return ret;
     }
 
-    $onDragSet(drag) {
-        if(drag === this.drag) return;
+    setDrag(drag) {
         if(drag) Main.layoutManager.trackChrome(this);
         else Main.layoutManager.untrackChrome(this);
         this.reactive = drag;
@@ -248,12 +247,12 @@ export class Desktop extends PaperBase {
     }
 
     $onColorChange() {
-        [this.activeColor, this.inactiveColor] = Fubar.getTheme().get_accent_color().map(x => color2rgba(x, 128));
+        [this.activeColor, this.inactiveColor] = F.theme().get_accent_color().map(x => color2rgba(x, this[K.OPCT]));
         this.outlineColor = this.inactiveColor.map(x => 1 - x).with(3, 0.2);
     }
 
     $showLayout(cr, pl) {
-        if(this.orient) {
+        if(this[K.ORNT]) {
             pl.get_context().set_base_gravity(Pango.Gravity.EAST);
             cr.moveTo(pl.get_pixel_size().at(1), 0);
             cr.rotate(Math.PI / 2);

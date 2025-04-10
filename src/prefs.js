@@ -1,53 +1,53 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import Adw from 'gi://Adw';
-import GObject from 'gi://GObject';
-
 import * as UI from './ui.js';
+import * as T from './util.js';
+import {Key as K, URL} from './const.js';
 
 const {_} = UI;
 
-class DesktopLyricPrefs extends Adw.PreferencesGroup {
+class DesktopLyricPrefs extends UI.Page {
     static {
-        GObject.registerClass(this);
+        T.enrol(this);
     }
 
-    constructor(gset) {
-        super();
-        this.#buildWidgets(gset);
-        this.#buildUI();
+    $buildWidgets() {
+        return [
+            [K.FONT, new UI.Font()],
+            [K.DRAG, new UI.Switch()],
+            [K.ONLN, new UI.Switch()],
+            [K.PRGR, new UI.Switch()],
+            [K.FABK, new UI.Switch()],
+            [K.OPCT, new UI.Spin(20, 100, 1)],
+            [K.SPAN, new UI.Spin(20, 500, 10)],
+            [K.ORNT, new UI.Drop([_('Horizontal'), _('Vertical')])],
+            [K.PRVD, new UI.Drop([_('NetEase Cloud'), _('LRCLIB')])],
+            [K.AREA, new UI.Drop([_('Left'), _('Center'), _('Right')])],
+            [K.PATH, new UI.File({folder: true, size: true, open: true})],
+        ];
     }
 
-    #buildWidgets(gset) {
-        this.$blk = UI.tie({
-            FONT: new UI.Font(),
-            DRAG: new UI.Switch(),
-            ONLN: new UI.Switch(),
-            PROV: new UI.Drop([_('NetEase Cloud'), _('LRCLIB')]),
-            PRGR: new UI.Switch(),
-            SPAN: new UI.Spin(20, 500, 10),
-            PATH: new UI.File({folder: true}),
-            ORNT: new UI.Drop([_('Horizontal'), _('Vertical')]),
-            AREA: new UI.Drop([_('Left'), _('Center'), _('Right')]),
-            FABK: new UI.Switch(),
-        }, gset);
-    }
-
-    #buildUI() {
-        UI.addActRows([
-            [[_('_Mobilize'), _('Allow dragging to displace')], this.$blk.DRAG],
-            [[_('_Show progress'), _('Prefer <a href="https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext">lyrics from Mpris metadata</a>')], this.$blk.PRGR],
-            [[_('_Online lyrics'), _('Try to download missing lyrics from the specified online provider')], this.$blk.ONLN],
-            [[_('O_nline provider')], this.$blk.PROV],
-            [[_('S_ystray position')], this.$blk.AREA],
-            [[_('_Refresh interval'), _('Unit: millisecond')], this.$blk.SPAN],
-            [[_('_Lyric orientation')], this.$blk.ORNT],
-            [[_('Lyr_ic location'), _('<a href="https://en.wikipedia.org/wiki/LRC_(file_format)">LRC</a> filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], this.$blk.PATH],
-            [[_('_Font name')], this.$blk.FONT],
-            [[_('F_allback'), _('Use the first search result when lyrics can not be matched precisely.')], this.$blk.FABK],
-        ], this);
+    $buildUI() {
+        this.$add([null, [
+            [[_('_Show progress')], K.PRGR],
+            [[_('S_ystray position')], K.AREA],
+            [[_('_Refresh interval')], K.SPAN, UI.Spin.unit(_('ms'))],
+        ]], [[[_('Desktop')]], [
+            [[_('_Mobilize'), _('Allow dragging to displace')], K.DRAG],
+            [[_('_Opacity')], K.OPCT, UI.Spin.unit('%')],
+            [[_('_Font')], K.FONT],
+            [[_('Or_ientation')], K.ORNT],
+        ]], [[[_('Online'), _('Try to download and save the missing lyrics')], K.ONLN], [
+            [[_('_Provider'), _('Prefer <a href="https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext">lyrics from Mpris metadata</a>')],
+                new UI.Help(({h}) => [h(_('URL')), [
+                    [_('NetEase Cloud'), `<a href="${URL.NCM}">${URL.NCM}</a>`],
+                    [_('LRCLIB'), `<a href="${URL.LRCLIB}">${URL.LRCLIB}</a>`],
+                ]]), K.PRVD],
+            [[_('F_allback'), _('Use the first result when searches cannot be matched precisely')], K.FABK],
+            [[_('_Location'), _('Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], K.PATH],
+        ]]);
     }
 }
 
-export default class Prefs extends UI.Prefs { $klass = DesktopLyricPrefs; }
+export default class extends UI.Prefs { $klass = DesktopLyricPrefs; }

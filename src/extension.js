@@ -1,19 +1,18 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as T from './util.js';
+import * as M from './menu.js';
+import * as F from './fubar.js';
+import {Key as K} from './const.js';
 
-import {Field} from './const.js';
-import {Lyric} from './lyric.js';
-import {Mpris} from './mpris.js';
-import * as Util from './util.js';
-import * as Menu from './menu.js';
-import * as Fubar from './fubar.js';
+import Lyric from './lyric.js';
+import Mpris from './mpris.js';
 import * as Paper from './paper.js';
 
-const {_} = Fubar;
+const {_} = F;
 
-class DesktopLyric extends Fubar.Mortal {
+class DesktopLyric extends F.Mortal {
     constructor(gset) {
         super();
         this.#bindSettings(gset);
@@ -21,27 +20,28 @@ class DesktopLyric extends Fubar.Mortal {
     }
 
     #bindSettings(gset) {
-        this.$set = new Fubar.Setting(gset, {
-            area: [Field.AREA, 'uint',    null, () => this.#onAreaSet()],
-            mini: [Field.MINI, 'boolean', null, () => this.#onMiniSet()],
-            span: [Field.SPAN, 'uint',    null, x => this.$src.play.reload(x)],
-            drag: [Field.DRAG, 'boolean', null, x => this.tray.$menu.drag.setToggleState(x)],
-        }, this);
+        this.$set = new F.Setting(gset, [
+            [K.AREA, null, () => this.#onAreaSet()],
+            [K.MINI, null, () => this.#onMiniSet()],
+            [K.DRAG, null, x => this.#onDragSet(x)],
+            [K.SPAN, null, x => this.$src.play.reload(x)],
+        ], this);
     }
 
     #buildSources() {
-        let sync  = Fubar.Source.newTimer(x => [x, 500]),
-            tray  = Fubar.Source.new(() => this.#genSystray(), true),
-            play  = Fubar.Source.newTimer((x = this.span) => [() => this.setPosition(this.paper.moment + x + 0.225), x], false),
-            paper = Fubar.Source.new(() => this.mini ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this.$set), true),
+        let tray = F.Source.new(() => this.#genSystray(), true),
+            play = F.Source.newTimer((x = this[K.SPAN]) => [() => this.setPosition(this.paper.moment + x + 0.225), x], false),
+            paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
             lyric = new Lyric(this.$set),
-            mpris = Util.hook({
+            mpris = T.hook({
                 update: (_p, x) => this.setSong(x),
+                active: (_p, x) => this.setActive(x),
                 status: (_p, x) => this.setPlaying(x),
-                closed: (_p, x) => this.setVisible(!x),
                 seeked: (_p, x) => this.setPosition(x),
-            }, new Mpris());
-        this.$src = Fubar.Source.tie({play, paper, tray, sync, lyric, mpris}, this); // NOTE: `paper` prior `tray` to avoid double free
+            }, new Mpris()),
+            sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
+                async n => (x => this.$pos !== x && [x])(await mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500);
+        this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
     }
 
     get paper() {
@@ -53,34 +53,35 @@ class DesktopLyric extends Fubar.Mortal {
     }
 
     #genSystray() {
-        return new Menu.Systray({
-            hide: new Menu.SwitchItem(_('Invisiblize'), false, () => this.#viewPaper()),
-            mini: new Menu.SwitchItem(_('Minimize'), this.mini, x => this.$set.set('mini', x, this)),
-            drag: this.mini ? null : this.#genDragItem(),
-            sep0: new PopupMenu.PopupSeparatorMenuItem(),
-            sync: new Menu.Item(_('Resynchronize'), () => this.syncPosition().catch(Util.noop)),
-            load: new Menu.Item(_('Reload'), () => this.loadLyric(true)),
-            sep1: new PopupMenu.PopupSeparatorMenuItem(),
-            sets: new Menu.Item(_('Settings'), () => Fubar.me().openPreferences()),
-        }, 'lyric-symbolic', this.area ? 0 : 5, ['left', 'center', 'right'][this.area] ?? 'left', {visible: this.visible});
+        return new M.Systray({
+            hide: new M.SwitchItem(_('Invisiblize'), false, () => this.#viewPaper()),
+            mini: new M.SwitchItem(_('Minimize'), this[K.MINI], x => this.$set.set(K.MINI, x)),
+            drag: this[K.MINI] ? null : this.#genDragItem(),
+            sep0: new M.Separator(),
+            tidy: new M.Item(_('Unload'), () => { this.setLyric(''); this.$src.lyric.unload(this.song); }),
+            load: new M.Item(_('Reload'), () => this.loadLyric(true)),
+            // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
+            sep1: new M.Separator(),
+            sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
+        }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left', {visible: this.$src?.mpris.active ?? false});
     }
 
     #viewPaper() {
-        Fubar.view(this.$src.mpris.status && !this.tray.$menu.hide.state, this.paper);
+        F.view(this.$src.mpris.status && !this.tray.$menu.hide.state, this.paper);
     }
 
     #genDragItem() {
-        return new Menu.SwitchItem(_('Mobilize'), this.drag, x => this.$set.set('drag', x, this));
+        return new M.SwitchItem(_('Mobilize'), this[K.DRAG], x => this.$set.set(K.DRAG, x));
     }
 
     #onMiniSet() {
-        Menu.record(!this.mini, this.tray, () => this.#genDragItem(), 'drag', 'sep0');
-        this.$src.paper.revive(this.mini);
+        M.record(!this[K.MINI], this.tray, () => this.#genDragItem(), 'drag', 'sep0');
+        this.$src.paper.revive(this[K.MINI]);
         this.loadLyric();
     }
 
     #onAreaSet() {
-        if(this.mini) {
+        if(this[K.MINI]) {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
@@ -88,26 +89,23 @@ class DesktopLyric extends Fubar.Mortal {
         this.#onMiniSet();
     }
 
+    #onDragSet(drag) {
+        if(this[K.MINI]) return;
+        this.paper.setDrag(drag);
+        this.tray.$menu.drag.setToggleState(drag);
+    }
+
     setPlaying(playing) {
         this.#viewPaper();
         this.$src.play.toggle(playing && this.paper);
     }
 
-    setVisible(visible) {
-        this.visible = visible;
-        Fubar.view(visible, this.tray);
-        if(!visible) this.clearLyric();
-    }
-
-    async syncPosition() {
-        this.$src.sync.dispel();
-        let len = this.song.length;
-        let pos = await this.$src.mpris.getPosition().catch(Util.noop);
-        for(let i = 0; pos && (pos === this.$pos || !len || len - pos < 2000) && i < 7; i++) {
-            await new Promise(resolve => this.$src.sync.revive(resolve));
-            pos = await this.$src.mpris.getPosition().catch(Util.noop);
-        } // HACK: workaround for stale positions from buggy NCM mpris when changing songs
-        this.setPosition((this.$pos = pos) + 50);
+    setActive(active) {
+        F.view(active, this.tray);
+        if(active) return;
+        this.setPlaying(false);
+        this.paper.clearLyric();
+        delete this.song;
     }
 
     setPosition(pos) {
@@ -115,9 +113,9 @@ class DesktopLyric extends Fubar.Mortal {
     }
 
     setSong(song) {
-        if(Util.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
+        if(T.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
             this.paper?.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
-            this.syncPosition();
+            this.$src.sync.revive();
         } else {
             this.song = song;
             this.loadLyric();
@@ -128,7 +126,7 @@ class DesktopLyric extends Fubar.Mortal {
         if(!this.song) return;
         if(this.song.lyric === null) {
             this.setLyric('');
-            this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(Util.noop);
+            this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(T.nop);
         } else {
             this.setLyric(this.song.lyric);
         }
@@ -136,18 +134,12 @@ class DesktopLyric extends Fubar.Mortal {
 
     setLyric(lyrics) {
         if(!this.paper) return;
-        this.paper.song = this.mini ? Lyric.name(this.song, ' - ', '/') : '';
+        this.paper.song = this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '';
         this.paper.setLength(this.song.length);
         this.paper.setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
-        this.syncPosition();
-    }
-
-    clearLyric() {
-        this.setPlaying(false);
-        this.paper.clearLyric();
-        delete this.song;
+        this.$src.sync.revive();
     }
 }
 
-export default class Extension extends Fubar.Extension { $klass = DesktopLyric; }
+export default class extends F.Extension { $klass = DesktopLyric; }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
-  <schema id="org.gnome.shell.extensions.desktop-lyric" path="/org/gnome/shell/extensions/desktop-lyric/">
+<schemalist gettext-domain="@gettext@">
+  <schema id="@rdnn@" path="@path@">
     <key type="b" name="minimize">
         <default>false</default>
         <summary>minimize to panel</summary>
@@ -17,13 +17,17 @@
         <default>0</default>
         <summary>online lyric provider (0 - ncm, 1 - lrclib)</summary>
     </key>
+    <key type="b" name="online-fallback">
+        <default>true</default>
+        <summary>fallback when no match</summary>
+    </key>
     <key type="b" name="show-progress">
         <default>true</default>
         <summary>show lyric playing progress</summary>
     </key>
     <key type="u" name="systray-area">
         <default>0</default>
-        <summary>systray status area (0 - left, 1 - middle, 2 - right)</summary>
+        <summary>systray status area (0 - left, 1 - center, 2 - right)</summary>
     </key>
     <key type="u" name="lyric-orientation">
         <range min="0" max="1"/>
@@ -35,13 +39,14 @@
         <default>60</default>
         <summary>lyric refresh interval (ms)</summary>
     </key>
-    <key type="b" name="lyric-fallback">
-        <default>true</default>
-        <summary>fallback when not match</summary>
-    </key>
     <key type="s" name="lyric-location">
         <default>""</default>
         <summary>location to save and read lyrics</summary>
+    </key>
+    <key type="u" name="lyric-opacity">
+        <range min="20" max="100"/>
+        <default>50</default>
+        <summary>opacity percent of desktop lyric</summary>
     </key>
     <key type="s" name="font-name">
         <default>"Sans 12"</default>

@@ -1,0 +1,9 @@
+<node>
+  <interface name="org.mpris.MediaPlayer2.Player">
+    <property name="Metadata" type="a{sv}" access="read"/>
+    <property name="PlaybackStatus" type="s" access="read"/>
+    <signal name="Seeked">
+      <arg type="x" direction="out" name="pos"/>
+    </signal>
+  </interface>
+</node>

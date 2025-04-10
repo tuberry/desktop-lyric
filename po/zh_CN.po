@@ -17,67 +17,95 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:343
-msgid "All"
-msgstr "全部"
-
-#: src/ui.js:343
-msgid "Normal"
-msgstr "常规"
-
-#: src/ui.js:343
-msgid "Symbolic"
-msgstr "符号"
-
-#: src/ui.js:382
-msgid "Clear"
-msgstr "清除"
-
-#: src/ui.js:480
+#: src/ui.js:384
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:615
+#: src/ui.js:516
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/prefs.js:27
-msgid "NetEase Cloud"
-msgstr "网易云"
-
-#: src/prefs.js:31
+#: src/prefs.js:24
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:31
+#: src/prefs.js:24
 msgid "Vertical"
 msgstr "竖直"
 
-#: src/prefs.js:32
+#: src/prefs.js:25 src/prefs.js:44
+msgid "NetEase Cloud"
+msgstr "网易云"
+
+#: src/prefs.js:25 src/prefs.js:45
+msgid "LRCLIB"
+msgstr "LRCLIB"
+
+#: src/prefs.js:26
 msgid "Left"
 msgstr "左侧"
 
-#: src/prefs.js:32
+#: src/prefs.js:26
 msgid "Center"
 msgstr "中间"
 
-#: src/prefs.js:32
+#: src/prefs.js:26
 msgid "Right"
 msgstr "右侧"
 
-#: src/prefs.js:39
-msgid "_Mobilize"
-msgstr "解锁位置(_M)"
-
-#: src/prefs.js:39
-msgid "Allow dragging to displace"
-msgstr "允许拖拽以变更位置"
-
-#: src/prefs.js:40
+#: src/prefs.js:33
 msgid "_Show progress"
 msgstr "显示进度(_S)"
 
+#: src/prefs.js:34
+msgid "S_ystray position"
+msgstr "托盘位置(_Y)"
+
+#: src/prefs.js:35
+msgid "_Refresh interval"
+msgstr "刷新间隔(_R)"
+
+#: src/prefs.js:35
+msgid "ms"
+msgstr "毫秒"
+
+#: src/prefs.js:36
+msgid "Desktop"
+msgstr "桌面"
+
+#: src/prefs.js:37
+msgid "_Mobilize"
+msgstr "解锁位置(_M)"
+
+#: src/prefs.js:37
+msgid "Allow dragging to displace"
+msgstr "允许拖拽以变更位置"
+
+#: src/prefs.js:38
+msgid "_Opacity"
+msgstr "不透明度(_O)"
+
+#: src/prefs.js:39
+msgid "_Font"
+msgstr "字体(_F)"
+
 #: src/prefs.js:40
+msgid "Or_ientation"
+msgstr "方向(_I)"
+
+#: src/prefs.js:41
+msgid "Online"
+msgstr "在线"
+
+#: src/prefs.js:41
+msgid "Try to download and save the missing lyrics"
+msgstr "尝试下载并保存缺失歌词"
+
+#: src/prefs.js:42
+msgid "_Provider"
+msgstr "提供方(_P)"
+
+#: src/prefs.js:42
 msgid ""
 "Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
 "metadata/#xesam:astext\">lyrics from Mpris metadata</a>"
@@ -85,59 +113,25 @@ msgstr ""
 "<a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
 "metadata/#xesam:astext\">Mpris 元数据提供的歌词</a>优先"
 
-#: src/prefs.js:41
-msgid "_Online lyrics"
-msgstr "在线歌词(_O)"
-
-#: src/prefs.js:41
-msgid ""
-"Try to download missing lyrics from the specified online provider"
-msgstr "尝试从指定的在线提供方下载缺失歌词"
-
-#: src/prefs.js:42
-msgid "Online _provider"
-msgstr "在线提供方(_N)"
-
 #: src/prefs.js:43
-msgid "S_ystray position"
-msgstr "托盘位置(_Y)"
-
-#: src/prefs.js:44
-msgid "_Refresh interval"
-msgstr "刷新间隔(_R)"
-
-#: src/prefs.js:44
-msgid "Unit: millisecond"
-msgstr "单位: 毫秒"
-
-#: src/prefs.js:45
-msgid "_Lyric orientation"
-msgstr "歌词方向(_L)"
-
-#: src/prefs.js:46
-msgid "Lyr_ic location"
-msgstr "歌词位置(_I)"
-
-#: src/prefs.js:46
-msgid ""
-"<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">LRC</a> filename "
-"format: <i>Title-Artist1,Artist2-Album.lrc</i>"
-msgstr ""
-"<a href=\"https://en.wikipedia.org/wiki/LRC_(file_format)\">歌词</a>文件名格"
-"式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
+msgid "URL"
+msgstr "网址"
 
 #: src/prefs.js:47
-msgid "_Font name"
-msgstr "字体名称(_F)"
-
-#: src/prefs.js:48
 msgid "F_allback"
-msgstr "备选歌词(_a)"
+msgstr "备选(_A)"
+
+#: src/prefs.js:47
+msgid "Use the first result when searches cannot be matched precisely"
+msgstr "搜索无法精确匹配时使用首个结果"
 
 #: src/prefs.js:48
-msgid ""
-"Use the first search result when lyrics can not be matched precisely."
-msgstr "当搜索结果不能精确匹配时使用第一个搜索结果"
+msgid "_Location"
+msgstr "位置(_L)"
+
+#: src/prefs.js:48
+msgid "Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>"
+msgstr "文件名格式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
 
 #: src/extension.js:57
 msgid "Invisiblize"
@@ -148,20 +142,41 @@ msgid "Minimize"
 msgstr "最小化"
 
 #: src/extension.js:61
-msgid "Resynchronize"
-msgstr "重新同步"
+msgid "Unload"
+msgstr "清空文件"
 
 #: src/extension.js:62
 msgid "Reload"
 msgstr "重新加载"
 
-#: src/extension.js:64
+#: src/extension.js:65
 msgid "Settings"
 msgstr "设置"
 
-#: src/extension.js:73
+#: src/extension.js:74
 msgid "Mobilize"
 msgstr "解锁位置"
+
+#~ msgid "Resynchronize"
+#~ msgstr "重新同步"
+
+#~ msgid "All"
+#~ msgstr "全部"
+
+#~ msgid "Normal"
+#~ msgstr "常规"
+
+#~ msgid "Symbolic"
+#~ msgstr "符号"
+
+#~ msgid "Clear"
+#~ msgstr "清除"
+
+#~ msgid "Try to download missing lyrics from the specified online provider"
+#~ msgstr "尝试从指定的在线提供方下载缺失歌词"
+
+#~ msgid "Unit: millisecond"
+#~ msgstr "单位: 毫秒"
 
 #~ msgid "Active color"
 #~ msgstr "已唱颜色"
