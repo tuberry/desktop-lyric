@@ -37,6 +37,10 @@ msgstr "竖直"
 msgid "NetEase Cloud"
 msgstr "网易云"
 
+#: src/prefs.js:25 src/prefs.js:44
+msgid "NetEase Cloud (Trans)"
+msgstr "网易云（翻译）"
+
 #: src/prefs.js:25 src/prefs.js:45
 msgid "LRCLIB"
 msgstr "LRCLIB"
