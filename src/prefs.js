@@ -22,7 +22,7 @@ class DesktopLyricPrefs extends UI.Page {
             [K.OPCT, new UI.Spin(20, 100, 1)],
             [K.SPAN, new UI.Spin(20, 500, 10)],
             [K.ORNT, new UI.Drop([_('Horizontal'), _('Vertical')])],
-            [K.PRVD, new UI.Drop([_('NetEase Cloud'), _('LRCLIB')])],
+            [K.PRVD, new UI.Drop([_('NetEase Cloud'), _('LRCLIB'), _('NetEase Cloud (Trans)')])],
             [K.AREA, new UI.Drop([_('Left'), _('Center'), _('Right')])],
             [K.PATH, new UI.File({folder: true, size: true, open: true})],
         ];
@@ -43,6 +43,7 @@ class DesktopLyricPrefs extends UI.Page {
                 new UI.Help(({h}) => [h(_('URL')), [
                     [_('NetEase Cloud'), `<a href="${URL.NCM}">${URL.NCM}</a>`],
                     [_('LRCLIB'), `<a href="${URL.LRCLIB}">${URL.LRCLIB}</a>`],
+                    [_('NetEase Cloud (Trans)'), `<a href="${URL.NCM}">${URL.NCM}</a>`],
                 ]]), K.PRVD],
             [[_('F_allback'), _('Use the first result when searches cannot be matched precisely')], K.FABK],
             [[_('_Location'), _('Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], K.PATH],

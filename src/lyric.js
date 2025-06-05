@@ -46,7 +46,25 @@ class LRCLIBProvider { // Ref: https://lrclib.net/docs
     }
 }
 
-const Providers = [NeteaseProvider, LRCLIBProvider];
+class NeteaseTransProvider {
+    static getlrc = `${URL.NCM}api/song/lyric?`;
+    static search = `${URL.NCM}api/search/get/web?`;
+
+    static #match({name: u, album: {name: v}, artists: w}, {title: x, album: y}, z) {
+        return x === u && (!y || y === v) && (!z.length || T.homolog(z, w.map(a => a.name).sort()));
+    }
+
+    static async fetch(song, client, cancel, fallback) {
+        let singer = song.artist.toSorted(),
+            {songs} = JSON.parse(await T.request('POST', this.search, {s: Lyric.name(song), limit: '30', type: '1'}, cancel, null, client)).result,
+            {id} = songs.toSorted((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length)).find(x => this.#match(x, song, singer)) ?? (fallback && songs[0]);
+        let res = JSON.parse(await T.request('GET', this.getlrc, {id: id.toString(), lv: '1', tv: '1'}, cancel, null, client));
+        // 优先返回翻译歌词，没有则返回原歌词
+        return (res.tlyric && res.tlyric.lyric) ? res.tlyric.lyric : (res.lrc && res.lrc.lyric) ? res.lrc.lyric : '';
+    }
+}
+
+const Providers = [NeteaseProvider, LRCLIBProvider, NeteaseTransProvider];
 
 export default class Lyric extends F.Mortal {
     static name({title, artist, album}, sepTitle = ' ', sepArtist = ' ', useAlbum = false) {
