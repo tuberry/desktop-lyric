@@ -14,12 +14,13 @@
         <summary>auto download missing lyrics</summary>
     </key>
     <key type="u" name="online-provider">
+        <range min="0" max="2"/>
         <default>0</default>
-        <summary>online lyric provider (0 - ncm, 1 - lrclib)</summary>
+        <summary>online lyric provider (0 - ncm, 1 - ncm (trans), 2 - lrclib)</summary>
     </key>
     <key type="b" name="online-fallback">
-        <default>true</default>
-        <summary>fallback when no match</summary>
+        <default>false</default>
+        <summary>fallback the 1st result if no match</summary>
     </key>
     <key type="b" name="show-progress">
         <default>true</default>
@@ -49,7 +50,7 @@
         <summary>opacity percent of desktop lyric</summary>
     </key>
     <key type="s" name="font-name">
-        <default>"Sans 12"</default>
+        <default>"Sans 32"</default>
         <summary>font name of desktop lyric</summary>
     </key>
     <key type="(uu)" name="lyric-place">

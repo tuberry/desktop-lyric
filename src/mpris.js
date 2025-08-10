@@ -13,17 +13,16 @@ const MPRIS_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2');
 
 export default class Mpris extends F.Mortal {
     constructor() {
-        super();
-        this.#buildSources(FileUtils.loadInterfaceXML('org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'));
+        super().$buildSources(FileUtils.loadInterfaceXML('org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'));
     }
 
-    #buildSources(playerIface) {
+    $buildSources(playerIface) {
         let dbus = new F.DBusProxy('org.freedesktop.DBus', '/org/freedesktop/DBus', x => x && this.#onMprisChange(), null,
-                ['NameOwnerChanged', (_p, _s, [name, old, neo]) => { if(neo && !old) this.#buildMpris(name).catch(T.nop); }]),
+                [['NameOwnerChanged', (_p, _s, [name, old, neo]) => { if(neo && !old) this.#buildMpris(name).catch(T.nop); }]]),
             mpris = new F.Source(x => new F.DBusProxy(x, '/org/mpris/MediaPlayer2', y => y && this.$src.player.revive(y.gName),
-                ['notify::g-name-owner', (...xs) => this.#onMprisChange(...xs)], null, MPRIS_IFACE)),
+                [['notify::g-name-owner', (...xs) => this.#onMprisChange(...xs)]], null, MPRIS_IFACE)),
             player = new F.Source(x => new F.DBusProxy(x, '/org/mpris/MediaPlayer2', (...xs) => this.#onPlayerReady(...xs),
-                ['g-properties-changed', (...xs) => this.#onPlayerChange(...xs)], ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)], playerIface));
+                [['g-properties-changed', (...xs) => this.#onPlayerChange(...xs)]], [['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)]], playerIface));
         this.$src = F.Source.tie({dbus, mpris, player}, this);
     }
 
@@ -42,7 +41,7 @@ export default class Mpris extends F.Mortal {
         if(!name.startsWith('org.mpris.MediaPlayer2.')) throw Error('non mpris');
         let {DesktopEntry, Identity} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2'),
             app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0]?.[0] : null,
-            cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_string('Categories').split(';') : null;
+            cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') : null;
         // HACK: allow terminal music apps (no DesktopEntry), see also https://gitlab.gnome.org/GNOME/glib/-/issues/1584
         if(cat?.reduce((p, x) => { p[0] &&= x !== 'AudioVideo'; p[1] ||= x === 'Video'; return p; }, [true, false]).some(T.id)) throw Error('non musical');
         this.$src.mpris.summon(name);

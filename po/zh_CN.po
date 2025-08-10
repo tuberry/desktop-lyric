@@ -17,13 +17,17 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:384
+#: src/ui.js:344
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:516
+#: src/ui.js:462
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
+
+#: src/prefs.js:23
+msgid "ms"
+msgstr "毫秒"
 
 #: src/prefs.js:24
 msgid "Horizontal"
@@ -37,7 +41,7 @@ msgstr "竖直"
 msgid "NetEase Cloud"
 msgstr "网易云"
 
-#: src/prefs.js:25 src/prefs.js:44
+#: src/prefs.js:25
 msgid "NetEase Cloud (Trans)"
 msgstr "网易云（翻译）"
 
@@ -68,10 +72,6 @@ msgstr "托盘位置(_Y)"
 #: src/prefs.js:35
 msgid "_Refresh interval"
 msgstr "刷新间隔(_R)"
-
-#: src/prefs.js:35
-msgid "ms"
-msgstr "毫秒"
 
 #: src/prefs.js:36
 msgid "Desktop"
@@ -107,15 +107,12 @@ msgstr "尝试下载并保存缺失歌词"
 
 #: src/prefs.js:42
 msgid "_Provider"
-msgstr "提供方(_P)"
+msgstr "供方(_P)"
 
 #: src/prefs.js:42
-msgid ""
-"Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
-"metadata/#xesam:astext\">lyrics from Mpris metadata</a>"
-msgstr ""
-"<a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
-"metadata/#xesam:astext\">Mpris 元数据提供的歌词</a>优先"
+#, javascript-format
+msgid "Prefer <a href=\"%s\">lyrics from Mpris metadata</a>"
+msgstr "<a href=\"%s\">Mpris 元数据提供的歌词</a>优先"
 
 #: src/prefs.js:43
 msgid "URL"
@@ -137,29 +134,36 @@ msgstr "位置(_L)"
 msgid "Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>"
 msgstr "文件名格式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
 
-#: src/extension.js:57
+#: src/extension.js:48
 msgid "Invisiblize"
 msgstr "隐藏"
 
-#: src/extension.js:58
+#: src/extension.js:49
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/extension.js:61
+#: src/extension.js:52
 msgid "Unload"
 msgstr "清空文件"
 
-#: src/extension.js:62
+#: src/extension.js:53
 msgid "Reload"
-msgstr "重新加载"
+msgstr "重新下载"
 
-#: src/extension.js:65
+#: src/extension.js:56
 msgid "Settings"
 msgstr "设置"
 
-#: src/extension.js:74
+#: src/extension.js:66
 msgid "Mobilize"
 msgstr "解锁位置"
+
+#~ msgid ""
+#~ "Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-"
+#~ "spec/metadata/#xesam:astext\">lyrics from Mpris metadata</a>"
+#~ msgstr ""
+#~ "<a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-spec/"
+#~ "metadata/#xesam:astext\">Mpris 元数据提供的歌词</a>优先"
 
 #~ msgid "Resynchronize"
 #~ msgstr "重新同步"

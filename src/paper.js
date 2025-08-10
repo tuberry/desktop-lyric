@@ -10,14 +10,16 @@ import PangoCairo from 'gi://PangoCairo';
 
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as MiscUtil from 'resource:///org/gnome/shell/misc/util.js';
+import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
+const {$, $$} = T;
+
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
-const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255).concat(opacity ?? alpha / 255);
+const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity ?? alpha / 255);
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
     if(sorted[upper] <= value) {
@@ -39,10 +41,10 @@ class PaperBase extends St.DrawingArea {
     }
 
     constructor(set, param) {
-        super(param);
-        this.#clearLyric();
-        this.$bindSettings(set);
-        this.$buildWidgets();
+        super(param)[$]
+            .$clearLyric()[$]
+            .$bindSettings(set)[$]
+            .$buildWidgets();
     }
 
     $bindSettings(set) {
@@ -50,7 +52,7 @@ class PaperBase extends St.DrawingArea {
     }
 
     $buildWidgets() {
-        F.connect(this, F.theme(), 'changed', T.thunk(() => this.$onColorChange()));
+        F.connect(this, F.theme(), 'changed', (() => this.$onColorChange())[$].call());
     }
 
     vfunc_repaint() {
@@ -64,7 +66,7 @@ class PaperBase extends St.DrawingArea {
         cr.$dispose();
     }
 
-    #clearLyric() {
+    $clearLyric() {
         this.$len = 0;
         this.setLyrics(this.song = '');
         [this.$pos, this.$lrc] = this.getLyric();
@@ -103,7 +105,7 @@ class PaperBase extends St.DrawingArea {
     }
 
     clearLyric() {
-        this.#clearLyric();
+        this.$clearLyric();
         this.queue_repaint();
     }
 
@@ -132,7 +134,7 @@ class PaperBase extends St.DrawingArea {
                 return p;
             }, []).sort(([x], [y]) => x - y)
             .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len, t)) - t, l]), new Map());
-        this.$tags = Array.from(this.$lrcs.keys());
+        this.$tags = this.$lrcs.keys().toArray();
     }
 }
 
@@ -147,27 +149,25 @@ export class Panel extends PaperBase {
     }
 
     $buildWidgets() {
-        F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', T.thunk(() => this.$onStyleChange()));
+        F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', (() => this.$onStyleChange())[$].call());
         this.$naturalWidth = 0;
         super.$buildWidgets();
     }
 
     $onStyleChange() {
         let theme = Main.panel.statusArea.quickSettings.get_theme_node();
-        this.$font = theme.get_font();
-        this.inactiveColor = color2rgba(theme.get_foreground_color());
         let [w, h] = Main.panel.get_size();
-        this.$maxWidth = w / 3;
-        this.set_height(h);
-        this.$onColorChange();
+        this[$].$font(theme.get_font())[$]
+            .inactiveColor(color2rgba(theme.get_foreground_color()))[$]
+            .$maxWidth(w / 3)[$]
+            .set_height(h)[$]
+            .$onColorChange();
     }
 
-    get homochromyColor() {
-        return this.inactiveColor;
-    }
+    get homochromyColor() { return this.inactiveColor; }
 
     $onColorChange() {
-        this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => MiscUtil.lerp(x, this.inactiveColor[i], 0.2));
+        this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => Util.lerp(x, this.inactiveColor[i], 0.2));
     }
 
     setMoment(moment) {
@@ -189,14 +189,13 @@ export class Desktop extends PaperBase {
     }
 
     constructor(drag, ...args) {
-        super(...args);
-        this.setDrag(drag);
+        super(...args).setDrag(drag);
     }
 
     $buildWidgets() {
         super.$buildWidgets();
         Main.uiGroup.add_child(this);
-        F.connect(this, F.theme(), 'notify::scale-factor', T.thunk(() => this.$onFontSet()));
+        F.connect(this, F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call());
         this.$src = F.Source.tie({drag: new F.Source(() => this.$genDraggable(), x => x._dragComplete())}, this);
     }
 
@@ -208,13 +207,11 @@ export class Desktop extends PaperBase {
         this.$set.tie([
             [K.ORNT, x => this.$onOrientSet(x)],
             [K.OPCT, x => x / 100, () => this.$onColorChange()],
-            [K.SITE, x => T.seq(y => this.set_position(...y), x), null, true],
+            [K.SITE, x => T.seq(x, y => this.set_position(...y)), null, true],
         ], this).tie([K.FONT], this, null, () => this.$onFontSet());
     }
 
-    get homochromyColor() {
-        return this.activeColor;
-    }
+    get homochromyColor() { return this.activeColor; }
 
     $onFontSet() {
         this.$font = Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 11');
@@ -226,8 +223,7 @@ export class Desktop extends PaperBase {
         ret._dragActorDropped = () => {
             ret._dragComplete();
             global.display.set_cursor(Meta.Cursor.DEFAULT);
-            this.$set.set(K.SITE, this.get_position());
-            this.$set.set(K.DRAG, false);
+            this.$set[$$].set([[K.SITE, this.get_position()], [K.DRAG, false]]);
             return true;
         };
         return ret;
@@ -236,7 +232,7 @@ export class Desktop extends PaperBase {
     setDrag(drag) {
         if(drag) Main.layoutManager.trackChrome(this);
         else Main.layoutManager.untrackChrome(this);
-        this.reactive = drag;
+        this.set_reactive(drag);
         this.$src.drag.toggle(drag);
         Shell.util_set_hidden_from_pick(this, !drag);
     }

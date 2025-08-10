@@ -4,7 +4,8 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # desktop-lyric
 
-Show the lyric of playing songs on the desktop.
+GNOME Shell extension to show the singing lyric on the desktop.
+
 >很多歌消失了。 —— *汪曾祺 《徙》*\
 [![license]](/LICENSE.md)
 
@@ -34,10 +35,6 @@ It's quite the same as installing from:
 ### E.G.O
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
-
-## Features
-
-![dlpref](https://github.com/user-attachments/assets/ec12edb5-d4a0-4e9e-aec6-db37baecb3c6)
 
 ## Notes
 
