@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:344
+#: src/ui.js:366
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:462
+#: src/ui.js:488
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -37,29 +37,29 @@ msgstr "水平"
 msgid "Vertical"
 msgstr "竖直"
 
-#: src/prefs.js:25 src/prefs.js:44
-msgid "NetEase Cloud"
-msgstr "网易云"
-
 #: src/prefs.js:25
-msgid "NetEase Cloud (Trans)"
-msgstr "网易云（翻译）"
-
-#: src/prefs.js:25 src/prefs.js:45
-msgid "LRCLIB"
-msgstr "LRCLIB"
-
-#: src/prefs.js:26
 msgid "Left"
 msgstr "左侧"
 
-#: src/prefs.js:26
+#: src/prefs.js:25
 msgid "Center"
 msgstr "中间"
 
-#: src/prefs.js:26
+#: src/prefs.js:25
 msgid "Right"
 msgstr "右侧"
+
+#: src/prefs.js:27 src/prefs.js:44
+msgid "NetEase Cloud"
+msgstr "网易云"
+
+#: src/prefs.js:27
+msgid "NetEase Cloud (Trans)"
+msgstr "网易云（翻译）"
+
+#: src/prefs.js:27 src/prefs.js:45
+msgid "LRCLIB"
+msgstr "LRCLIB"
 
 #: src/prefs.js:33
 msgid "_Show progress"

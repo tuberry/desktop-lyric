@@ -7,11 +7,13 @@ import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K, URL} from './const.js';
 
+const {$} = T;
+
 async function getNeteaseSongId(song, client, cancel, fallback) {
     let singer = song.artist.toSorted(),
         {songs} = JSON.parse(await T.request('POST', `${URL.NCM}api/search/get/web?`, {s: Lyric.name(song), limit: '30', type: '1'}, cancel, null, client)).result,
         match = ({name: u, album: {name: v}, artists: w}, {title: x, album: y}, z) => x === u && (!y || y === v) && (!z.length || T.homolog(z, w.map(a => a.name).sort())),
-        {id} = songs.toSorted((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length)).find(x => match(x, song, singer)) ?? (fallback && songs[0]);
+        {id} = songs[$].sort((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length)).find(x => match(x, song, singer)) ?? (fallback && songs[0]);
     return id.toString();
 }
 
@@ -37,11 +39,11 @@ const Provider = [
                     {track_name, artist_name: artist.join(', '), album_name, duration: String(length)}, cancel, header, client)).syncedLyrics;
             } catch(e) {
                 if(F.Source.cancelled(e)) throw e;
-                let singer = song.artist.join(' ').length, // HACK: messy seprator: e.g. https://lrclib.net/api/search?q=%E5%A4%B1%E7%9C%A0%E9%A3%9E%E8%A1%8C
-                    songs = JSON.parse(await T.request('GET', `${URL.LRCLIB}api/search?`, {q: Lyric.name(song)}, cancel, header, client)),
+                let singer = song.artist.join(' ').length, // HACK: messy separator: e.g. https://lrclib.net/api/search?q=%E5%A4%B1%E7%9C%A0%E9%A3%9E%E8%A1%8C
+                    songs = JSON.parse(await T.request('GET', `${URL.LRCLIB}api/search?`, {q: Lyric.name(song)}, cancel, header, client))
+                        .filter(x => x.syncedLyrics)[$].sort((a, b) => Math.abs(a.duration - length) - Math.abs(b.duration - length)),
                     match = ({trackName: u, albumName: v, artistName: w}, {title: x, album: y}, z) => x === u && (!y || y === v) && (!z || z === w.length);
-                return (songs.toSorted((a, b) => Math.abs(a.duration - length) - Math.abs(b.duration - length))
-                    .find(x => match(x, song, singer)) ?? (fallback && songs[0])).syncedLyrics;
+                return (songs.find(x => match(x, song, singer)) ?? (fallback && songs[0])).syncedLyrics;
             }
         }
     },
@@ -53,7 +55,7 @@ export default class Lyric extends F.Mortal {
     }
 
     constructor(set) {
-        super()[T.$].$bindSettings(set).$buildSources();
+        super()[$].$bindSettings(set).$buildSources();
     }
 
     $bindSettings(set) {

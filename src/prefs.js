@@ -22,9 +22,9 @@ class DesktopLyricPrefs extends UI.Page {
             [K.OPCT, new UI.Spin(20, 100, 5, '%')],
             [K.SPAN, new UI.Spin(20, 500, 10, _('ms'))],
             [K.ORNT, new UI.Drop([_('Horizontal'), _('Vertical')])],
-            [K.PRVD, new UI.Drop([_('NetEase Cloud'), _('NetEase Cloud (Trans)'), _('LRCLIB')])],
             [K.AREA, new UI.Drop([_('Left'), _('Center'), _('Right')])],
             [K.PATH, new UI.File({folder: true, size: true, open: true})],
+            [K.PRVD, new UI.Drop([_('NetEase Cloud'), _('NetEase Cloud (Trans)'), _('LRCLIB')])],
         ];
     }
 
