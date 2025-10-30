@@ -54,8 +54,8 @@ msgid "None"
 msgstr "无"
 
 #: ../src/extension.js:85
-msgid "Select to enable lyrics"
-msgstr "选择以启用歌词"
+msgid "Manual selection enables lyrics"
+msgstr "手动选择启用歌词"
 
 #: ../src/prefs.js:24
 msgid "ms"

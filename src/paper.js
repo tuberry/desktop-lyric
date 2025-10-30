@@ -158,6 +158,9 @@ export class Panel extends PaperBase {
     $buildWidgets() {
         F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', (() => this.$onStyleChange())[$].call());
         this.$naturalWidth = 0;
+        this.$scrollOffset = 0; // Current scroll offset for title
+        this.$scrollTimer = null; // Timer for title scrolling
+        this.$scrollDelay = 0; // Delay counter before starting scroll
         super.$buildWidgets();
     }
 
@@ -192,6 +195,14 @@ export class Panel extends PaperBase {
         // Only skip if invisible or if both pos AND lyrics text haven't changed
         if(!this.visible || (this.$pos === $pos && this.$lrc === $txt)) return;
         
+        // Manage title scrolling: only scroll when displaying title (no lyrics)
+        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
+        if (isDisplayingTitle) {
+            this.#startTitleScrolling();
+        } else {
+            this.#stopTitleScrolling();
+        }
+        
         this.queue_repaint();
         
         // Always use fixed max width to prevent pushing other panel components
@@ -213,11 +224,65 @@ export class Panel extends PaperBase {
         cr.translate(0, yOffset);
     }
 
+    #startTitleScrolling() {
+        // Start title scrolling if title is too long
+        if (this.$scrollTimer) return; // Already scrolling
+        
+        // Reset scroll state
+        this.$scrollOffset = 0;
+        this.$scrollDelay = 0;
+        
+        // Will check if scrolling is needed on next repaint
+        this.$scrollTimer = setInterval(() => {
+            if (this.$naturalWidth > this.$maxWidth) {
+                const DELAY_FRAMES = 40; // Wait 2 seconds before scrolling (40 * 50ms)
+                const scrollSpeed = 1; // pixels per frame
+                const gap = 40; // Gap between end and start of looping title
+                
+                // Wait for delay period before starting scroll
+                if (this.$scrollDelay < DELAY_FRAMES) {
+                    this.$scrollDelay++;
+                    return;
+                }
+                
+                // Title is too long, scroll it
+                this.$scrollOffset += scrollSpeed;
+                
+                // Loop the scrolling: reset when scrolled past one complete cycle
+                // One cycle = when the second title reaches where the first started
+                if (this.$scrollOffset >= this.$naturalWidth + gap) {
+                    this.$scrollOffset = 0;
+                    this.$scrollDelay = 0; // Reset delay for next cycle
+                }
+                
+                this.queue_repaint();
+            }
+        }, 50); // 20 FPS
+    }
+
+    #stopTitleScrolling() {
+        if (this.$scrollTimer) {
+            clearInterval(this.$scrollTimer);
+            this.$scrollTimer = null;
+            this.$scrollOffset = 0;
+            this.$scrollDelay = 0;
+        }
+    }
+
     $colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
         let offset = 0;
+        let skipMoveTo = false;
         
-        if (pw > w) {
+        // Check if displaying title (no lyrics)
+        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
+        
+        if (isDisplayingTitle && pw > w) {
+            // Title scrolling: apply scroll offset
+            // Translate the canvas to create scrolling effect
+            cr.translate(-this.$scrollOffset, 0);
+            skipMoveTo = true; // Don't set moveTo, already translated
+        } else if (pw > w) {
             // Lyrics wider than panel: scroll to keep progress bar centered
             let progressPixel = this.$pos * pw; // Current progress position in pixels
             let centerPoint = w / 2; // Center of the panel
@@ -245,7 +310,9 @@ export class Panel extends PaperBase {
             }
         }
         
-        cr.moveTo(offset, 0);
+        if (!skipMoveTo) {
+            cr.moveTo(offset, 0);
+        }
         
         if(this[K.PRGR]) {
             cr.setSourceRGBA(...this.homochromyColor);
@@ -269,8 +336,29 @@ export class Panel extends PaperBase {
     }
 
     $showLayout(cr, pl) {
-        // Draw the layout (clipping was already set in $setupLayout)
-        super.$showLayout(cr, pl);
+        // Check if displaying title and scrolling
+        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
+        let [pw] = pl.get_pixel_size();
+        
+        if (isDisplayingTitle && pw > this.$maxWidth) {
+            // Draw the scrolling title with seamless loop
+            const gap = 40; // Gap between end and start
+            
+            // Draw first instance of title at (0, 0)
+            // Color was already set in $colorLayout
+            PangoCairo.show_layout(cr, pl);
+            
+            // Draw second instance for seamless loop
+            // Translate to the right of first title
+            // NOTE: Don't use save/restore here as it resets the source color
+            cr.translate(pw + gap, 0);
+            PangoCairo.show_layout(cr, pl);
+            cr.translate(-(pw + gap), 0); // Restore position manually
+        } else {
+            // Normal drawing
+            super.$showLayout(cr, pl);
+        }
+        
         // Restore the context (matching the save in $setupLayout)
         cr.restore();
     }

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import Pango from 'gi://Pango';
+
 import * as T from './util.js';
 import * as M from './menu.js';
 import * as F from './fubar.js';
@@ -81,8 +83,11 @@ class DesktopLyric extends F.Mortal {
         // Create a PopupSubMenuMenuItem
         const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
         
+        // Enable ellipsis for the main label
+        item.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
+        
         // Add hint at the top
-        const hintItem = new PopupMenu.PopupMenuItem(_('Select to enable lyrics'));
+        const hintItem = new PopupMenu.PopupMenuItem(_('Manual selection enables lyrics'));
         hintItem.setSensitive(false);
         item.menu.addMenuItem(hintItem);
         
@@ -108,6 +113,15 @@ class DesktopLyric extends F.Mortal {
         // Update menu when it opens
         item.menu.connect('open-state-changed', (menu, open) => {
             if (open) {
+                // Set submenu max width slightly smaller than parent to account for padding
+                const parentWidth = this.$src.tray.hub.menu.box.get_width();
+                if (parentWidth > 0) {
+                    // Subtract padding/margin to prevent expanding parent
+                    const submenuMaxWidth = parentWidth - 20;
+                    item.menu.box.set_style(`max-width: ${submenuMaxWidth}px;`);
+                }
+                
+                // Update player menu items
                 this.#updatePlayerMenuItems(item);
             }
         });
@@ -148,6 +162,10 @@ class DesktopLyric extends F.Mortal {
             const info = this.$src.mpris.getPlayerInfo(name);
             const displayText = this.#formatPlayerDisplay(name, info);
             const playerItem = new PopupMenu.PopupMenuItem(displayText);
+            
+            // Enable ellipsis for long player names/titles
+            playerItem.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
+            
             playerItem.connect('activate', () => {
                 // Toggle: if clicking already selected player, deselect it (set to 'none')
                 if (name === preferred) {
@@ -170,7 +188,6 @@ class DesktopLyric extends F.Mortal {
 
     #formatPlayerDisplay(name, info) {
         // Format player display with type badge and current title
-        const MAX_TITLE_LENGTH = 30;
         const TYPE_BADGE = {video: '🎬', audio: '🎵'};
         
         const playerName = this.#formatPlayerName(name);
@@ -180,12 +197,8 @@ class DesktopLyric extends F.Mortal {
             return `${typeBadge} ${playerName}`;
         }
         
-        // Truncate long titles
-        const title = info.currentTitle.length > MAX_TITLE_LENGTH
-            ? info.currentTitle.substring(0, MAX_TITLE_LENGTH) + '...'
-            : info.currentTitle;
-        
-        return `${typeBadge} ${playerName} - ${title}`;
+        // Show full title - ellipsis handled by Pango
+        return `${typeBadge} ${playerName} - ${info.currentTitle}`;
     }
 
     #onMiniSet() {

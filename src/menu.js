@@ -48,7 +48,12 @@ export class Systray extends PanelMenu.Button {
         let {uuid, metadata: {name}} = F.me();
         super(0.5, text ?? name, !menu)[$].add_child(this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'})[$]
             .add_child(this.$icon = new St.Icon({iconName: icon, styleClass: 'system-status-icon'})));
-        if(menu) Item.add(this.$menu = menu, this.menu);
+        if(menu) {
+            Item.add(this.$menu = menu, this.menu);
+            // Set minimum width for the main tray menu
+            // In newer GNOME Shell, menu.box is the container
+            this.menu.box.set_style('min-width: 280px;');
+        }
         Main.panel.addToStatusArea(uuid, this, pos, box);
     }
 }
