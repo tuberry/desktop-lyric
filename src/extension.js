@@ -81,6 +81,14 @@ class DesktopLyric extends F.Mortal {
         // Create a PopupSubMenuMenuItem
         const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
         
+        // Add hint at the top
+        const hintItem = new PopupMenu.PopupMenuItem(_('Select to enable lyrics'));
+        hintItem.setSensitive(false);
+        item.menu.addMenuItem(hintItem);
+        
+        // Add separator after hint
+        item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        
         // Add "Auto" option
         const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
         autoItem.connect('activate', () => {
@@ -88,6 +96,14 @@ class DesktopLyric extends F.Mortal {
             this.#updatePlayerMenuLabel(item);
         });
         item.menu.addMenuItem(autoItem);
+        
+        // Add "None" option
+        const noneItem = new PopupMenu.PopupMenuItem(_('None'));
+        noneItem.connect('activate', () => {
+            this.$src.mpris.setPreferredPlayer('none');
+            this.#updatePlayerMenuLabel(item);
+        });
+        item.menu.addMenuItem(noneItem);
         
         // Update menu when it opens
         item.menu.connect('open-state-changed', (menu, open) => {
@@ -104,7 +120,9 @@ class DesktopLyric extends F.Mortal {
     
     #updatePlayerMenuLabel(item) {
         const preferred = this.$src.mpris.getPreferredPlayer();
-        if (preferred) {
+        if (preferred === 'none') {
+            item.label.set_text(`${_('MPRIS Player')}: ${_('None')}`);
+        } else if (preferred) {
             item.label.set_text(`${_('MPRIS Player')}: ${this.#formatPlayerName(preferred)}`);
         } else {
             item.label.set_text(`${_('MPRIS Player')}: ${_('Auto')}`);
@@ -115,20 +133,28 @@ class DesktopLyric extends F.Mortal {
         const players = this.$src.mpris.getAvailablePlayers();
         const preferred = this.$src.mpris.getPreferredPlayer();
         
-        // Clear existing items except the first one (Auto)
+        // Clear existing items except the first four (hint, separator, Auto, None)
         const items = item.menu._getMenuItems();
-        for (let i = items.length - 1; i >= 1; i--) {
+        for (let i = items.length - 1; i >= 4; i--) {
             items[i].destroy();
         }
         
-        // Set ornament for Auto item
-        items[0].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
+        // Set ornament for Auto and None items (indices 2 and 3)
+        items[2].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
+        items[3].setOrnament(preferred === 'none' ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
         
         // Add player items
         players.forEach((name) => {
-            const playerItem = new PopupMenu.PopupMenuItem(this.#formatPlayerName(name));
+            const info = this.$src.mpris.getPlayerInfo(name);
+            const displayText = this.#formatPlayerDisplay(name, info);
+            const playerItem = new PopupMenu.PopupMenuItem(displayText);
             playerItem.connect('activate', () => {
-                this.$src.mpris.setPreferredPlayer(name);
+                // Toggle: if clicking already selected player, deselect it (set to 'none')
+                if (name === preferred) {
+                    this.$src.mpris.setPreferredPlayer('none', false);
+                } else {
+                    this.$src.mpris.setPreferredPlayer(name, true); // Mark as manual selection
+                }
                 this.#updatePlayerMenuLabel(item);
             });
             playerItem.setOrnament(name === preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
@@ -140,6 +166,26 @@ class DesktopLyric extends F.Mortal {
         // Format player name for display: org.mpris.MediaPlayer2.chromium.instance123 -> chromium
         const match = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/);
         return match ? match[1] : name;
+    }
+
+    #formatPlayerDisplay(name, info) {
+        // Format player display with type badge and current title
+        const MAX_TITLE_LENGTH = 30;
+        const TYPE_BADGE = {video: '🎬', audio: '🎵'};
+        
+        const playerName = this.#formatPlayerName(name);
+        const typeBadge = info.isVideo ? TYPE_BADGE.video : TYPE_BADGE.audio;
+        
+        if (!info.currentTitle) {
+            return `${typeBadge} ${playerName}`;
+        }
+        
+        // Truncate long titles
+        const title = info.currentTitle.length > MAX_TITLE_LENGTH
+            ? info.currentTitle.substring(0, MAX_TITLE_LENGTH) + '...'
+            : info.currentTitle;
+        
+        return `${typeBadge} ${playerName} - ${title}`;
     }
 
     #onMiniSet() {
@@ -196,6 +242,14 @@ class DesktopLyric extends F.Mortal {
 
     loadLyric(reload) {
         if(!this.song) return;
+        
+        // Check if we should search for lyrics (respects manual selection)
+        if(!this.$src.mpris.shouldSearchLyrics()) {
+            // For video players (not manually selected), don't search for lyrics, just show title
+            this.setLyric('');
+            return;
+        }
+        
         if(this.song.lyric === null) {
             this.setLyric('');
             this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(T.nop);

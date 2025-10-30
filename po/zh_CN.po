@@ -43,11 +43,19 @@ msgstr "解锁位置"
 
 #: ../src/extension.js:73
 msgid "MPRIS Player"
-msgstr "MPRIS 播放器"
+msgstr "媒体源"
 
 #: ../src/extension.js:73 ../src/extension.js:77
 msgid "Auto"
 msgstr "自动选择"
+
+#: ../src/extension.js:81
+msgid "None"
+msgstr "无"
+
+#: ../src/extension.js:85
+msgid "Select to enable lyrics"
+msgstr "选择以启用歌词"
 
 #: ../src/prefs.js:24
 msgid "ms"

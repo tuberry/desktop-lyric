@@ -11,6 +11,7 @@ import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
 const MPRIS_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2');
+const PLAYER_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2.Player');
 
 export default class Mpris extends F.Mortal {
     constructor(gset) {
@@ -18,6 +19,7 @@ export default class Mpris extends F.Mortal {
         this.$set = gset;
         this.availablePlayers = new Map(); // Track all available players
         this._isRescanning = false; // Flag to prevent recursive rescanning
+        this._manuallySelected = false; // Track if user manually selected current player
         this.$buildSources(FileUtils.loadInterfaceXML('org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'));
         // Listen for setting changes
         this.$set.hub.connect(`changed::${K.AVPL}`, () => this.#onSettingChanged());
@@ -119,34 +121,76 @@ export default class Mpris extends F.Mortal {
         this.#selectPreferredPlayer();
     }
 
+    #isVideoPlayer(categories) {
+        // Check if the app categories indicate a video player
+        // Returns true if it's NOT AudioVideo AND is Video
+        if (!categories) return false;
+        return categories.reduce((p, x) => {
+            p[0] &&= x !== 'AudioVideo'; // Not an audio/video hybrid
+            p[1] ||= x === 'Video';       // Is a video player
+            return p;
+        }, [true, false]).some(T.id);
+    }
+
     async #scanPlayer(name) {
         // Only scan and record valid players, don't activate
         if(!name.startsWith('org.mpris.MediaPlayer2.')) throw Error('non mpris');
-        let {DesktopEntry, Identity} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2'),
-            app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0]?.[0] : null,
-            cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') : null;
+        
+        const {DesktopEntry, Identity} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
+        const app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0]?.[0] : null;
+        const categories = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') : null;
+        
+        // Determine if this is a video player
+        const isVideo = this.#isVideoPlayer(categories);
         
         // Check if video players should be filtered out
-        if(!this.$set.hub.get_boolean(K.AVPL) && cat?.reduce((p, x) => { p[0] &&= x !== 'AudioVideo'; p[1] ||= x === 'Video'; return p; }, [true, false]).some(T.id)) throw Error('non musical');
+        if(!this.$set.hub.get_boolean(K.AVPL) && isVideo) throw Error('non musical');
+        
+        // Try to get current playing info
+        let currentTitle = null;
+        try {
+            const proxy = await Gio.DBusProxy.makeProxyWrapper(PLAYER_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
+            const metadata = proxy.Metadata;
+            if (metadata) {
+                const title = metadata['xesam:title'];
+                if (title && title.get_type_string() === 's') {
+                    currentTitle = title.deepUnpack();
+                }
+            }
+        } catch (e) {
+            // Failed to get metadata, ignore
+        }
         
         // This player is valid, add to available list
-        this.availablePlayers.set(name, true);
+        this.availablePlayers.set(name, {isVideo, currentTitle});
     }
 
     #selectAndActivatePlayer() {
         const preferred = this.$set.hub.get_string(K.PMPL);
+        const hasPlayers = this.availablePlayers.size > 0;
         let playerToActivate = null;
         
-        if (preferred && this.availablePlayers.has(preferred)) {
-            // Use preferred player if it's available
+        // Determine which player to activate
+        if (preferred && preferred !== 'none' && this.availablePlayers.has(preferred)) {
+            // Use explicitly selected player (manual selection flag preserved)
             playerToActivate = preferred;
-        } else if (this.availablePlayers.size > 0) {
-            // Auto mode: use first available player
+        } else if (!preferred && hasPlayers) {
+            // Auto mode: select first available player
             playerToActivate = this.availablePlayers.keys().next().value;
+            this._manuallySelected = false;
         }
         
+        // Execute the selection
         if (playerToActivate) {
+            // Connect to the selected player
             this.$src.mpris.summon(playerToActivate);
+        } else {
+            // No player to connect to
+            this.$src.mpris.dispel();
+            this.$src.player.dispel();
+            // Keep tray visible if players exist (user selected "None")
+            this.#activate(hasPlayers);
+            this._manuallySelected = false;
         }
     }
 
@@ -158,12 +202,37 @@ export default class Mpris extends F.Mortal {
         return Array.from(this.availablePlayers.keys());
     }
 
+    getPlayerInfo(name) {
+        return this.availablePlayers.get(name) || {isVideo: false, currentTitle: null};
+    }
+
+    isCurrentPlayerVideo() {
+        const currentPlayer = this.$src.mpris.hub?.gName;
+        if (!currentPlayer) return false;
+        const info = this.availablePlayers.get(currentPlayer);
+        return info?.isVideo || false;
+    }
+
+    shouldSearchLyrics() {
+        // Don't search lyrics for video players UNLESS user manually selected it
+        if (this.isCurrentPlayerVideo()) {
+            return this._manuallySelected;
+        }
+        return true; // Always search for non-video players
+    }
+
     getPreferredPlayer() {
         return this.$set.hub.get_string(K.PMPL);
     }
 
-    setPreferredPlayer(name) {
+    setPreferredPlayer(name, isManual = false) {
         this.$set.hub.set_string(K.PMPL, name || '');
+        // Mark as manually selected if user clicked on a specific player
+        if (isManual && name && name !== 'none') {
+            this._manuallySelected = true;
+        } else {
+            this._manuallySelected = false;
+        }
     }
 
     #onPlayerReady(proxy) {
