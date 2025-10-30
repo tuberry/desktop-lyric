@@ -120,16 +120,13 @@ class DesktopLyric extends F.Mortal {
     
     #updatePlayerMenuLabel(item) {
         const preferred = this.$src.mpris.getPreferredPlayer();
-        if (preferred === 'none') {
-            item.label.set_text(`${_('MPRIS Player')}: ${_('None')}`);
-        } else if (preferred) {
-            item.label.set_text(`${_('MPRIS Player')}: ${this.#formatPlayerName(preferred)}`);
-        } else {
-            item.label.set_text(`${_('MPRIS Player')}: ${_('Auto')}`);
-        }
+        const label = preferred === 'none' ? _('None')
+                    : preferred ? this.#formatPlayerName(preferred)
+                    : _('Auto');
+        item.label.set_text(`${_('MPRIS Player')}: ${label}`);
     }
     
-    #updatePlayerMenuItems(item) {
+    async #updatePlayerMenuItems(item) {
         const players = this.$src.mpris.getAvailablePlayers();
         const preferred = this.$src.mpris.getPreferredPlayer();
         
@@ -143,7 +140,10 @@ class DesktopLyric extends F.Mortal {
         items[2].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
         items[3].setOrnament(preferred === 'none' ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
         
-        // Add player items
+        // Refresh all player titles first, then add menu items
+        await Promise.all(players.map(name => this.$src.mpris.refreshPlayerTitle(name)));
+        
+        // Now add player items with updated titles
         players.forEach((name) => {
             const info = this.$src.mpris.getPlayerInfo(name);
             const displayText = this.#formatPlayerDisplay(name, info);

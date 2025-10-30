@@ -216,7 +216,6 @@ export class Panel extends PaperBase {
     $colorLayout(cr, w, pl) {
         let [pw] = pl.get_pixel_size();
         let offset = 0;
-        let scrollStage = 0; // 0=no scroll needed, 1=start, 2=center, 3=end
         
         if (pw > w) {
             // Lyrics wider than panel: scroll to keep progress bar centered
@@ -237,15 +236,12 @@ export class Panel extends PaperBase {
             if (progressPixel <= stage1End) {
                 // Stage 1: Progress bar moving to center, no scroll
                 offset = 0;
-                scrollStage = 1;
             } else if (progressPixel >= stage2End) {
                 // Stage 3: Show end of lyrics, progress bar moves from center to right
                 offset = w - pw;
-                scrollStage = 3;
             } else {
                 // Stage 2: Keep progress bar centered, scroll lyrics
                 offset = centeredOffset;
-                scrollStage = 2;
             }
         }
         
@@ -258,10 +254,6 @@ export class Panel extends PaperBase {
             
             if (offset !== 0) {
                 // Stage 2 or 3: Adjust gradient to follow lyrics offset
-                let progressPixel = this.$pos * pw;
-                let visibleProgressPos = progressPixel + offset;
-                
-                // Adjust gradient coordinate system to match lyrics offset
                 gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(offset, 0, pw + offset, 0);
             } else {
                 // Stage 1: No offset, use normal gradient

@@ -90,23 +90,6 @@ export default class Mpris extends F.Mortal {
         }
     }
 
-    async #isPlayerValid(name) {
-        // Check if a player name is valid according to current settings
-        if(!name.startsWith('org.mpris.MediaPlayer2.')) return false;
-        try {
-            let {DesktopEntry, Identity} = await Gio.DBusProxy.makeProxyWrapper(MPRIS_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2'),
-                app = DesktopEntry ? `${DesktopEntry}.desktop` : Identity ? Shell.AppSystem.search(Identity)[0]?.[0] : null,
-                cat = app ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') : null;
-            
-            // Check if video players should be filtered out
-            if(!this.$set.hub.get_boolean(K.AVPL) && cat?.reduce((p, x) => { p[0] &&= x !== 'AudioVideo'; p[1] ||= x === 'Video'; return p; }, [true, false]).some(T.id)) return false;
-            
-            return true;
-        } catch (e) {
-            return false;
-        }
-    }
-
     #onSettingChanged() {
         // When allow-video-players setting changes, rescan all players
         // The rescan will determine if current player is still valid
@@ -146,23 +129,8 @@ export default class Mpris extends F.Mortal {
         // Check if video players should be filtered out
         if(!this.$set.hub.get_boolean(K.AVPL) && isVideo) throw Error('non musical');
         
-        // Try to get current playing info
-        let currentTitle = null;
-        try {
-            const proxy = await Gio.DBusProxy.makeProxyWrapper(PLAYER_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
-            const metadata = proxy.Metadata;
-            if (metadata) {
-                const title = metadata['xesam:title'];
-                if (title && title.get_type_string() === 's') {
-                    currentTitle = title.deepUnpack();
-                }
-            }
-        } catch (e) {
-            // Failed to get metadata, ignore
-        }
-        
-        // This player is valid, add to available list
-        this.availablePlayers.set(name, {isVideo, currentTitle});
+        // Store player info (title will be fetched lazily when menu opens)
+        this.availablePlayers.set(name, {isVideo, currentTitle: null});
     }
 
     #selectAndActivatePlayer() {
@@ -204,6 +172,27 @@ export default class Mpris extends F.Mortal {
 
     getPlayerInfo(name) {
         return this.availablePlayers.get(name) || {isVideo: false, currentTitle: null};
+    }
+
+    async refreshPlayerTitle(name) {
+        // Get current playing title for a player
+        try {
+            const proxy = await Gio.DBusProxy.makeProxyWrapper(PLAYER_IFACE).newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
+            const metadata = proxy.Metadata;
+            if (metadata) {
+                const title = metadata['xesam:title'];
+                if (title && title.get_type_string() === 's') {
+                    const currentTitle = title.deepUnpack();
+                    // Update cached info
+                    const info = this.availablePlayers.get(name);
+                    if (info) {
+                        info.currentTitle = currentTitle;
+                    }
+                }
+            }
+        } catch (e) {
+            // Ignore errors
+        }
     }
 
     isCurrentPlayerVideo() {
