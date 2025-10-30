@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric 8\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-18 14:05+0800\n"
+"POT-Creation-Date: 2025-10-30 21:09+0800\n"
 "PO-Revision-Date: 2021-08-18 14:05+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,146 +17,170 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:366
-msgid "Mismatched filetype"
-msgstr "文件类型不匹配"
+#: ../src/extension.js:48
+msgid "Invisiblize"
+msgstr "隐藏"
 
-#: src/ui.js:488
-msgid "Click or press ENTER to apply changes"
-msgstr "单击或按回车应用更改"
+#: ../src/extension.js:49
+msgid "Minimize"
+msgstr "最小化"
 
-#: src/prefs.js:23
+#: ../src/extension.js:54
+msgid "Unload"
+msgstr "清空文件"
+
+#: ../src/extension.js:55
+msgid "Reload"
+msgstr "重新下载"
+
+#: ../src/extension.js:58
+msgid "Settings"
+msgstr "设置"
+
+#: ../src/extension.js:68
+msgid "Mobilize"
+msgstr "解锁位置"
+
+#: ../src/extension.js:73
+msgid "MPRIS Player"
+msgstr "MPRIS 播放器"
+
+#: ../src/extension.js:73 ../src/extension.js:77
+msgid "Auto"
+msgstr "自动选择"
+
+#: ../src/prefs.js:24
 msgid "ms"
 msgstr "毫秒"
 
-#: src/prefs.js:24
+#: ../src/prefs.js:25
 msgid "Horizontal"
 msgstr "水平"
 
-#: src/prefs.js:24
+#: ../src/prefs.js:25
 msgid "Vertical"
 msgstr "竖直"
 
-#: src/prefs.js:25
+#: ../src/prefs.js:26
 msgid "Left"
 msgstr "左侧"
 
-#: src/prefs.js:25
+#: ../src/prefs.js:26
 msgid "Center"
 msgstr "中间"
 
-#: src/prefs.js:25
+#: ../src/prefs.js:26
 msgid "Right"
 msgstr "右侧"
 
-#: src/prefs.js:27 src/prefs.js:44
+#: ../src/prefs.js:28 ../src/prefs.js:46
 msgid "NetEase Cloud"
 msgstr "网易云"
 
-#: src/prefs.js:27
+#: ../src/prefs.js:28
 msgid "NetEase Cloud (Trans)"
 msgstr "网易云（翻译）"
 
-#: src/prefs.js:27 src/prefs.js:45
+#: ../src/prefs.js:28 ../src/prefs.js:47
 msgid "LRCLIB"
 msgstr "LRCLIB"
 
-#: src/prefs.js:33
+#: ../src/prefs.js:34
 msgid "_Show progress"
 msgstr "显示进度(_S)"
 
-#: src/prefs.js:34
+#: ../src/prefs.js:35
 msgid "S_ystray position"
 msgstr "托盘位置(_Y)"
 
-#: src/prefs.js:35
+#: ../src/prefs.js:36
 msgid "_Refresh interval"
 msgstr "刷新间隔(_R)"
 
-#: src/prefs.js:36
+#: ../src/prefs.js:38
+msgid "Panel _width"
+msgstr "面板宽度(_W)"
+
+#: ../src/prefs.js:38
+msgid "Fixed width of panel lyric in pixels"
+msgstr "面板歌词的固定宽度（像素）"
+
+#: ../src/prefs.js:39
+msgid "Allow _video players"
+msgstr "允许视频播放器(_V)"
+
+#: ../src/prefs.js:39
+msgid "Allow Chromium/Electron-based players to be recognized"
+msgstr "允许识别 Chromium/Electron 播放器"
+
+#: ../src/prefs.js:38
 msgid "Desktop"
 msgstr "桌面"
 
-#: src/prefs.js:37
+#: ../src/prefs.js:39
 msgid "_Mobilize"
 msgstr "解锁位置(_M)"
 
-#: src/prefs.js:37
+#: ../src/prefs.js:39
 msgid "Allow dragging to displace"
 msgstr "允许拖拽以变更位置"
 
-#: src/prefs.js:38
+#: ../src/prefs.js:40
 msgid "_Opacity"
 msgstr "不透明度(_O)"
 
-#: src/prefs.js:39
+#: ../src/prefs.js:41
 msgid "_Font"
 msgstr "字体(_F)"
 
-#: src/prefs.js:40
+#: ../src/prefs.js:42
 msgid "Or_ientation"
 msgstr "方向(_I)"
 
-#: src/prefs.js:41
+#: ../src/prefs.js:43
 msgid "Online"
 msgstr "在线"
 
-#: src/prefs.js:41
+#: ../src/prefs.js:43
 msgid "Try to download and save the missing lyrics"
 msgstr "尝试下载并保存缺失歌词"
 
-#: src/prefs.js:42
+#: ../src/prefs.js:44
 msgid "_Provider"
 msgstr "供方(_P)"
 
-#: src/prefs.js:42
+#: ../src/prefs.js:44
 #, javascript-format
 msgid "Prefer <a href=\"%s\">lyrics from Mpris metadata</a>"
 msgstr "<a href=\"%s\">Mpris 元数据提供的歌词</a>优先"
 
-#: src/prefs.js:43
+#: ../src/prefs.js:45
 msgid "URL"
 msgstr "网址"
 
-#: src/prefs.js:47
+#: ../src/prefs.js:49
 msgid "F_allback"
 msgstr "备选(_A)"
 
-#: src/prefs.js:47
+#: ../src/prefs.js:49
 msgid "Use the first result when searches cannot be matched precisely"
 msgstr "搜索无法精确匹配时使用首个结果"
 
-#: src/prefs.js:48
+#: ../src/prefs.js:50
 msgid "_Location"
 msgstr "位置(_L)"
 
-#: src/prefs.js:48
+#: ../src/prefs.js:50
 msgid "Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>"
 msgstr "文件名格式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
 
-#: src/extension.js:48
-msgid "Invisiblize"
-msgstr "隐藏"
+#: ../src/ui.js:366
+msgid "Mismatched filetype"
+msgstr "文件类型不匹配"
 
-#: src/extension.js:49
-msgid "Minimize"
-msgstr "最小化"
-
-#: src/extension.js:52
-msgid "Unload"
-msgstr "清空文件"
-
-#: src/extension.js:53
-msgid "Reload"
-msgstr "重新下载"
-
-#: src/extension.js:56
-msgid "Settings"
-msgstr "设置"
-
-#: src/extension.js:66
-msgid "Mobilize"
-msgstr "解锁位置"
+#: ../src/ui.js:488
+msgid "Click or press ENTER to apply changes"
+msgstr "单击或按回车应用更改"
 
 #~ msgid ""
 #~ "Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-"

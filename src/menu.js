@@ -195,7 +195,7 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     setup(options, chosen = this.$chosen) {
-        this.$options = options;
+        this.$options = Object.values(options); // Store as array for numeric index access
         upsert(this.menu, x => x.addMenuItem(new Item()), Object.entries(options), ([k, v], x) => x.setup(v, () => this.$callback(k)));
         this.choose(chosen);
     }

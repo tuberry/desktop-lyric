@@ -20,4 +20,7 @@ export const Key = {
     PRVD: 'online-provider',
     SPAN: 'refresh-interval',
     ORNT: 'lyric-orientation',
+    AVPL: 'allow-video-players',
+    PMPL: 'preferred-mpris-player',
+    PWID: 'panel-width',
 };

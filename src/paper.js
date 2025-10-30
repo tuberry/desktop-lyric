@@ -135,6 +135,7 @@ class PaperBase extends St.DrawingArea {
             }, []).sort(([x], [y]) => x - y)
             .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len, t)) - t, l]), new Map());
         this.$tags = this.$lrcs.keys().toArray();
+        this.queue_repaint();
     }
 }
 
@@ -148,18 +149,30 @@ export class Panel extends PaperBase {
         tray.$box.add_child(this);
     }
 
+    $bindSettings(set) {
+        this.$maxWidth = 0; // Initialize before binding to avoid race condition
+        super.$bindSettings(set);
+        this.$set.tie([[K.PWID, x => this.$updatePanelWidth(x)]], this);
+    }
+
     $buildWidgets() {
         F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', (() => this.$onStyleChange())[$].call());
         this.$naturalWidth = 0;
         super.$buildWidgets();
     }
 
+    $updatePanelWidth(width) {
+        this.$maxWidth = width;
+        this.set_width(width);
+        this.queue_repaint();
+    }
+
     $onStyleChange() {
         let theme = Main.panel.statusArea.quickSettings.get_theme_node();
-        let [w, h] = Main.panel.get_size();
+        let [_w, h] = Main.panel.get_size();
         this[$].$font(theme.get_font())[$]
             .inactiveColor(color2rgba(theme.get_foreground_color()))[$]
-            .$maxWidth(w / 3)[$]
+            .$maxWidth(this[K.PWID])[$]
             .set_height(h)[$]
             .$onColorChange();
     }
@@ -171,15 +184,103 @@ export class Panel extends PaperBase {
     }
 
     setMoment(moment) {
-        super.setMoment(moment);
-        this.set_width(Math.min(this.$maxWidth, this.$naturalWidth + 4));
+        this.moment = moment;
+        let {$pos, $lrc: $txt} = this;
+        [this.$pos, this.$lrc] = this.getLyric();
+        
+        // For Panel: Always repaint if pos changed (for scrolling), even when PRGR=true
+        // Only skip if invisible or if both pos AND lyrics text haven't changed
+        if(!this.visible || (this.$pos === $pos && this.$lrc === $txt)) return;
+        
+        this.queue_repaint();
+        
+        // Always use fixed max width to prevent pushing other panel components
+        this.set_width(this.$maxWidth);
     }
 
     $setupLayout(cr, h, pl) {
         super.$setupLayout(cr, h, pl);
         let [pw, ph] = pl.get_pixel_size();
         this.$naturalWidth = pw;
-        cr.translate(0, (h - ph) / 2);
+        
+        // Set up clipping BEFORE translate to ensure correct coordinate system
+        cr.save();
+        cr.rectangle(0, 0, this.$maxWidth, h);
+        cr.clip();
+        
+        // Now do vertical centering
+        let yOffset = (h - ph) / 2;
+        cr.translate(0, yOffset);
+    }
+
+    $colorLayout(cr, w, pl) {
+        let [pw] = pl.get_pixel_size();
+        let offset = 0;
+        let scrollStage = 0; // 0=no scroll needed, 1=start, 2=center, 3=end
+        
+        if (pw > w) {
+            // Lyrics wider than panel: scroll to keep progress bar centered
+            let progressPixel = this.$pos * pw; // Current progress position in pixels
+            let centerPoint = w / 2; // Center of the panel
+            
+            // Calculate offset using center formula
+            let centeredOffset = centerPoint - progressPixel;
+            
+            // Stage 1→2 transition: when centeredOffset = 0 (progress bar reaches center naturally)
+            // This happens when progressPixel = w/2
+            let stage1End = w / 2;
+            
+            // Stage 2→3 transition: when centeredOffset = w - pw (would scroll past end)
+            // This happens when progressPixel = pw - w/2
+            let stage2End = pw - w / 2;
+            
+            if (progressPixel <= stage1End) {
+                // Stage 1: Progress bar moving to center, no scroll
+                offset = 0;
+                scrollStage = 1;
+            } else if (progressPixel >= stage2End) {
+                // Stage 3: Show end of lyrics, progress bar moves from center to right
+                offset = w - pw;
+                scrollStage = 3;
+            } else {
+                // Stage 2: Keep progress bar centered, scroll lyrics
+                offset = centeredOffset;
+                scrollStage = 2;
+            }
+        }
+        
+        cr.moveTo(offset, 0);
+        
+        if(this[K.PRGR]) {
+            cr.setSourceRGBA(...this.homochromyColor);
+        } else {
+            let gd;
+            
+            if (offset !== 0) {
+                // Stage 2 or 3: Adjust gradient to follow lyrics offset
+                let progressPixel = this.$pos * pw;
+                let visibleProgressPos = progressPixel + offset;
+                
+                // Adjust gradient coordinate system to match lyrics offset
+                gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(offset, 0, pw + offset, 0);
+            } else {
+                // Stage 1: No offset, use normal gradient
+                gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
+            }
+            
+            gd.addColorStopRGBA(0, ...this.activeColor);
+            gd.addColorStopRGBA(this.$pos, ...this.activeColor);
+            gd.addColorStopRGBA(this.$pos, ...this.inactiveColor);
+            gd.addColorStopRGBA(1, ...this.inactiveColor);
+            cr.setSource(gd);
+        }
+    }
+
+    $showLayout(cr, pl) {
+        // Draw the layout (clipping was already set in $setupLayout)
+        super.$showLayout(cr, pl);
+        // Restore the context (matching the save in $setupLayout)
+        cr.restore();
     }
 }
 

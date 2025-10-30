@@ -9,6 +9,7 @@ import {Key as K} from './const.js';
 import Lyric from './lyric.js';
 import Mpris from './mpris.js';
 import * as Paper from './paper.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 const {_} = F;
 const {$, $$} = T;
@@ -32,7 +33,7 @@ class DesktopLyric extends F.Mortal {
             play = F.Source.newTimer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
             paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
             lyric = new Lyric(this.$set),
-            mpris = new Mpris()[$$].connect([
+            mpris = new Mpris(this.$set)[$$].connect([
                 ['update', (_p, x) => this.setSong(x)],
                 ['active', (_p, x) => this.setActive(x)],
                 ['status', (_p, x) => this.setPlaying(x)],
@@ -41,6 +42,9 @@ class DesktopLyric extends F.Mortal {
             sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500);
         this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
+        
+        // Add dynamic menu items after mpris is initialized
+        this.#updateDynamicMenuItems();
     }
 
     #genSystray() {
@@ -49,6 +53,8 @@ class DesktopLyric extends F.Mortal {
             mini: new M.SwitchItem(_('Minimize'), this[K.MINI], x => this.$set.set(K.MINI, x)),
             drag: this[K.MINI] ? null : this.#genDragItem(),
             sep0: new M.Separator(),
+            // player menu will be added later via M.record after mpris is initialized
+            sep1a: new M.Separator(),
             tidy: new M.Item(_('Unload'), () => this[$].setLyric('').$src.lyric.unload(this.song)),
             load: new M.Item(_('Reload'), () => this.loadLyric(true)),
             // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
@@ -66,6 +72,76 @@ class DesktopLyric extends F.Mortal {
         return new M.SwitchItem(_('Mobilize'), this[K.DRAG], x => this.$set.set(K.DRAG, x));
     }
 
+    #updateDynamicMenuItems() {
+        // Add all dynamic menu items that need to be recreated when tray is recreated
+        M.record(true, this.$src.tray.hub, () => this.#genPlayerItem(), 'player', 'sep0');
+    }
+
+    #genPlayerItem() {
+        // Create a PopupSubMenuMenuItem
+        const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
+        
+        // Add "Auto" option
+        const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
+        autoItem.connect('activate', () => {
+            this.$src.mpris.setPreferredPlayer('');
+            this.#updatePlayerMenuLabel(item);
+        });
+        item.menu.addMenuItem(autoItem);
+        
+        // Update menu when it opens
+        item.menu.connect('open-state-changed', (menu, open) => {
+            if (open) {
+                this.#updatePlayerMenuItems(item);
+            }
+        });
+        
+        // Initial label update
+        this.#updatePlayerMenuLabel(item);
+        
+        return item;
+    }
+    
+    #updatePlayerMenuLabel(item) {
+        const preferred = this.$src.mpris.getPreferredPlayer();
+        if (preferred) {
+            item.label.set_text(`${_('MPRIS Player')}: ${this.#formatPlayerName(preferred)}`);
+        } else {
+            item.label.set_text(`${_('MPRIS Player')}: ${_('Auto')}`);
+        }
+    }
+    
+    #updatePlayerMenuItems(item) {
+        const players = this.$src.mpris.getAvailablePlayers();
+        const preferred = this.$src.mpris.getPreferredPlayer();
+        
+        // Clear existing items except the first one (Auto)
+        const items = item.menu._getMenuItems();
+        for (let i = items.length - 1; i >= 1; i--) {
+            items[i].destroy();
+        }
+        
+        // Set ornament for Auto item
+        items[0].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
+        
+        // Add player items
+        players.forEach((name) => {
+            const playerItem = new PopupMenu.PopupMenuItem(this.#formatPlayerName(name));
+            playerItem.connect('activate', () => {
+                this.$src.mpris.setPreferredPlayer(name);
+                this.#updatePlayerMenuLabel(item);
+            });
+            playerItem.setOrnament(name === preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
+            item.menu.addMenuItem(playerItem);
+        });
+    }
+    
+    #formatPlayerName(name) {
+        // Format player name for display: org.mpris.MediaPlayer2.chromium.instance123 -> chromium
+        const match = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/);
+        return match ? match[1] : name;
+    }
+
     #onMiniSet() {
         M.record(!this[K.MINI], this.$src.tray.hub, () => this.#genDragItem(), 'drag', 'sep0');
         this.$src.paper.revive(this[K.MINI]);
@@ -73,12 +149,16 @@ class DesktopLyric extends F.Mortal {
     }
 
     #onAreaSet() {
+        let wasActive = this.$src.mpris.active;
         if(this[K.MINI]) {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
         this.$src.tray.revive();
+        this.#updateDynamicMenuItems();
         this.#onMiniSet();
+        // Restore tray visibility after recreation
+        if(wasActive) F.view(true, this.$src.tray.hub);
     }
 
     #onDragSet(drag) {
