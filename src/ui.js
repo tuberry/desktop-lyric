@@ -7,6 +7,7 @@ import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
+import Cairo from 'gi://cairo';
 import GioUnix from 'gi://GioUnix';
 import GObject from 'gi://GObject';
 import * as Gettext from 'gettext';
@@ -22,6 +23,7 @@ Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 export const _ = Extensions.gettext;
 export const _G = (x, y = 'gtk40') => Gettext.domain(y).gettext(x);
 export const me = () => Extensions.ExtensionPreferences.lookupByURL(import.meta.url);
+export {Adw};
 
 export const setv = Symbol('Set Value');
 export const getv = Symbol('Get Default Value');
@@ -82,7 +84,7 @@ export class Page extends Adw.PreferencesPage {
                 let [[[title = '', description = ''], suffix = null], actions, param] = group[$_][0](group[0] === null, [[]]);
                 grp[$].set({title, description, headerSuffix: T.str(suffix) ? this[hub][suffix] : suffix, ...param})[$$]
                 .add(actions.map(action => action instanceof Gtk.Widget ? action : T.str(action) ? this[hub][action]
-                    : T.seq(new Adw.ActionRow({useUnderline: true}), act => {
+                    : T.seq(new Adw.ActionRow({useUnderline: true, titleLines: 0, subtitleLines: 0}), act => {
                         let [pfx, [title_, subtitle = ''], ...sfx] = action.map(x => T.str(x) ? this[hub][x] : x)[$_].unshift(Array.isArray(action[0]), null);
                         sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub], cssClasses: ['dimmed']})] : [x]);
                         act[$].set({title: title_, subtitle})[$_].add_prefix(pfx, pfx)[$$]
@@ -146,6 +148,93 @@ export class Drop extends Gtk.DropDown {
 
     constructor(strv, tooltipText = '') {
         super({model: Gtk.StringList.new(strv), valign: Gtk.Align.CENTER, tooltipText});
+    }
+}
+
+export class ColorDrop extends Gtk.DropDown {
+    static {
+        T.enrol(this);
+    }
+
+    [esse] = 'selected';
+
+    constructor(colorOptions, tooltipText = '') {
+        // colorOptions: [{label: string, color: [r, g, b]}]
+        const model = Gio.ListStore.new(ColorItem);
+        colorOptions.forEach(opt => model.append(new ColorItem(opt)));
+        
+        super({model, valign: Gtk.Align.CENTER, tooltipText});
+        
+        // Create factory for list items with color preview
+        const createFactory = () => {
+            const factory = new Gtk.SignalListItemFactory();
+            
+            factory.connect('setup', (_factory, listItem) => {
+                const box = new Gtk.Box({spacing: 8, orientation: Gtk.Orientation.HORIZONTAL});
+                const circle = new Gtk.DrawingArea({widthRequest: 16, heightRequest: 16, valign: Gtk.Align.CENTER});
+                const label = new Gtk.Label({xalign: 0});
+                box.append(circle);
+                box.append(label);
+                listItem.set_child(box);
+            });
+            
+            factory.connect('bind', (_factory, listItem) => {
+                const item = listItem.get_item();
+                const box = listItem.get_child();
+                const circle = box.get_first_child();
+                const label = box.get_last_child();
+                
+                label.set_label(item.label);
+                
+                // Draw color circle
+                circle.set_draw_func((area, cr, width, height) => {
+                    const radius = Math.min(width, height) / 2;
+                    const centerX = width / 2;
+                    const centerY = height / 2;
+                    
+                    // Draw solid color circle
+                    cr.arc(centerX, centerY, radius - 1, 0, 2 * Math.PI);
+                    cr.setSourceRGB(...item.color);
+                    cr.fill();
+                    
+                    // Add border
+                    cr.arc(centerX, centerY, radius - 1, 0, 2 * Math.PI);
+                    cr.setSourceRGBA(0, 0, 0, 0.3);
+                    cr.setLineWidth(1);
+                    cr.stroke();
+                });
+            });
+            
+            return factory;
+        };
+        
+        // Set factory for dropdown list
+        this.set_factory(createFactory());
+        
+        // Set factory for the button (selected item)
+        this.set_list_factory(createFactory());
+    }
+}
+
+// Helper class for color items
+class ColorItem extends GObject.Object {
+    static {
+        GObject.registerClass({
+            Properties: {
+                'label': GObject.ParamSpec.string('label', '', '', GObject.ParamFlags.READWRITE, ''),
+            },
+        }, this);
+    }
+    
+    constructor(params) {
+        super();
+        this.label = params.label || '';
+        // Store color as regular property (not GObject property)
+        this._color = params.color || [1, 1, 1];
+    }
+    
+    get color() {
+        return this._color;
     }
 }
 

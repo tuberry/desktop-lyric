@@ -14,12 +14,35 @@ import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import * as T from './util.js';
 import * as F from './fubar.js';
-import {Key as K} from './const.js';
+import {Key as K, ColorPreset, Colors} from './const.js';
 
 const {$, $$} = T;
 
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity ?? alpha / 255);
+
+/**
+ * Get color from preset or system theme
+ * @param {number} preset - Color preset index
+ * @param {number} opacity - Opacity value (0-1)
+ * @param {boolean} isActive - Whether this is active color (for system color mixing)
+ * @returns {Array} RGBA array
+ */
+const getPresetColor = (preset, opacity, isActive = false) => {
+    if (preset === ColorPreset.SYSTEM) {
+        // Use system accent color
+        const systemColor = F.theme().get_accent_color()[0];
+        const rgba = color2rgba(systemColor, opacity);
+        // For active color, slightly adjust brightness
+        if (isActive) {
+            return rgba.map((x, i) => i < 3 ? Util.lerp(x, 1, 0.2) : x);
+        }
+        return rgba;
+    }
+    // Use predefined color
+    const rgb = Colors[preset] || Colors[ColorPreset.WHITE];
+    return [...rgb, opacity];
+};
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
     if(sorted[upper] <= value) {
@@ -152,7 +175,11 @@ export class Panel extends PaperBase {
     $bindSettings(set) {
         this.$maxWidth = 0; // Initialize before binding to avoid race condition
         super.$bindSettings(set);
-        this.$set.tie([[K.PWID, x => this.$updatePanelWidth(x)]], this);
+        this.$set.tie([
+            [K.PWID, x => this.$updatePanelWidth(x)],
+            [K.ACLR, null, () => this.$onColorChange()],
+            [K.ICLR, null, () => this.$onColorChange()],
+        ], this);
     }
 
     $buildWidgets() {
@@ -183,7 +210,33 @@ export class Panel extends PaperBase {
     get homochromyColor() { return this.inactiveColor; }
 
     $onColorChange() {
-        this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => Util.lerp(x, this.inactiveColor[i], 0.2));
+        const theme = Main.panel.statusArea.quickSettings.get_theme_node();
+        const defaultColor = color2rgba(theme.get_foreground_color());
+        
+        // Get colors from settings (use defaults if not yet bound)
+        const activePreset = this[K.ACLR] ?? ColorPreset.SYSTEM;
+        const inactivePreset = this[K.ICLR] ?? ColorPreset.WHITE;
+        
+        // For panel, we don't use opacity setting, use foreground color alpha
+        const alpha = defaultColor[3];
+        
+        if (activePreset === ColorPreset.SYSTEM) {
+            // System color with slight adjustment
+            const systemColor = F.theme().get_accent_color()[0];
+            this.activeColor = color2rgba(systemColor, alpha).map((x, i) => 
+                i < 3 ? Util.lerp(x, defaultColor[i], 0.2) : x
+            );
+        } else {
+            const rgb = Colors[activePreset] || Colors[ColorPreset.WHITE];
+            this.activeColor = [...rgb, alpha];
+        }
+        
+        if (inactivePreset === ColorPreset.SYSTEM) {
+            this.inactiveColor = defaultColor;
+        } else {
+            const rgb = Colors[inactivePreset] || Colors[ColorPreset.WHITE];
+            this.inactiveColor = [...rgb, alpha];
+        }
     }
 
     setMoment(moment) {
@@ -389,6 +442,8 @@ export class Desktop extends PaperBase {
             [K.ORNT, x => this.$onOrientSet(x)],
             [K.OPCT, x => x / 100, () => this.$onColorChange()],
             [K.SITE, x => T.seq(x, y => this.set_position(...y)), null, true],
+            [K.ACLR, null, () => this.$onColorChange()],
+            [K.ICLR, null, () => this.$onColorChange()],
         ], this).tie([K.FONT], this, null, () => this.$onFontSet());
     }
 
@@ -424,7 +479,29 @@ export class Desktop extends PaperBase {
     }
 
     $onColorChange() {
-        [this.activeColor, this.inactiveColor] = F.theme().get_accent_color().map(x => color2rgba(x, this[K.OPCT]));
+        const opacity = this[K.OPCT] ?? 0.5;
+        const activePreset = this[K.ACLR] ?? ColorPreset.SYSTEM;
+        const inactivePreset = this[K.ICLR] ?? ColorPreset.WHITE;
+        
+        // Get active color
+        if (activePreset === ColorPreset.SYSTEM) {
+            const systemColor = F.theme().get_accent_color()[0];
+            this.activeColor = color2rgba(systemColor, opacity);
+        } else {
+            const rgb = Colors[activePreset] || Colors[ColorPreset.WHITE];
+            this.activeColor = [...rgb, opacity];
+        }
+        
+        // Get inactive color
+        if (inactivePreset === ColorPreset.SYSTEM) {
+            const systemColor = F.theme().get_accent_color()[0];
+            this.inactiveColor = color2rgba(systemColor, opacity);
+        } else {
+            const rgb = Colors[inactivePreset] || Colors[ColorPreset.WHITE];
+            this.inactiveColor = [...rgb, opacity];
+        }
+        
+        // Calculate outline color (inverted with low opacity)
         this.outlineColor = this.inactiveColor.map(x => 1 - x).with(3, 0.2);
     }
 

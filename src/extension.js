@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import Pango from 'gi://Pango';
-
 import * as T from './util.js';
 import * as M from './menu.js';
 import * as F from './fubar.js';
@@ -11,7 +9,7 @@ import {Key as K} from './const.js';
 import Lyric from './lyric.js';
 import Mpris from './mpris.js';
 import * as Paper from './paper.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {PlayerMenu} from './player-menu.js';
 
 const {_} = F;
 const {$, $$} = T;
@@ -45,6 +43,9 @@ class DesktopLyric extends F.Mortal {
                 async n => (x => this.$pos !== x && [x])(await mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500);
         this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
         
+        // Create player menu manager
+        this.playerMenu = new PlayerMenu(this.$src.mpris, _);
+        
         // Add dynamic menu items after mpris is initialized
         this.#updateDynamicMenuItems();
     }
@@ -76,129 +77,7 @@ class DesktopLyric extends F.Mortal {
 
     #updateDynamicMenuItems() {
         // Add all dynamic menu items that need to be recreated when tray is recreated
-        M.record(true, this.$src.tray.hub, () => this.#genPlayerItem(), 'player', 'sep0');
-    }
-
-    #genPlayerItem() {
-        // Create a PopupSubMenuMenuItem
-        const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
-        
-        // Enable ellipsis for the main label
-        item.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
-        
-        // Add hint at the top
-        const hintItem = new PopupMenu.PopupMenuItem(_('Manual selection enables lyrics'));
-        hintItem.setSensitive(false);
-        item.menu.addMenuItem(hintItem);
-        
-        // Add separator after hint
-        item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        
-        // Add "Auto" option
-        const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
-        autoItem.connect('activate', () => {
-            this.$src.mpris.setPreferredPlayer('');
-            this.#updatePlayerMenuLabel(item);
-        });
-        item.menu.addMenuItem(autoItem);
-        
-        // Add "None" option
-        const noneItem = new PopupMenu.PopupMenuItem(_('None'));
-        noneItem.connect('activate', () => {
-            this.$src.mpris.setPreferredPlayer('none');
-            this.#updatePlayerMenuLabel(item);
-        });
-        item.menu.addMenuItem(noneItem);
-        
-        // Update menu when it opens
-        item.menu.connect('open-state-changed', (menu, open) => {
-            if (open) {
-                // Set submenu max width slightly smaller than parent to account for padding
-                const parentWidth = this.$src.tray.hub.menu.box.get_width();
-                if (parentWidth > 0) {
-                    // Subtract padding/margin to prevent expanding parent
-                    const submenuMaxWidth = parentWidth - 20;
-                    item.menu.box.set_style(`max-width: ${submenuMaxWidth}px;`);
-                }
-                
-                // Update player menu items
-                this.#updatePlayerMenuItems(item);
-            }
-        });
-        
-        // Initial label update
-        this.#updatePlayerMenuLabel(item);
-        
-        return item;
-    }
-    
-    #updatePlayerMenuLabel(item) {
-        const preferred = this.$src.mpris.getPreferredPlayer();
-        const label = preferred === 'none' ? _('None')
-                    : preferred ? this.#formatPlayerName(preferred)
-                    : _('Auto');
-        item.label.set_text(`${_('MPRIS Player')}: ${label}`);
-    }
-    
-    async #updatePlayerMenuItems(item) {
-        const players = this.$src.mpris.getAvailablePlayers();
-        const preferred = this.$src.mpris.getPreferredPlayer();
-        
-        // Clear existing items except the first four (hint, separator, Auto, None)
-        const items = item.menu._getMenuItems();
-        for (let i = items.length - 1; i >= 4; i--) {
-            items[i].destroy();
-        }
-        
-        // Set ornament for Auto and None items (indices 2 and 3)
-        items[2].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
-        items[3].setOrnament(preferred === 'none' ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
-        
-        // Refresh all player titles first, then add menu items
-        await Promise.all(players.map(name => this.$src.mpris.refreshPlayerTitle(name)));
-        
-        // Now add player items with updated titles
-        players.forEach((name) => {
-            const info = this.$src.mpris.getPlayerInfo(name);
-            const displayText = this.#formatPlayerDisplay(name, info);
-            const playerItem = new PopupMenu.PopupMenuItem(displayText);
-            
-            // Enable ellipsis for long player names/titles
-            playerItem.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
-            
-            playerItem.connect('activate', () => {
-                // Toggle: if clicking already selected player, deselect it (set to 'none')
-                if (name === preferred) {
-                    this.$src.mpris.setPreferredPlayer('none', false);
-                } else {
-                    this.$src.mpris.setPreferredPlayer(name, true); // Mark as manual selection
-                }
-                this.#updatePlayerMenuLabel(item);
-            });
-            playerItem.setOrnament(name === preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
-            item.menu.addMenuItem(playerItem);
-        });
-    }
-    
-    #formatPlayerName(name) {
-        // Format player name for display: org.mpris.MediaPlayer2.chromium.instance123 -> chromium
-        const match = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/);
-        return match ? match[1] : name;
-    }
-
-    #formatPlayerDisplay(name, info) {
-        // Format player display with type badge and current title
-        const TYPE_BADGE = {video: '🎬', audio: '🎵'};
-        
-        const playerName = this.#formatPlayerName(name);
-        const typeBadge = info.isVideo ? TYPE_BADGE.video : TYPE_BADGE.audio;
-        
-        if (!info.currentTitle) {
-            return `${typeBadge} ${playerName}`;
-        }
-        
-        // Show full title - ellipsis handled by Pango
-        return `${typeBadge} ${playerName} - ${info.currentTitle}`;
+        M.record(true, this.$src.tray.hub, () => this.playerMenu.buildMenu(), 'player', 'sep0');
     }
 
     #onMiniSet() {
