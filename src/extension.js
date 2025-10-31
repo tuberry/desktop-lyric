@@ -9,7 +9,7 @@ import {Key as K} from './const.js';
 import Lyric from './lyric.js';
 import Mpris from './mpris.js';
 import * as Paper from './paper.js';
-import {PlayerMenu} from './player-menu.js';
+import {PlayerMenu} from './player/menu.js';
 
 const {_} = F;
 const {$, $$} = T;

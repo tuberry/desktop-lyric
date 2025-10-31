@@ -4,8 +4,8 @@
 import Pango from 'gi://Pango';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import * as F from './fubar.js';
-import {formatPlayerName, formatPlayerDisplay} from './player-utils.js';
+import * as F from '../fubar.js';
+import {formatPlayerName, formatPlayerDisplay} from './utils.js';
 
 const {_} = F;
 
@@ -19,18 +19,25 @@ export class PlayerMenu {
     }
 
     /**
+     * Enable ellipsis for menu item label
+     * @param {Object} menuItem - Menu item with label
+     */
+    _enableEllipsis(menuItem) {
+        menuItem.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
+    }
+
+    /**
      * Generate the player submenu item
      * @returns {PopupMenu.PopupSubMenuMenuItem} The submenu item
      */
     buildMenu() {
         const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
-        
-        // Enable ellipsis for the main label
-        item.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
+        this._enableEllipsis(item);
         
         // Add hint at the top
         const hintItem = new PopupMenu.PopupMenuItem(_('Manual selection enables lyrics'));
         hintItem.setSensitive(false);
+        this._enableEllipsis(hintItem);
         item.menu.addMenuItem(hintItem);
         
         // Add separator after hint
@@ -38,6 +45,7 @@ export class PlayerMenu {
         
         // Add "Auto" option
         const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
+        this._enableEllipsis(autoItem);
         autoItem.connect('activate', () => {
             this.mpris.setPreferredPlayer('');
             this.updateMenuLabel(item);
@@ -46,6 +54,7 @@ export class PlayerMenu {
         
         // Add "None" option
         const noneItem = new PopupMenu.PopupMenuItem(_('None'));
+        this._enableEllipsis(noneItem);
         noneItem.connect('activate', () => {
             this.mpris.setPreferredPlayer('none');
             this.updateMenuLabel(item);
@@ -71,14 +80,6 @@ export class PlayerMenu {
      * @param {PopupMenu.PopupSubMenuMenuItem} item - The menu item
      */
     onMenuOpened(item) {
-        // Set submenu max width slightly smaller than parent to account for padding
-        const parentWidth = item.get_parent()?.get_parent()?.box?.get_width();
-        if (parentWidth > 0) {
-            // Subtract padding/margin to prevent expanding parent
-            const submenuMaxWidth = parentWidth - 20;
-            item.menu.box.set_style(`max-width: ${submenuMaxWidth}px;`);
-        }
-        
         // Update player menu items
         this.updatePlayerMenuItems(item);
     }
@@ -115,17 +116,25 @@ export class PlayerMenu {
         items[2].setOrnament(!preferred ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
         items[3].setOrnament(preferred === 'none' ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT);
         
-        // Refresh all player titles first, then add menu items
-        await Promise.all(players.map(name => this.mpris.refreshPlayerTitle(name)));
+        // Verify and refresh all player titles, filter out dead players
+        const verificationResults = await Promise.all(
+            players.map(name => this.mpris.verifyAndRefreshPlayer(name))
+        );
+        
+        // Filter out players that failed verification
+        const validPlayers = players.filter((name, index) => verificationResults[index]);
+        
+        // After validation, clean up invalid preferred player if needed
+        this.mpris.cleanupInvalidPreferredPlayer();
         
         // Now add player items with updated titles
-        players.forEach((name) => {
+        validPlayers.forEach((name) => {
             const info = this.mpris.getPlayerInfo(name);
             const displayText = formatPlayerDisplay(name, info);
             const playerItem = new PopupMenu.PopupMenuItem(displayText);
             
             // Enable ellipsis for long player names/titles
-            playerItem.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
+            this._enableEllipsis(playerItem);
             
             playerItem.connect('activate', () => {
                 // Toggle: if clicking already selected player, deselect it (set to 'none')

@@ -5,7 +5,7 @@ import Gio from 'gi://Gio';
 import Shell from 'gi://Shell';
 
 import * as FileUtils from 'resource:///org/gnome/shell/misc/fileUtils.js';
-import {isVideoPlayer} from './player-utils.js';
+import {isVideoPlayer} from './utils.js';
 
 const MPRIS_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2');
 const PLAYER_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2.Player');
@@ -39,9 +39,16 @@ export class PlayerScanner {
             ? `${DesktopEntry}.desktop` 
             : Identity ? Shell.AppSystem.search(Identity)[0]?.[0] : null;
         
-        const categories = app 
-            ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') 
-            : null;
+        let categories = null;
+        if (app) {
+            const appInfo = Shell.AppSystem.get_default().lookup_app(app);
+            if (appInfo) {
+                const categoriesStr = appInfo.get_app_info().get_categories();
+                if (categoriesStr) {
+                    categories = categoriesStr.split(';').filter(Boolean);
+                }
+            }
+        }
         
         // Extract player name from D-Bus name
         const playerName = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/)?.[1] || '';
@@ -97,14 +104,56 @@ export class PlayerScanner {
             const metadata = proxy.Metadata;
             if (metadata) {
                 const title = metadata['xesam:title'];
-                if (title && title.get_type_string() === 's') {
-                    return title.deepUnpack();
+                // Check if title exists and is a string type
+                if (title && title.get_type_string && title.get_type_string() === 's') {
+                    const unpacked = title.deepUnpack();
+                    // Ensure unpacked value is a non-empty string
+                    return (typeof unpacked === 'string' && unpacked.trim()) ? unpacked : null;
                 }
             }
         } catch (e) {
-            // Ignore errors
+            // Ignore errors (player may have disconnected)
         }
         return null;
+    }
+
+    /**
+     * Verify if a player is still alive and has valid media
+     * @param {string} name - Player D-Bus name
+     * @returns {Promise<Object>} Status object: {connected, hasMedia}
+     */
+    async verifyPlayer(name) {
+        try {
+            const proxy = await Gio.DBusProxy.makeProxyWrapper(PLAYER_IFACE)
+                .newAsync(Gio.DBus.session, name, '/org/mpris/MediaPlayer2');
+            
+            const metadata = proxy.Metadata;
+            if (!metadata) {
+                return {connected: true, hasMedia: false}; // Connected but no media
+            }
+            
+            // Check if trackid is NoTrack (Chrome's way of saying no media)
+            const trackId = metadata['mpris:trackid'];
+            if (trackId && trackId.deepUnpack) {
+                const trackIdStr = trackId.deepUnpack();
+                if (trackIdStr.includes('NoTrack')) {
+                    return {connected: true, hasMedia: false}; // Connected but no active track
+                }
+            }
+            
+            // Check if title exists and is non-empty
+            const title = metadata['xesam:title'];
+            if (title && title.get_type_string && title.get_type_string() === 's') {
+                const unpacked = title.deepUnpack();
+                if (typeof unpacked === 'string' && unpacked.trim()) {
+                    return {connected: true, hasMedia: true}; // Has valid media
+                }
+            }
+            
+            return {connected: true, hasMedia: false}; // Connected but no valid media
+        } catch (e) {
+            return {connected: false, hasMedia: false}; // Connection failed
+        }
     }
 
     /**

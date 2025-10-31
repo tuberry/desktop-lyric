@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: tuberry
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {getPlaybackPriority} from './player-utils.js';
+import {getPlaybackPriority} from './utils.js';
 
 /**
  * PlayerSelector - Responsible for player selection strategy

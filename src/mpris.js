@@ -7,8 +7,8 @@ import * as FileUtils from 'resource:///org/gnome/shell/misc/fileUtils.js';
 import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K} from './const.js';
-import {PlayerScanner} from './player-scanner.js';
-import {PlayerSelector} from './player-selector.js';
+import {PlayerScanner} from './player/scanner.js';
+import {PlayerSelector} from './player/selector.js';
 
 const MPRIS_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2');
 const PLAYER_IFACE = FileUtils.loadInterfaceXML('org.mpris.MediaPlayer2.Player');
@@ -91,14 +91,7 @@ export default class Mpris extends F.Mortal {
 
     handlePlayersAvailable(currentPlayer) {
         const currentPlayerExists = currentPlayer && this.availablePlayers.has(currentPlayer);
-        let preferred = this.getPreferredPlayer();
-        
-        // If preferred player doesn't exist anymore, reset to auto
-        if (preferred && preferred !== 'none' && !this.availablePlayers.has(preferred)) {
-            this.setPreferredPlayer('');
-            preferred = '';
-            this.manuallySelected = false;
-        }
+        const preferred = this.getPreferredPlayer();
         
         if (!currentPlayerExists) {
             this.selectAndActivatePlayer();
@@ -133,16 +126,22 @@ export default class Mpris extends F.Mortal {
         this.availablePlayers.set(name, info);
     }
 
-    selectAndActivatePlayer() {
-        let preferred = this.getPreferredPlayer();
-        
+    cleanupInvalidPreferredPlayer() {
+        const preferred = this.getPreferredPlayer();
         // If preferred player doesn't exist anymore (e.g., after reboot), reset to auto
         if (preferred && preferred !== 'none' && !this.availablePlayers.has(preferred)) {
             this.setPreferredPlayer(''); // Reset to auto mode
-            preferred = '';
             this.manuallySelected = false;
+            return true; // Was cleaned up
         }
+        return false; // No cleanup needed
+    }
+
+    selectAndActivatePlayer() {
+        // Clean up invalid preferred player first
+        this.cleanupInvalidPreferredPlayer();
         
+        const preferred = this.getPreferredPlayer();
         const currentPlayer = this.$src.mpris.hub?.gName;
         const selected = this.selector.selectPlayer(this.availablePlayers, preferred, currentPlayer);
         
@@ -152,7 +151,10 @@ export default class Mpris extends F.Mortal {
             this.$src.mpris.dispel();
             this.$src.player.dispel();
             this.activate(this.availablePlayers.size > 0);
-            this.manuallySelected = false;
+            // Only clear manual selection if user explicitly chose "none" or auto mode
+            if (preferred === 'none' || preferred === '') {
+                this.manuallySelected = false;
+            }
         }
     }
 
@@ -173,6 +175,32 @@ export default class Mpris extends F.Mortal {
         const info = this.availablePlayers.get(name);
         if (info && title) {
             info.currentTitle = title;
+        }
+    }
+
+    async verifyAndRefreshPlayer(name) {
+        // Verify if player is still alive and has valid media
+        const {connected, hasMedia} = await this.scanner.verifyPlayer(name);
+        
+        if (!connected) {
+            // Player is disconnected, remove it
+            this.availablePlayers.delete(name);
+            this.scanner.cleanupPlayer(name);
+            return false;
+        }
+        
+        const info = this.availablePlayers.get(name);
+        if (!info) return false;
+        
+        if (hasMedia) {
+            // Player has media, refresh its title
+            await this.refreshPlayerTitle(name);
+            return true; // Show in menu
+        } else {
+            // Player is connected but has no media (e.g., tab closed)
+            // Keep it in the list but clear the title and don't show in menu
+            info.currentTitle = null;
+            return false; // Don't show in menu
         }
     }
 
