@@ -44,7 +44,7 @@ class DesktopLyric extends F.Mortal {
         this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
         
         // Create player menu manager
-        this.playerMenu = new PlayerMenu(this.$src.mpris, _);
+        this.playerMenu = new PlayerMenu(this.$src.mpris);
         
         // Add dynamic menu items after mpris is initialized
         this.#updateDynamicMenuItems();

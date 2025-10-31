@@ -4,15 +4,17 @@
 import Pango from 'gi://Pango';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
+import * as F from './fubar.js';
 import {formatPlayerName, formatPlayerDisplay} from './player-utils.js';
+
+const {_} = F;
 
 /**
  * PlayerMenu - Manages the MPRIS player selection submenu
  */
 export class PlayerMenu {
-    constructor(mprisManager, gettext) {
+    constructor(mprisManager) {
         this.mpris = mprisManager;
-        this._ = gettext;
         this.menuItem = null;
     }
 
@@ -21,13 +23,13 @@ export class PlayerMenu {
      * @returns {PopupMenu.PopupSubMenuMenuItem} The submenu item
      */
     buildMenu() {
-        const item = new PopupMenu.PopupSubMenuMenuItem(this._('MPRIS Player'));
+        const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
         
         // Enable ellipsis for the main label
         item.label.get_clutter_text().set_ellipsize(Pango.EllipsizeMode.END);
         
         // Add hint at the top
-        const hintItem = new PopupMenu.PopupMenuItem(this._('Manual selection enables lyrics'));
+        const hintItem = new PopupMenu.PopupMenuItem(_('Manual selection enables lyrics'));
         hintItem.setSensitive(false);
         item.menu.addMenuItem(hintItem);
         
@@ -35,7 +37,7 @@ export class PlayerMenu {
         item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         
         // Add "Auto" option
-        const autoItem = new PopupMenu.PopupMenuItem(this._('Auto'));
+        const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
         autoItem.connect('activate', () => {
             this.mpris.setPreferredPlayer('');
             this.updateMenuLabel(item);
@@ -43,7 +45,7 @@ export class PlayerMenu {
         item.menu.addMenuItem(autoItem);
         
         // Add "None" option
-        const noneItem = new PopupMenu.PopupMenuItem(this._('None'));
+        const noneItem = new PopupMenu.PopupMenuItem(_('None'));
         noneItem.connect('activate', () => {
             this.mpris.setPreferredPlayer('none');
             this.updateMenuLabel(item);
@@ -87,10 +89,12 @@ export class PlayerMenu {
      */
     updateMenuLabel(item) {
         const preferred = this.mpris.getPreferredPlayer();
-        const label = preferred === 'none' ? this._('None')
-                    : preferred ? formatPlayerName(preferred)
-                    : this._('Auto');
-        item.label.set_text(`${this._('MPRIS Player')}: ${label}`);
+        const labels = {
+            'none': _('None'),
+            '': _('Auto'),
+        };
+        const label = labels[preferred] ?? formatPlayerName(preferred);
+        item.label.set_text(`${_('MPRIS Player')}: ${label}`);
     }
 
     /**

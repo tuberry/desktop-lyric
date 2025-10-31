@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-10-31 17:03+0800\n"
+"POT-Creation-Date: 2025-10-31 20:12+0800\n"
 "PO-Revision-Date: 2021-09-14 18:13+0200\n"
 "Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
 "Language-Team: none\n"
@@ -267,6 +267,25 @@ msgstr "Voorkeuren"
 
 #: src/extension.js:75
 msgid "Mobilize"
+msgstr ""
+
+#: src/player-menu.js:26 src/player-menu.js:97
+msgid "MPRIS Player"
+msgstr ""
+
+#. Add hint at the top
+#: src/player-menu.js:32
+msgid "Manual selection enables lyrics"
+msgstr ""
+
+#. Add "Auto" option
+#: src/player-menu.js:40 src/player-menu.js:94
+msgid "Auto"
+msgstr ""
+
+#. Add "None" option
+#: src/player-menu.js:48 src/player-menu.js:93
+msgid "None"
 msgstr ""
 
 #~ msgid "Outline color"

@@ -91,7 +91,14 @@ export default class Mpris extends F.Mortal {
 
     handlePlayersAvailable(currentPlayer) {
         const currentPlayerExists = currentPlayer && this.availablePlayers.has(currentPlayer);
-        const preferred = this.$set.hub.get_string(K.PMPL);
+        let preferred = this.getPreferredPlayer();
+        
+        // If preferred player doesn't exist anymore, reset to auto
+        if (preferred && preferred !== 'none' && !this.availablePlayers.has(preferred)) {
+            this.setPreferredPlayer('');
+            preferred = '';
+            this.manuallySelected = false;
+        }
         
         if (!currentPlayerExists) {
             this.selectAndActivatePlayer();
@@ -127,7 +134,15 @@ export default class Mpris extends F.Mortal {
     }
 
     selectAndActivatePlayer() {
-        const preferred = this.$set.hub.get_string(K.PMPL);
+        let preferred = this.getPreferredPlayer();
+        
+        // If preferred player doesn't exist anymore (e.g., after reboot), reset to auto
+        if (preferred && preferred !== 'none' && !this.availablePlayers.has(preferred)) {
+            this.setPreferredPlayer(''); // Reset to auto mode
+            preferred = '';
+            this.manuallySelected = false;
+        }
+        
         const currentPlayer = this.$src.mpris.hub?.gName;
         const selected = this.selector.selectPlayer(this.availablePlayers, preferred, currentPlayer);
         
@@ -194,7 +209,7 @@ export default class Mpris extends F.Mortal {
         try {
             await this.scanPlayer(name);
             
-            const preferred = this.$set.hub.get_string(K.PMPL);
+            const preferred = this.getPreferredPlayer();
             const newPlayerInfo = this.availablePlayers.get(name);
             const currentPlayer = this.$src.mpris.hub?.gName;
             
@@ -228,7 +243,7 @@ export default class Mpris extends F.Mortal {
             info.playbackStatus = newStatus;
         }
         
-        const preferred = this.$set.hub.get_string(K.PMPL);
+        const preferred = this.getPreferredPlayer();
         if (!preferred) {
             const currentPlayer = this.$src.mpris.hub?.gName;
             

@@ -40,17 +40,34 @@ export function formatPlayerDisplay(name, info) {
 /**
  * Check if the app categories indicate a video player
  * @param {string[]|null} categories - App categories
- * @returns {boolean} - True if it's a video player (not AudioVideo AND is Video)
+ * @param {string} playerName - Player name (e.g., 'chromium', 'firefox')
+ * @returns {boolean} - True if it's a video player (contains Video category or is a browser)
  */
-export function isVideoPlayer(categories) {
-    if (!categories) return false;
+export function isVideoPlayer(categories, playerName = '') {
+    // Whitelist: known music players that should never be treated as video players
+    const musicPlayers = ['splayer', 'yesplaymusic'];
+    const lowerName = playerName.toLowerCase();
+    if (musicPlayers.some(music => lowerName.includes(music))) {
+        return false;
+    }
     
-    // Check if it's NOT AudioVideo AND is Video
-    return categories.reduce((result, category) => {
-        result[0] &&= category !== 'AudioVideo'; // Not an audio/video hybrid
-        result[1] ||= category === 'Video';       // Is a video player
-        return result;
-    }, [true, false]).some(x => x);
+    if (!categories) {
+        // Browsers can play videos, treat them as video players
+        const browsers = ['chromium', 'chrome', 'firefox', 'edge', 'brave', 'opera', 'vivaldi', 'epiphany'];
+        return browsers.some(browser => lowerName.includes(browser));
+    }
+    
+    // Check for Video category
+    if (categories.includes('Video')) {
+        return true;
+    }
+    
+    // Browsers with WebBrowser category are treated as video players
+    if (categories.includes('WebBrowser')) {
+        return true;
+    }
+    
+    return false;
 }
 
 /**

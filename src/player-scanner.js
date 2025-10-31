@@ -43,8 +43,11 @@ export class PlayerScanner {
             ? Shell.AppSystem.get_default().lookup_app(app)?.get_app_info().get_categories().split(';') 
             : null;
         
+        // Extract player name from D-Bus name
+        const playerName = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/)?.[1] || '';
+        
         // Determine if this is a video player
-        const isVideo = isVideoPlayer(categories);
+        const isVideo = isVideoPlayer(categories, playerName);
         
         // Check if video players should be filtered out
         const allowVideoPlayers = this.settings.hub.get_boolean('allow-video-players');
