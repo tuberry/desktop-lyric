@@ -242,7 +242,7 @@ export default class Mpris extends F.Mortal {
             const currentPlayer = this.$src.mpris.hub?.gName;
             
             if (this.selector.shouldActivateNewPlayer(
-                name, newPlayerInfo, currentPlayer, preferred, this.$src.mpris.active
+                name, newPlayerInfo, currentPlayer, preferred, this.$src.mpris.active, this.availablePlayers
             )) {
                 this.$src.mpris.summon(name);
             }
@@ -272,14 +272,10 @@ export default class Mpris extends F.Mortal {
         }
         
         const preferred = this.getPreferredPlayer();
-        if (!preferred) {
-            const currentPlayer = this.$src.mpris.hub?.gName;
-            
-            if (newStatus === 'Playing' && name !== currentPlayer) {
-                this.$src.mpris.summon(name);
-            } else if (currentPlayer && this.selector.shouldAutoSwitch(currentPlayer, this.availablePlayers)) {
-                this.selectAndActivatePlayer();
-            }
+        if (!preferred && this.$src.mpris.active) {
+            // Auto mode: always re-evaluate when any player status changes
+            // This ensures we always have the best player selected
+            this.selectAndActivatePlayer();
         }
     }
 
