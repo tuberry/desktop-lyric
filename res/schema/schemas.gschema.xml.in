@@ -70,15 +70,5 @@
         <default>300</default>
         <summary>panel lyric fixed width (pixels)</summary>
     </key>
-    <key type="u" name="active-color">
-        <range min="0" max="8"/>
-        <default>0</default>
-        <summary>active (progress) color preset (0 - system, 1 - white, 2 - black, 3 - green, 4 - orange, 5 - yellow, 6 - blue, 7 - red, 8 - purple)</summary>
-    </key>
-    <key type="u" name="inactive-color">
-        <range min="0" max="8"/>
-        <default>1</default>
-        <summary>inactive (main) color preset (0 - system, 1 - white, 2 - black, 3 - green, 4 - orange, 5 - yellow, 6 - blue, 7 - red, 8 - purple)</summary>
-    </key>
   </schema>
 </schemalist>

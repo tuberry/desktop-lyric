@@ -7,9 +7,8 @@ import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
 import Lyric from './lyric.js';
-import Mpris from './mpris.js';
+import Mpris, {PlayerMenu} from './mpris.js';
 import * as Paper from './paper.js';
-import {PlayerMenu} from './player/menu.js';
 
 const {_} = F;
 const {$, $$} = T;
@@ -152,7 +151,13 @@ class DesktopLyric extends F.Mortal {
 
     setLyric(lyrics) {
         if(!this.$src.paper.active) return;
-        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '')[$]
+        
+        // Determine if we should show song title
+        // Mini mode: always show title
+        // Desktop mode: never show title (only show lyrics)
+        const songTitle = this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '';
+        
+        this.$src.paper.hub[$].song(songTitle)[$]
             .setLength(this.song.length)[$]
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);

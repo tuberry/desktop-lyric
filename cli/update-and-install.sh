@@ -4,7 +4,12 @@
 set -e  # Exit on error
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Navigate to project root (parent directory if script is in cli/)
+if [[ "$SCRIPT_DIR" == */cli ]]; then
+    cd "$SCRIPT_DIR/.."
+else
+    cd "$SCRIPT_DIR"
+fi
 
 echo "========================================="
 echo "Desktop Lyric - Update & Install"
