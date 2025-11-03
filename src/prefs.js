@@ -54,7 +54,8 @@ class DesktopLyricPrefs extends UI.Page {
             ]], 
             
             // Lyrics Source group
-            [[[_('Lyrics Source'), _('Enable online lyrics download when local lyrics are missing')], K.ONLN], [
+            [[[_('Lyrics Source')]], [
+                [[_('_Online'), _('Try to download and save the missing lyrics')], K.ONLN],
                 [[_('_Provider'), _('Prefer <a href="%s">lyrics from Mpris metadata</a>').format('https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext')],
                     new UI.Help(({h}) => [h(_('URL')), [
                         [_('NetEase Cloud'), `<a href="${URL.NCM}">${URL.NCM}</a>`],

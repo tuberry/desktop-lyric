@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-desktop-lyric\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-11-02 21:41+0800\n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
 "PO-Revision-Date: 2021-09-14 18:13+0200\n"
 "Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
 "Language-Team: none\n"
@@ -18,228 +18,97 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 3.0\n"
 
-#: src/ui.js:367
-msgid "Mismatched filetype"
+#: src/ui.js:32
+msgid "Clear"
 msgstr ""
 
-#: src/ui.js:489
-msgid "Click or press ENTER to apply changes"
-msgstr ""
-
-#: src/prefs.js:24
-msgid "ms"
-msgstr ""
-
-#: src/prefs.js:25
-msgid "px"
-msgstr ""
-
-#: src/prefs.js:26
-msgid "Horizontal"
-msgstr "Horizontaal"
-
-#: src/prefs.js:26
-msgid "Vertical"
-msgstr "Verticaal"
-
-#: src/prefs.js:27
-msgid "Left"
-msgstr ""
-
-#: src/prefs.js:27
-msgid "Center"
-msgstr ""
-
-#: src/prefs.js:27
-msgid "Right"
-msgstr ""
-
-#: src/prefs.js:29 src/prefs.js:60
-msgid "NetEase Cloud"
-msgstr ""
-
-#: src/prefs.js:29
-msgid "NetEase Cloud (Trans)"
-msgstr ""
-
-#: src/prefs.js:29 src/prefs.js:61
-msgid "LRCLIB"
-msgstr ""
-
-#. Appearance group
-#: src/prefs.js:36
-msgid "Appearance"
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
 msgstr ""
 
 #: src/prefs.js:37
-msgid "_Font"
-msgstr ""
+msgid "Active color"
+msgstr "Actieve kleur"
 
 #: src/prefs.js:38
-msgid "_Opacity"
-msgstr ""
-
-#: src/prefs.js:38
-msgid "Transparency of desktop lyric"
-msgstr ""
+msgid "Outline color"
+msgstr "Contourkleur"
 
 #: src/prefs.js:39
-#, fuzzy
-msgid "Or_ientation"
-msgstr "Songtekstoriëntatie"
+msgid "Inactive color"
+msgstr "Inactieve kleur"
 
-#: src/prefs.js:39
-msgid "Display direction of lyrics"
+#: src/prefs.js:40
+msgid "Horizontal"
+msgstr "Horizontaal"
+
+#: src/prefs.js:40
+msgid "Vertical"
+msgstr "Verticaal"
+
+#: src/prefs.js:42
+msgid "Left"
 msgstr ""
 
-#. Behavior group
-#: src/prefs.js:43
-msgid "Behavior"
+#: src/prefs.js:42
+msgid "Center"
 msgstr ""
 
-#: src/prefs.js:44
-msgid "_Mobilize"
+#: src/prefs.js:42
+msgid "Right"
 msgstr ""
 
-#: src/prefs.js:44
-msgid "Allow dragging to displace desktop lyric position"
-msgstr ""
-
-#: src/prefs.js:45
-msgid "_Show progress"
-msgstr ""
-
-#: src/prefs.js:45
-msgid "Display playback progress on lyrics"
-msgstr ""
-
-#: src/prefs.js:46
-#, fuzzy
-msgid "_Refresh interval"
-msgstr "Ververstussenpoos"
-
-#: src/prefs.js:46
-msgid "Lower values = smoother but higher CPU usage"
-msgstr ""
-
-#. Player group
-#: src/prefs.js:50
-msgid "Player"
-msgstr ""
-
-#: src/prefs.js:51
-msgid "S_ystray position"
-msgstr ""
-
-#: src/prefs.js:51
-msgid "Position of the system tray icon"
-msgstr ""
-
-#: src/prefs.js:52
-msgid "Panel _width"
-msgstr ""
-
-#: src/prefs.js:52
-msgid "Fixed width of panel lyric in pixels (minimized mode only)"
-msgstr ""
-
-#: src/prefs.js:53
-msgid "Allow _video players"
-msgstr ""
-
-#: src/prefs.js:53
-msgid "Allow Chromium/Electron-based players to be recognized"
-msgstr ""
-
-#. Lyrics Source group
-#: src/prefs.js:57
-#, fuzzy
-msgid "Lyrics Source"
-msgstr "Tekstkleuren"
-
-#: src/prefs.js:57
-msgid "Enable online lyrics download when local lyrics are missing"
-msgstr ""
-
-#: src/prefs.js:58
-msgid "_Provider"
-msgstr ""
-
-#: src/prefs.js:58
-#, javascript-format
-msgid "Prefer <a href=\"%s\">lyrics from Mpris metadata</a>"
-msgstr ""
-
-#: src/prefs.js:59
-msgid "URL"
-msgstr ""
-
-#: src/prefs.js:63
-msgid "F_allback"
-msgstr ""
-
-#: src/prefs.js:63
-msgid "Use the first result when searches cannot be matched precisely"
-msgstr ""
-
-#: src/prefs.js:64
-#, fuzzy
-msgid "_Location"
-msgstr "Songtekstlocatie"
-
-#: src/prefs.js:64
-msgid "Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>"
-msgstr ""
-
-#: src/extension.js:54
-msgid "Invisiblize"
-msgstr ""
-
-#: src/extension.js:55
-msgid "Minimize"
-msgstr ""
-
-#: src/extension.js:60
-msgid "Unload"
-msgstr ""
-
-#: src/extension.js:61
-msgid "Reload"
-msgstr ""
-
-#: src/extension.js:64
-msgid "Settings"
-msgstr "Voorkeuren"
-
-#: src/extension.js:74
+#: src/prefs.js:49 src/extension.js:229
 msgid "Mobilize"
 msgstr ""
 
-#: src/mpris.js:757 src/mpris.js:802
-msgid "MPRIS Player"
+#: src/prefs.js:49
+msgid "Allow dragging to displace"
 msgstr ""
 
-#. Add "Auto" option
-#: src/mpris.js:761 src/mpris.js:799
-msgid "Auto"
+#: src/prefs.js:50
+msgid "Systray position"
 msgstr ""
 
-#, fuzzy
-#~ msgid "_Active color"
-#~ msgstr "Actieve kleur"
+#: src/prefs.js:51
+msgid "Refresh interval"
+msgstr "Ververstussenpoos"
 
-#, fuzzy
-#~ msgid "_Inactive color"
-#~ msgstr "Inactieve kleur"
+#: src/prefs.js:52
+msgid "Lyric orientation"
+msgstr "Songtekstoriëntatie"
 
-#~ msgid "Outline color"
-#~ msgstr "Contourkleur"
+#: src/prefs.js:53
+msgid "Lyric location"
+msgstr "Songtekstlocatie"
 
-#~ msgid "Font name"
-#~ msgstr "Lettertype"
+#: src/prefs.js:54
+msgid "Lyric colors"
+msgstr "Tekstkleuren"
 
-#~ msgid "Resynchronize"
-#~ msgstr "Opnieuw synchroniseren"
+#: src/prefs.js:55
+msgid "Font name"
+msgstr "Lettertype"
+
+#: src/extension.js:227
+msgid "Invisiblize"
+msgstr ""
+
+#: src/extension.js:228
+msgid "Minimize"
+msgstr ""
+
+#: src/extension.js:231
+msgid "Redownload"
+msgstr ""
+
+#: src/extension.js:232
+msgid "Resynchronize"
+msgstr "Opnieuw synchroniseren"
+
+#: src/extension.js:234
+msgid "Settings"
+msgstr "Voorkeuren"
 
 #~ msgid "Hide lyric"
 #~ msgstr "Songtekst verbergen"

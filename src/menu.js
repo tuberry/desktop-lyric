@@ -48,11 +48,7 @@ export class Systray extends PanelMenu.Button {
         let {uuid, metadata: {name}} = F.me();
         super(0.5, text ?? name, !menu)[$].add_child(this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'})[$]
             .add_child(this.$icon = new St.Icon({iconName: icon, styleClass: 'system-status-icon'})));
-        if(menu) {
-            Item.add(this.$menu = menu, this.menu);
-            // Set fixed width for the main tray menu to prevent expansion
-            this.menu.box.set_style('width: 350px;');
-        }
+        if(menu) Item.add(this.$menu = menu, this.menu);
         Main.panel.addToStatusArea(uuid, this, pos, box);
     }
 }
@@ -199,7 +195,7 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     }
 
     setup(options, chosen = this.$chosen) {
-        this.$options = Object.values(options); // Store as array for numeric index access
+        this.$options = options;
         upsert(this.menu, x => x.addMenuItem(new Item()), Object.entries(options), ([k, v], x) => x.setup(v, () => this.$callback(k)));
         this.choose(chosen);
     }

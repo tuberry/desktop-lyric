@@ -169,8 +169,9 @@ export class Panel extends PaperBase {
         F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', (() => this.$onStyleChange())[$].call());
         this.$naturalWidth = 0;
         this.$scrollOffset = 0; // Current scroll offset for title
-        this.$scrollTimer = null; // Timer for title scrolling
         this.$scrollDelay = 0; // Delay counter before starting scroll
+        // Use F.Source.newTimer for proper cleanup on destroy
+        this.$src = F.Source.tie({scrollTimer: F.Source.newTimer(() => [() => this.#onScrollTick(), 50], false)}, this);
         super.$buildWidgets();
     }
 
@@ -241,46 +242,47 @@ export class Panel extends PaperBase {
 
     #startTitleScrolling() {
         // Start title scrolling if title is too long
-        if (this.$scrollTimer || !this.hasValidContent) return;
+        if (this.$src.scrollTimer.active || !this.hasValidContent) return;
         
         // Reset scroll state
         this.$scrollOffset = 0;
         this.$scrollDelay = 0;
         
-        // Will check if scrolling is needed on next repaint
-        this.$scrollTimer = setInterval(() => {
-            if (this.$naturalWidth > this.$maxWidth) {
-                const DELAY_FRAMES = 40; // Wait 2 seconds before scrolling (40 * 50ms)
-                const scrollSpeed = 1; // pixels per frame
-                const gap = 40; // Gap between end and start of looping title
-                
-                // Wait for delay period before starting scroll
-                if (this.$scrollDelay < DELAY_FRAMES) {
-                    this.$scrollDelay++;
-                    return;
-                }
-                
-                // Title is too long, scroll it
-                this.$scrollOffset += scrollSpeed;
-                
-                // Loop the scrolling: reset when scrolled past one complete cycle
-                // One cycle = when the second title reaches where the first started
-                if (this.$scrollOffset >= this.$naturalWidth + gap) {
-                    this.$scrollOffset = 0;
-                    this.$scrollDelay = 0; // Reset delay for next cycle
-                }
-                
-                this.queue_repaint();
-            }
-        }, 50); // 20 FPS
+        // Start the scrolling timer (20 FPS)
+        this.$src.scrollTimer.revive();
     }
 
     #stopTitleScrolling() {
-        if (this.$scrollTimer) {
-            clearInterval(this.$scrollTimer);
-            this.$scrollTimer = null;
+        if (this.$src.scrollTimer.active) {
+            this.$src.scrollTimer.dispel();
             this.$scrollOffset = 0;
             this.$scrollDelay = 0;
+        }
+    }
+
+    #onScrollTick() {
+        if (this.$naturalWidth > this.$maxWidth) {
+            const DELAY_FRAMES = 40; // Wait 2 seconds before scrolling (40 * 50ms)
+            const scrollSpeed = 1; // pixels per frame
+            const gap = 40; // Gap between end and start of looping title
+            
+            // Wait for delay period before starting scroll
+            if (this.$scrollDelay < DELAY_FRAMES) {
+                this.$scrollDelay++;
+                return;
+            }
+            
+            // Title is too long, scroll it
+            this.$scrollOffset += scrollSpeed;
+            
+            // Loop the scrolling: reset when scrolled past one complete cycle
+            // One cycle = when the second title reaches where the first started
+            if (this.$scrollOffset >= this.$naturalWidth + gap) {
+                this.$scrollOffset = 0;
+                this.$scrollDelay = 0; // Reset delay for next cycle
+            }
+            
+            this.queue_repaint();
         }
     }
 

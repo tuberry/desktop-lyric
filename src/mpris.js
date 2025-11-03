@@ -31,14 +31,14 @@ export default class Mpris extends F.Mortal {
         
         this.buildSources(FileUtils.loadInterfaceXML('org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'));
         
-        // Listen for setting changes
-        this.$set.hub.connect(`changed::${K.AVPL}`, () => this.onSettingChanged());
-        this.$set.hub.connect(`changed::${K.PMPL}`, () => this.onPreferredPlayerChanged());
+        // Listen for setting changes - use F.connect for automatic cleanup on destroy
+        F.connect(this, this.$set.hub, `changed::${K.AVPL}`, () => this.onSettingChanged());
+        F.connect(this, this.$set.hub, `changed::${K.PMPL}`, () => this.onPreferredPlayerChanged());
     }
 
     buildSources(playerIface) {
         let dbus = new F.DBusProxy('org.freedesktop.DBus', '/org/freedesktop/DBus', 
-            x => x && setTimeout(() => this.rescanAndSelectPlayer(), 0), 
+            x => x && this.$src.rescanTimer.revive(() => this.rescanAndSelectPlayer()), 
             null,
             [['NameOwnerChanged', (_p, _s, [name, old, neo]) => { 
                 if (neo && !old) this.onNewPlayer(name);
@@ -52,8 +52,9 @@ export default class Mpris extends F.Mortal {
                 (...xs) => this.onPlayerReady(...xs),
                 [['g-properties-changed', (...xs) => this.onPlayerChange(...xs)]], 
                 [['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)]], 
-                playerIface));
-        this.$src = F.Source.tie({dbus, mpris, player}, this);
+                playerIface)),
+            rescanTimer = F.Source.newTimer(() => [() => {}, 0]); // Timer for deferred rescanning
+        this.$src = F.Source.tie({dbus, mpris, player, rescanTimer}, this);
     }
 
     activate(active) {
@@ -145,10 +146,15 @@ export default class Mpris extends F.Mortal {
         
         const preferred = this.getPreferredPlayer();
         const currentPlayer = this.$src.mpris.hub?.gName;
-        const selected = this.selector.selectPlayer(this.availablePlayers, preferred, currentPlayer);
+        const selected = this.selector.selectPlayer(this.availablePlayers, preferred);
         
         if (selected) {
-            this.$src.mpris.summon(selected);
+            // Use revive if player already exists, summon only if it doesn't
+            if (currentPlayer && this.$src.mpris.active) {
+                this.$src.mpris.revive(selected);
+            } else {
+                this.$src.mpris.summon(selected);
+            }
         } else {
             this.$src.mpris.dispel();
             this.$src.player.dispel();
@@ -247,7 +253,12 @@ export default class Mpris extends F.Mortal {
             if (this.selector.shouldActivateNewPlayer(
                 name, newPlayerInfo, currentPlayer, preferred, this.$src.mpris.active, this.availablePlayers
             )) {
-                this.$src.mpris.summon(name);
+                // Use revive if player already exists, summon only if it doesn't
+                if (currentPlayer && this.$src.mpris.active) {
+                    this.$src.mpris.revive(name);
+                } else {
+                    this.$src.mpris.summon(name);
+                }
             }
         } catch (e) {
             // Player is not valid, ignore
@@ -290,21 +301,35 @@ export default class Mpris extends F.Mortal {
     }
 
     update(metadata) {
-        let {
-            'xesam:title': title, 
-            'xesam:artist': artist, 
-            'xesam:asText': lyric,
-            'xesam:album': album, 
-            'mpris:length': length = 0,
-        } = T.vmap(metadata, v => v.deepUnpack());
+        // Unpack metadata following GNOME Shell's approach
+        const meta = {};
+        for (const prop in metadata)
+            meta[prop] = metadata[prop].deepUnpack();
         
+        // Validate title (required)
+        const title = meta['xesam:title'];
         if (!T.str(title) || !title) return;
         
+        // Validate artist (should be array of strings)
+        let artist = meta['xesam:artist'];
+        if (!Array.isArray(artist) || !artist.every(T.str)) {
+            artist = [];
+        }
+        
+        // Validate album (should be string)
+        const album = T.str(meta['xesam:album']) ? meta['xesam:album'] : '';
+        
+        // Validate lyrics (should be string)
+        const lyric = T.str(meta['xesam:asText']) ? meta['xesam:asText'] : null;
+        
+        // Validate length (should be number)
+        const length = (meta['mpris:length'] || 0) / 1000;
+        
         this.emit('update', {
-            artist: artist?.every?.(T.str) ? artist.flatMap(x => x.split('/')).filter(T.id) : [],
-            length: length / 1000, 
-            album: T.str(album) ? album : '', 
-            lyric: T.str(lyric) ? lyric : null, 
+            artist: artist.flatMap(x => x.split('/')).filter(T.id),
+            length, 
+            album, 
+            lyric, 
             title,
         });
     }
@@ -335,40 +360,41 @@ export default class Mpris extends F.Mortal {
  * @returns {string} - Formatted name (e.g., chromium)
  */
 export function formatPlayerName(name) {
-    const match = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/);
-    return match ? match[1] : name;
+    // Extract the app name after org.mpris.MediaPlayer2.
+    // Handle reverse domain names (e.g., io.bassi.Amberol, com.github.neithern.g4music)
+    const prefix = 'org.mpris.MediaPlayer2.';
+    if (!name.startsWith(prefix)) return name;
+    
+    // Remove prefix and instance suffix (e.g., .instance123)
+    let appPart = name.slice(prefix.length).replace(/\.instance\d+$/, '');
+    
+    // If it looks like a reverse domain name (contains dots), use the last segment
+    const segments = appPart.split('.');
+    return segments[segments.length - 1];
 }
 
 /**
  * Check if the app categories indicate a video player
+ * Only checks Categories, not app names (more reliable)
  * @param {string[]|null} categories - App categories
- * @param {string} playerName - Player name (e.g., 'chromium', 'firefox')
- * @returns {boolean} - True if it's a video player (contains Video category or is a browser)
+ * @returns {boolean} - True if it's a video player
  */
-export function isVideoPlayer(categories, playerName = '') {
-    // Whitelist: known music players that should never be treated as video players
-    const musicPlayers = ['splayer', 'yesplaymusic'];
-    const lowerName = playerName.toLowerCase();
-    if (musicPlayers.some(music => lowerName.includes(music))) {
+export function isVideoPlayer(categories) {
+    if (!categories) {
         return false;
     }
     
-    if (!categories) {
-        // Browsers can play videos, treat them as video players
-        const browsers = ['chromium', 'chrome', 'firefox', 'edge', 'brave', 'opera', 'vivaldi', 'epiphany'];
-        return browsers.some(browser => lowerName.includes(browser));
-    }
-    
-    // Check for Video category
-    if (categories.includes('Video')) {
+    // Video or WebBrowser category indicates video player
+    if (categories.includes('Video') || categories.includes('WebBrowser')) {
         return true;
     }
     
-    // Browsers with WebBrowser category are treated as video players
-    if (categories.includes('WebBrowser')) {
-        return true;
+    // Audio or AudioVideo category indicates music player (e.g., SPlayer, yesplaymusic)
+    if (categories.includes('Audio') || categories.includes('AudioVideo')) {
+        return false;
     }
     
+    // Default: not a video player
     return false;
 }
 
@@ -427,14 +453,11 @@ export class PlayerScanner {
             }
         }
         
-        // Extract player name from D-Bus name
-        const playerName = name.match(/org\.mpris\.MediaPlayer2\.([^.]+)/)?.[1] || '';
-        
         // Determine if this is a video player
-        const isVideo = isVideoPlayer(categories, playerName);
+        const isVideo = isVideoPlayer(categories);
         
         // Check if video players should be filtered out
-        const allowVideoPlayers = this.settings.hub.get_boolean('allow-video-players');
+        const allowVideoPlayers = this.settings.hub.get_boolean(K.AVPL);
         if (!allowVideoPlayers && isVideo) {
             throw Error('non musical');
         }
@@ -482,23 +505,17 @@ export class PlayerScanner {
             
             const metadata = proxy.Metadata;
             if (metadata) {
-                const titleVariant = metadata['xesam:title'];
-                const lyricsVariant = metadata['xesam:asText'];
+                // Unpack metadata following GNOME Shell's approach
+                const meta = {};
+                for (const prop in metadata)
+                    meta[prop] = metadata[prop].deepUnpack();
                 
-                let title = null;
-                let hasLyrics = false;
-                
-                // Check if title exists and is a string type
-                if (titleVariant && titleVariant.get_type_string && titleVariant.get_type_string() === 's') {
-                    const unpacked = titleVariant.deepUnpack();
-                    title = (typeof unpacked === 'string' && unpacked.trim()) ? unpacked : null;
-                }
+                // Validate title
+                const title = (T.str(meta['xesam:title']) && meta['xesam:title'].trim()) 
+                    ? meta['xesam:title'] : null;
                 
                 // Check if lyrics exist
-                if (lyricsVariant && lyricsVariant.get_type_string && lyricsVariant.get_type_string() === 's') {
-                    const lyricsText = lyricsVariant.deepUnpack();
-                    hasLyrics = typeof lyricsText === 'string' && lyricsText.trim().length > 0;
-                }
+                const hasLyrics = T.str(meta['xesam:asText']) && meta['xesam:asText'].trim().length > 0;
                 
                 return {title, hasLyrics};
             }
@@ -582,10 +599,9 @@ export class PlayerSelector {
      * Select the best player from available players
      * @param {Map<string, Object>} availablePlayers - Map of player name to info
      * @param {string} preferredPlayer - User's preferred player setting
-     * @param {string|null} currentPlayer - Currently active player
      * @returns {string|null} Selected player name or null
      */
-    selectPlayer(availablePlayers, preferredPlayer, currentPlayer = null) {
+    selectPlayer(availablePlayers, preferredPlayer) {
         const hasPlayers = availablePlayers.size > 0;
         
         // If user explicitly selected a player
@@ -739,6 +755,8 @@ export class PlayerMenu {
     constructor(mprisManager) {
         this.mpris = mprisManager;
         this.menuItem = null;
+        this.menuSignalId = null; // Track signal ID for cleanup
+        this.autoItem = null; // Track auto item for cleanup
     }
 
     /**
@@ -754,20 +772,20 @@ export class PlayerMenu {
      * @returns {PopupMenu.PopupSubMenuMenuItem} The submenu item
      */
     buildMenu() {
-        const item = new PopupMenu.PopupSubMenuMenuItem(_('MPRIS Player'));
+        const item = new PopupMenu.PopupSubMenuMenuItem(_('Media Source'));
         this._enableEllipsis(item);
         
         // Add "Auto" option
-        const autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
-        this._enableEllipsis(autoItem);
-        autoItem.connect('activate', () => {
+        this.autoItem = new PopupMenu.PopupMenuItem(_('Auto'));
+        this._enableEllipsis(this.autoItem);
+        this.autoItem.connect('activate', () => {
             this.mpris.setPreferredPlayer('');
             this.updateMenuLabel(item);
         });
-        item.menu.addMenuItem(autoItem);
+        item.menu.addMenuItem(this.autoItem);
         
-        // Update menu when it opens
-        item.menu.connect('open-state-changed', (menu, open) => {
+        // Update menu when it opens - store signal ID for cleanup
+        this.menuSignalId = item.menu.connect('open-state-changed', (menu, open) => {
             if (open) {
                 this.onMenuOpened(item);
             }
@@ -799,7 +817,7 @@ export class PlayerMenu {
             '': _('Auto'),
         };
         const label = labels[preferred] ?? formatPlayerName(preferred);
-        item.label.set_text(`${_('MPRIS Player')}: ${label}`);
+        item.label.set_text(`${_('Media Source')}: ${label}`);
     }
 
     /**
@@ -876,5 +894,19 @@ export class PlayerMenu {
         if (this.menuItem) {
             this.updateMenuLabel(this.menuItem);
         }
+    }
+
+    /**
+     * Cleanup - disconnect signals and destroy menu items
+     */
+    destroy() {
+        if (this.menuItem && this.menuSignalId) {
+            this.menuItem.menu.disconnect(this.menuSignalId);
+            this.menuSignalId = null;
+        }
+        // Note: autoItem and playerItems are destroyed when menuItem is destroyed,
+        // as they are children of menuItem.menu. No need to manually destroy them.
+        this.autoItem = null;
+        this.menuItem = null;
     }
 }

@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: GPL-3.0-or-later
 # Quick update translations and install Desktop Lyric extension
 
 set -e  # Exit on error
@@ -10,11 +12,6 @@ if [[ "$SCRIPT_DIR" == */cli ]]; then
 else
     cd "$SCRIPT_DIR"
 fi
-
-echo "========================================="
-echo "Desktop Lyric - Update & Install"
-echo "========================================="
-echo ""
 
 # 1. Update translation file line numbers
 echo "📝 Updating translation files..."
@@ -32,13 +29,4 @@ echo ""
 echo "📦 Installing extension..."
 meson install -C build
 echo "✅ Installation complete"
-echo ""
-
-echo "========================================="
 echo "🎉 All done!"
-echo "========================================="
-echo ""
-echo "Next steps:"
-echo "  - X11: Press Alt+F2, type 'r' to restart GNOME Shell"
-echo "  - Wayland: Log out and log back in"
-echo ""

@@ -50,7 +50,7 @@ class DesktopLyric extends F.Mortal {
     }
 
     #genSystray() {
-        return new M.Systray({
+        const tray = new M.Systray({
             hide: new M.SwitchItem(_('Invisiblize'), false, () => this.#viewPaper()),
             mini: new M.SwitchItem(_('Minimize'), this[K.MINI], x => this.$set.set(K.MINI, x)),
             drag: this[K.MINI] ? null : this.#genDragItem(),
@@ -62,8 +62,13 @@ class DesktopLyric extends F.Mortal {
             // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
             sep1: new M.Separator(),
             sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
-        }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left')[$]
-            .set({visible: this.$src?.mpris.active ?? false});
+        }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left');
+        
+        // Set fixed width for the main tray menu to prevent expansion
+        // (without modifying shared menu.js)
+        tray.menu.box.set_style('width: 350px;');
+        
+        return tray[$].set({visible: this.$src?.mpris.active ?? false});
     }
 
     #viewPaper() {
@@ -162,6 +167,13 @@ class DesktopLyric extends F.Mortal {
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
         this.$src.sync.revive();
+    }
+
+    destroy() {
+        // Clean up player menu
+        this.playerMenu?.destroy();
+        // Call parent destroy
+        super.destroy();
     }
 }
 
