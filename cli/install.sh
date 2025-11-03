@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-FileCopyrightText: tuberry
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Quick update translations and install Desktop Lyric extension
+# Quick compile and install Desktop Lyric extension
 
 set -e  # Exit on error
 
@@ -14,10 +14,10 @@ else
 fi
 
 # 1. Update translation file line numbers
-echo "📝 Updating translation files..."
-ninja -C build gnome-shell-extension-desktop-lyric-update-po
-echo "✅ Translation files updated"
-echo ""
+# echo "📝 Updating translation files..."
+# ninja -C build gnome-shell-extension-desktop-lyric-update-po
+# echo "✅ Translation files updated"
+# echo ""
 
 # 2. Compile
 echo "🔨 Compiling extension..."

@@ -22,7 +22,6 @@ Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 export const _ = Extensions.gettext;
 export const _G = (x, y = 'gtk40') => Gettext.domain(y).gettext(x);
 export const me = () => Extensions.ExtensionPreferences.lookupByURL(import.meta.url);
-export {Adw};
 
 export const setv = Symbol('Set Value');
 export const getv = Symbol('Get Default Value');
