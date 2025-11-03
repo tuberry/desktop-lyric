@@ -357,10 +357,17 @@ export default class Mpris extends F.Mortal {
 /**
  * Format player name for display
  * @param {string} name - Full D-Bus name (e.g., org.mpris.MediaPlayer2.chromium.instance123)
- * @returns {string} - Formatted name (e.g., chromium)
+ * @param {Object|null} appInfo - Optional app info object to get display name
+ * @returns {string} - Formatted name (e.g., "Google Chrome" or "chromium")
  */
-export function formatPlayerName(name) {
-    // Extract the app name after org.mpris.MediaPlayer2.
+export function formatPlayerName(name, appInfo = null) {
+    // Prefer app display name if available
+    if (appInfo) {
+        const displayName = appInfo.get_name();
+        if (displayName) return displayName;
+    }
+    
+    // Fallback: Extract the app name after org.mpris.MediaPlayer2.
     // Handle reverse domain names (e.g., io.bassi.Amberol, com.github.neithern.g4music)
     const prefix = 'org.mpris.MediaPlayer2.';
     if (!name.startsWith(prefix)) return name;
@@ -813,10 +820,11 @@ export class PlayerMenu {
      */
     updateMenuLabel(item) {
         const preferred = this.mpris.getPreferredPlayer();
-        const labels = {
-            '': _('Auto'),
-        };
-        const label = labels[preferred] ?? formatPlayerName(preferred);
+        
+        // Special labels for known values
+        const label = preferred === '' ? _('Auto') : 
+                      formatPlayerName(preferred, this.mpris.getPlayerInfo(preferred)?.appInfo);
+        
         item.label.set_text(`${_('Media Source')}: ${label}`);
     }
 
@@ -853,7 +861,7 @@ export class PlayerMenu {
             const info = this.mpris.getPlayerInfo(name);
             
             // Get display text (only title, no app name or badges)
-            const displayText = info.currentTitle || formatPlayerName(name);
+            const displayText = info.currentTitle || formatPlayerName(name, info?.appInfo);
             
             // Create menu item (ornament will be on left by default)
             const playerItem = new PopupMenu.PopupMenuItem(displayText);
