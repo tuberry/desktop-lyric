@@ -1,5 +1,5 @@
 #!/bin/bash
-# SPDX-FileCopyrightText: tuberry
+# SPDX-FileCopyrightText: NowLoadY
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Quick compile and install Desktop Lyric extension
 

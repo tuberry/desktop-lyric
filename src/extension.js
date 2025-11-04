@@ -170,9 +170,6 @@ class DesktopLyric extends F.Mortal {
     }
 
     destroy() {
-        // Clean up player menu
-        this.playerMenu?.destroy();
-        // Call parent destroy
         super.destroy();
     }
 }
