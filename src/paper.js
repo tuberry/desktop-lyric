@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: tuberry
+// SPDX-FileCopyrightText: NowLoadY
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';

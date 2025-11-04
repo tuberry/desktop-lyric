@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: tuberry
+// SPDX-FileCopyrightText: NowLoadY
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
@@ -24,7 +25,7 @@ export default class Mpris extends F.Mortal {
         super();
         this.$set = gset;
         this.availablePlayers = new Map();
-        this.scanner = new PlayerScanner(gset);
+        this.scanner = new PlayerScanner(this);
         this.selector = new PlayerSelector();
         this.isRescanning = false;
         this.manuallySelected = false;
@@ -424,11 +425,13 @@ export function getPlaybackPriority(status) {
 /**
  * PlayerScanner - Responsible for scanning and discovering MPRIS players
  */
-export class PlayerScanner extends F.Mortal {
-    constructor(settings) {
-        super();
-        this.settings = settings;
+export class PlayerScanner {
+    constructor(mprisManager) {
+        this.$set = mprisManager.$set;
         this.playerProxies = new Map();
+        
+        // Auto cleanup when mpris is destroyed
+        mprisManager.connect('destroy', () => this.cleanup());
     }
 
     /**
@@ -467,7 +470,7 @@ export class PlayerScanner extends F.Mortal {
         const isVideo = isVideoPlayer(categories);
         
         // Check if video players should be filtered out
-        const allowVideoPlayers = this.settings.hub.get_boolean(K.AVPL);
+        const allowVideoPlayers = this.$set.hub.get_boolean(K.AVPL);
         if (!allowVideoPlayers && isVideo) {
             throw Error('non musical');
         }
@@ -480,15 +483,15 @@ export class PlayerScanner extends F.Mortal {
             
             playbackStatus = proxy.PlaybackStatus || 'Stopped';
             
-            // Monitor playback status changes - use F.connect for automatic cleanup
-            F.connect(this, proxy, 'g-properties-changed', (proxy, changed) => {
+            // Monitor playback status changes
+            const signalId = proxy.connect('g-properties-changed', (proxy, changed) => {
                 if (changed.lookup_value('PlaybackStatus', null)) {
                     onStatusChanged(name, proxy.PlaybackStatus);
                 }
             });
             
-            // Store proxy for reference
-            this.playerProxies.set(name, {proxy});
+            // Store proxy and signalId for cleanup
+            this.playerProxies.set(name, {proxy, signalId});
         } catch (e) {
             // Failed to get status, default to Stopped
         }
@@ -578,7 +581,11 @@ export class PlayerScanner extends F.Mortal {
      * Clean up all player proxies
      */
     cleanup() {
-        // F.connect will auto-cleanup when this object is destroyed
+        for (const [name, {proxy, signalId}] of this.playerProxies.entries()) {
+            if (signalId) {
+                proxy.disconnect(signalId);
+            }
+        }
         this.playerProxies.clear();
     }
 
@@ -587,8 +594,13 @@ export class PlayerScanner extends F.Mortal {
      * @param {string} name - Player D-Bus name
      */
     cleanupPlayer(name) {
-        // F.connect will auto-cleanup when object is destroyed
-        this.playerProxies.delete(name);
+        const proxyInfo = this.playerProxies.get(name);
+        if (proxyInfo) {
+            if (proxyInfo.signalId) {
+                proxyInfo.proxy.disconnect(proxyInfo.signalId);
+            }
+            this.playerProxies.delete(name);
+        }
     }
 }
 
@@ -846,9 +858,6 @@ export class PlayerMenu {
         
         // Filter out players that failed verification
         const validPlayers = players.filter((name, index) => verificationResults[index]);
-        
-        // After validation, clean up invalid preferred player if needed
-        this.mpris.cleanupInvalidPreferredPlayer();
         
         // Now add player items with updated titles
         validPlayers.forEach((name) => {
