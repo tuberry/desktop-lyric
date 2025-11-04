@@ -56,14 +56,7 @@ class PaperBase extends St.DrawingArea {
         F.connect(this, F.theme(), 'changed', (() => this.$onColorChange())[$].call());
     }
 
-    get hasValidContent() {
-        return this.$lrc && this.$lrc.trim() !== '' && this.$lrc !== '\u{200b}';
-    }
-
     vfunc_repaint() {
-        // Skip drawing if no content to display
-        if (!this.hasValidContent) return;
-        
         let cr = this.get_context(),
             [w, h] = this.get_surface_size(),
             pl = PangoCairo.create_layout(cr);
@@ -129,7 +122,6 @@ class PaperBase extends St.DrawingArea {
         let {$pos, $lrc: $txt} = this;
         [this.$pos, this.$lrc] = this.getLyric();
         if(!this.visible || (this.$pos === $pos || this[K.PRGR]) && this.$lrc === $txt) return;
-        if (!this.hasValidContent) return;
         this.queue_repaint();
     }
 
@@ -144,7 +136,6 @@ class PaperBase extends St.DrawingArea {
             }, []).sort(([x], [y]) => x - y)
             .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len, t)) - t, l]), new Map());
         this.$tags = this.$lrcs.keys().toArray();
-        this.queue_repaint();
     }
 }
 
@@ -206,12 +197,6 @@ export class Panel extends PaperBase {
         // Skip if invisible or no changes
         if(!this.visible || (this.$pos === $pos && this.$lrc === $txt)) return;
         
-        // Skip drawing if no content
-        if (!this.hasValidContent) {
-            this.#stopTitleScrolling();
-            return;
-        }
-        
         // Manage title scrolling: only scroll when displaying title (no lyrics)
         let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
         if (isDisplayingTitle) {
@@ -243,7 +228,7 @@ export class Panel extends PaperBase {
 
     #startTitleScrolling() {
         // Start title scrolling if title is too long
-        if (this.$src.scrollTimer.active || !this.hasValidContent) return;
+        if (this.$src.scrollTimer.active) return;
         
         // Reset scroll state
         this.$scrollOffset = 0;

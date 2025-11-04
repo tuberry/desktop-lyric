@@ -154,7 +154,7 @@ class DesktopLyric extends F.Mortal {
         }
     }
 
-    async setLyric(lyrics) {
+    setLyric(lyrics) {
         if(!this.$src.paper.active) return;
         
         // Determine if we should show song title
@@ -166,18 +166,6 @@ class DesktopLyric extends F.Mortal {
             .setLength(this.song.length)[$]
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
-        
-        // Immediately sync to current playback position before starting timer
-        // This is crucial for async lyric loading (e.g., network fetch with retries)
-        const pos = await this.$src.mpris.getPosition().catch(T.nop);
-        
-        // Check if paper still exists after async operation
-        // Paper might be destroyed during await (e.g., settings change)
-        if(!this.$src.paper.active) return;
-        
-        if(pos !== undefined) this.setPosition(pos);
-        
-        // Start periodic sync timer
         this.$src.sync.revive();
     }
 }
