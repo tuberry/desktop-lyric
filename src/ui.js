@@ -82,7 +82,7 @@ export class Page extends Adw.PreferencesPage {
                 let [[[title = '', description = ''], suffix = null], actions, param] = group[$_][0](group[0] === null, [[]]);
                 grp[$].set({title, description, headerSuffix: T.str(suffix) ? this[hub][suffix] : suffix, ...param})[$$]
                 .add(actions.map(action => action instanceof Gtk.Widget ? action : T.str(action) ? this[hub][action]
-                    : T.seq(new Adw.ActionRow({useUnderline: true, titleLines: 0, subtitleLines: 0}), act => {
+                    : T.seq(new Adw.ActionRow({useUnderline: true}), act => {
                         let [pfx, [title_, subtitle = ''], ...sfx] = action.map(x => T.str(x) ? this[hub][x] : x)[$_].unshift(Array.isArray(action[0]), null);
                         sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub], cssClasses: ['dimmed']})] : [x]);
                         act[$].set({title: title_, subtitle})[$_].add_prefix(pfx, pfx)[$$]
