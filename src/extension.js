@@ -123,7 +123,7 @@ class DesktopLyric extends F.Mortal {
     }
 
     setPosition(pos) {
-        this.$src.paper.hub.setMoment(pos);
+        this.$src.paper.hub?.setMoment(pos);
     }
 
     setSong(song) {
@@ -170,6 +170,11 @@ class DesktopLyric extends F.Mortal {
         // Immediately sync to current playback position before starting timer
         // This is crucial for async lyric loading (e.g., network fetch with retries)
         const pos = await this.$src.mpris.getPosition().catch(T.nop);
+        
+        // Check if paper still exists after async operation
+        // Paper might be destroyed during await (e.g., settings change)
+        if(!this.$src.paper.active) return;
+        
         if(pos !== undefined) this.setPosition(pos);
         
         // Start periodic sync timer
