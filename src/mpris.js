@@ -40,9 +40,11 @@ export default class Mpris extends F.Mortal {
         let dbus = new F.DBusProxy('org.freedesktop.DBus', '/org/freedesktop/DBus', 
             x => x && this.$src.rescanTimer.revive(() => this.rescanAndSelectPlayer()), 
             null,
-            [['NameOwnerChanged', (_p, _s, [name, old, neo]) => { 
-                if (neo && !old) this.onNewPlayer(name);
-                else if (old && !neo) this.onPlayerDisappeared(name);
+            [['NameOwnerChanged', (_p, _s, [name, oldOwner, newOwner]) => { 
+                // Handle both disappearance and appearance independently
+                // Reference: https://github.com/GNOME/gnome-shell/blob/9d904a804e73c97a1ecde406f395cd77a53f10e7/js/ui/mpris.js#L238
+                if (oldOwner) this.onPlayerDisappeared(name);
+                if (newOwner) this.onNewPlayer(name);
             }]]),
             mpris = new F.Source(x => new F.DBusProxy(x, '/org/mpris/MediaPlayer2', 
                 y => y && this.$src.player.revive(y.gName),
@@ -477,15 +479,15 @@ export class PlayerScanner {
             
             playbackStatus = proxy.PlaybackStatus || 'Stopped';
             
-            // Monitor playback status changes - use F.connect for automatic cleanup
-            F.connect(this, proxy, 'g-properties-changed', (proxy, changed) => {
+            // Monitor playback status changes
+            const signalId = proxy.connect('g-properties-changed', (proxy, changed) => {
                 if (changed.lookup_value('PlaybackStatus', null)) {
                     onStatusChanged(name, proxy.PlaybackStatus);
                 }
             });
             
-            // Store proxy for cleanup later
-            this.playerProxies.set(name, {proxy});
+            // Store proxy and signalId for manual cleanup
+            this.playerProxies.set(name, {proxy, signalId});
         } catch (e) {
             // Failed to get status, default to Stopped
         }
@@ -575,7 +577,11 @@ export class PlayerScanner {
      * Clean up all player proxies
      */
     cleanup() {
-        // F.connect will auto-cleanup when this object is destroyed
+        for (const [name, {proxy, signalId}] of this.playerProxies.entries()) {
+            if (signalId) {
+                proxy.disconnect(signalId);
+            }
+        }
         this.playerProxies.clear();
     }
 
@@ -584,8 +590,13 @@ export class PlayerScanner {
      * @param {string} name - Player D-Bus name
      */
     cleanupPlayer(name) {
-        // F.connect will auto-cleanup when proxy's g-name-owner changes
-        this.playerProxies.delete(name);
+        const proxyInfo = this.playerProxies.get(name);
+        if (proxyInfo) {
+            if (proxyInfo.signalId) {
+                proxyInfo.proxy.disconnect(proxyInfo.signalId);
+            }
+            this.playerProxies.delete(name);
+        }
     }
 }
 
