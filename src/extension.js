@@ -175,10 +175,6 @@ class DesktopLyric extends F.Mortal {
         // Start periodic sync timer
         this.$src.sync.revive();
     }
-
-    destroy() {
-        super.destroy();
-    }
 }
 
 export default class extends F.Extension { $klass = DesktopLyric; }
