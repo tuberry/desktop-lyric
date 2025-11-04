@@ -39,7 +39,7 @@ export default class Mpris extends F.Mortal {
 
     buildSources(playerIface) {
         let dbus = new F.DBusProxy('org.freedesktop.DBus', '/org/freedesktop/DBus', 
-            x => x && this.$src.rescanTimer.revive(() => this.rescanAndSelectPlayer()), 
+            x => x && this.rescanAndSelectPlayer(), 
             null,
             [['NameOwnerChanged', (_p, _s, [name, oldOwner, newOwner]) => { 
                 // Handle both disappearance and appearance independently
@@ -52,12 +52,11 @@ export default class Mpris extends F.Mortal {
                 [['notify::g-name-owner', (...xs) => this.onMprisChange(...xs)]], 
                 null, MPRIS_IFACE)),
             player = new F.Source(x => new F.DBusProxy(x, '/org/mpris/MediaPlayer2', 
-                (...xs) => this.onPlayerReady(...xs),
+                (...xs) => this.onPlayerReady(...xs), 
                 [['g-properties-changed', (...xs) => this.onPlayerChange(...xs)]], 
                 [['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)]], 
-                playerIface)),
-            rescanTimer = F.Source.newTimer(() => [() => {}, 0]); // Timer for deferred rescanning
-        this.$src = F.Source.tie({dbus, mpris, player, rescanTimer}, this);
+                playerIface));
+        this.$src = F.Source.tie({dbus, mpris, player}, this);
     }
 
     activate(active) {
@@ -768,8 +767,7 @@ export class PlayerMenu {
     constructor(mprisManager) {
         this.mpris = mprisManager;
         this.menuItem = null;
-        this.menuSignalId = null; // Track signal ID for cleanup
-        this.autoItem = null; // Track auto item for cleanup
+        this.autoItem = null;
     }
 
     /**
@@ -797,8 +795,8 @@ export class PlayerMenu {
         });
         item.menu.addMenuItem(this.autoItem);
         
-        // Update menu when it opens - store signal ID for cleanup
-        this.menuSignalId = item.menu.connect('open-state-changed', (menu, open) => {
+        // Update menu when it opens
+        item.menu.connect('open-state-changed', (menu, open) => {
             if (open) {
                 this.onMenuOpened(item);
             }
@@ -905,19 +903,5 @@ export class PlayerMenu {
         if (this.menuItem) {
             this.updateMenuLabel(this.menuItem);
         }
-    }
-
-    /**
-     * Cleanup - disconnect signals and destroy menu items
-     */
-    destroy() {
-        if (this.menuItem && this.menuSignalId) {
-            this.menuItem.menu.disconnect(this.menuSignalId);
-            this.menuSignalId = null;
-        }
-        // Note: autoItem and playerItems are destroyed when menuItem is destroyed,
-        // as they are children of menuItem.menu. No need to manually destroy them.
-        this.autoItem = null;
-        this.menuItem = null;
     }
 }
