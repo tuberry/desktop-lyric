@@ -7,7 +7,7 @@ import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
 import Lyric from './lyric.js';
-import Mpris from './mpris.js';
+import Mpris, {PlayerMenu} from './mpris.js';
 import * as Paper from './paper.js';
 
 const {_} = F;
@@ -32,7 +32,7 @@ class DesktopLyric extends F.Mortal {
             play = F.Source.newTimer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
             paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
             lyric = new Lyric(this.$set),
-            mpris = new Mpris()[$$].connect([
+            mpris = new Mpris(this.$set)[$$].connect([
                 ['update', (_p, x) => this.setSong(x)],
                 ['active', (_p, x) => this.setActive(x)],
                 ['status', (_p, x) => this.setPlaying(x)],
@@ -41,21 +41,34 @@ class DesktopLyric extends F.Mortal {
             sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500);
         this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
+        
+        // Create player menu manager
+        this.playerMenu = new PlayerMenu(this.$src.mpris);
+        
+        // Add dynamic menu items after mpris is initialized
+        this.#updateDynamicMenuItems();
     }
 
     #genSystray() {
-        return new M.Systray({
+        const tray = new M.Systray({
             hide: new M.SwitchItem(_('Invisiblize'), false, () => this.#viewPaper()),
             mini: new M.SwitchItem(_('Minimize'), this[K.MINI], x => this.$set.set(K.MINI, x)),
             drag: this[K.MINI] ? null : this.#genDragItem(),
             sep0: new M.Separator(),
+            // player menu will be added later via M.record after mpris is initialized
+            sep1a: new M.Separator(),
             tidy: new M.Item(_('Unload'), () => this[$].setLyric('').$src.lyric.unload(this.song)),
             load: new M.Item(_('Reload'), () => this.loadLyric(true)),
             // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
             sep1: new M.Separator(),
             sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
-        }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left')[$]
-            .set({visible: this.$src?.mpris.active ?? false});
+        }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left');
+        
+        // Set fixed width for the main tray menu to prevent expansion
+        // (without modifying shared menu.js)
+        tray.menu.box.set_style('width: 350px;');
+        
+        return tray[$].set({visible: this.$src?.mpris.active ?? false});
     }
 
     #viewPaper() {
@@ -66,6 +79,11 @@ class DesktopLyric extends F.Mortal {
         return new M.SwitchItem(_('Mobilize'), this[K.DRAG], x => this.$set.set(K.DRAG, x));
     }
 
+    #updateDynamicMenuItems() {
+        // Add all dynamic menu items that need to be recreated when tray is recreated
+        M.record(true, this.$src.tray.hub, () => this.playerMenu.buildMenu(), 'player', 'sep0');
+    }
+
     #onMiniSet() {
         M.record(!this[K.MINI], this.$src.tray.hub, () => this.#genDragItem(), 'drag', 'sep0');
         this.$src.paper.revive(this[K.MINI]);
@@ -73,12 +91,16 @@ class DesktopLyric extends F.Mortal {
     }
 
     #onAreaSet() {
+        let wasActive = this.$src.mpris.active;
         if(this[K.MINI]) {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
         this.$src.tray.revive();
+        this.#updateDynamicMenuItems();
         this.#onMiniSet();
+        // Restore tray visibility after recreation
+        if(wasActive) F.view(true, this.$src.tray.hub);
     }
 
     #onDragSet(drag) {
@@ -101,7 +123,7 @@ class DesktopLyric extends F.Mortal {
     }
 
     setPosition(pos) {
-        this.$src.paper.hub.setMoment(pos);
+        this.$src.paper.hub?.setMoment(pos);
     }
 
     setSong(song) {
@@ -116,6 +138,14 @@ class DesktopLyric extends F.Mortal {
 
     loadLyric(reload) {
         if(!this.song) return;
+        
+        // Check if we should search for lyrics (respects manual selection)
+        if(!this.$src.mpris.shouldSearchLyrics()) {
+            // For video players (not manually selected), don't search for lyrics, just show title
+            this.setLyric('');
+            return;
+        }
+        
         if(this.song.lyric === null) {
             this.setLyric('');
             this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(T.nop);
@@ -126,7 +156,13 @@ class DesktopLyric extends F.Mortal {
 
     setLyric(lyrics) {
         if(!this.$src.paper.active) return;
-        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '')[$]
+        
+        // Determine if we should show song title
+        // Mini mode: always show title
+        // Desktop mode: never show title (only show lyrics)
+        const songTitle = this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '';
+        
+        this.$src.paper.hub[$].song(songTitle)[$]
             .setLength(this.song.length)[$]
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);

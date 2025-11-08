@@ -65,17 +65,9 @@ msgstr "LRCLIB"
 msgid "_Show progress"
 msgstr "显示进度(_S)"
 
-#: src/prefs.js:34
-msgid "S_ystray position"
-msgstr "托盘位置(_Y)"
-
 #: src/prefs.js:35
 msgid "_Refresh interval"
 msgstr "刷新间隔(_R)"
-
-#: src/prefs.js:36
-msgid "Desktop"
-msgstr "桌面"
 
 #: src/prefs.js:37
 msgid "_Mobilize"
@@ -97,11 +89,27 @@ msgstr "字体(_F)"
 msgid "Or_ientation"
 msgstr "方向(_I)"
 
-#: src/prefs.js:41
-msgid "Online"
-msgstr "在线"
+#: src/prefs.js:50
+msgid "Player"
+msgstr "播放器"
 
-#: src/prefs.js:41
+#: src/prefs.js:51
+msgid "S_ystray position"
+msgstr "托盘位置(_Y)"
+
+#: src/prefs.js:52
+msgid "Panel _width"
+msgstr "面板宽度(_W)"
+
+#: src/prefs.js:53
+msgid "Allow _video players"
+msgstr "允许视频播放器(_V)"
+
+#: src/prefs.js:58
+msgid "_Online"
+msgstr "在线(_O)"
+
+#: src/prefs.js:58
 msgid "Try to download and save the missing lyrics"
 msgstr "尝试下载并保存缺失歌词"
 
@@ -157,6 +165,14 @@ msgstr "设置"
 #: src/extension.js:66
 msgid "Mobilize"
 msgstr "解锁位置"
+
+#: src/mpris.js:775 src/mpris.js:820
+msgid "Media Source"
+msgstr "媒体源"
+
+#: src/mpris.js:779 src/mpris.js:817
+msgid "Auto"
+msgstr "自动"
 
 #~ msgid ""
 #~ "Prefer <a href=\"https://www.freedesktop.org/wiki/Specifications/mpris-"

@@ -57,5 +57,18 @@
         <default>(200, 200)</default>
         <summary>desktop lyric place</summary>
     </key>
+    <key type="b" name="allow-video-players">
+        <default>true</default>
+        <summary>allow video players with MPRIS support</summary>
+    </key>
+    <key type="s" name="preferred-mpris-player">
+        <default>""</default>
+        <summary>preferred MPRIS player (empty for auto)</summary>
+    </key>
+    <key type="u" name="panel-width">
+        <range min="100" max="800"/>
+        <default>300</default>
+        <summary>panel lyric fixed width (pixels)</summary>
+    </key>
   </schema>
 </schemalist>

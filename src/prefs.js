@@ -19,8 +19,10 @@ class DesktopLyricPrefs extends UI.Page {
             [K.ONLN, new UI.Switch()],
             [K.PRGR, new UI.Switch()],
             [K.FABK, new UI.Switch()],
+            [K.AVPL, new UI.Switch()],
             [K.OPCT, new UI.Spin(20, 100, 5, '%')],
             [K.SPAN, new UI.Spin(20, 500, 10, _('ms'))],
+            [K.PWID, new UI.Spin(100, 800, 50, _('px'))],
             [K.ORNT, new UI.Drop([_('Horizontal'), _('Vertical')])],
             [K.AREA, new UI.Drop([_('Left'), _('Center'), _('Right')])],
             [K.PATH, new UI.File({folder: true, size: true, open: true})],
@@ -29,24 +31,40 @@ class DesktopLyricPrefs extends UI.Page {
     }
 
     $buildUI() {
-        this.$add([null, [
-            [[_('_Show progress')], K.PRGR],
-            [[_('S_ystray position')], K.AREA],
-            [[_('_Refresh interval')], K.SPAN],
-        ]], [[[_('Desktop')]], [
-            [[_('_Mobilize'), _('Allow dragging to displace')], K.DRAG],
-            [[_('_Opacity')], K.OPCT],
-            [[_('_Font')], K.FONT],
-            [[_('Or_ientation')], K.ORNT],
-        ]], [[[_('Online'), _('Try to download and save the missing lyrics')], K.ONLN], [
-            [[_('_Provider'), _('Prefer <a href="%s">lyrics from Mpris metadata</a>').format('https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext')],
-                new UI.Help(({h}) => [h(_('URL')), [
-                    [_('NetEase Cloud'), `<a href="${URL.NCM}">${URL.NCM}</a>`],
-                    [_('LRCLIB'), `<a href="${URL.LRCLIB}">${URL.LRCLIB}</a>`],
-                ]]), K.PRVD],
-            [[_('F_allback'), _('Use the first result when searches cannot be matched precisely')], K.FABK],
-            [[_('_Location'), _('Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], K.PATH],
-        ]]);
+        this.$add(
+            // Appearance group
+            [[[_('Appearance')]], [
+                [[_('_Font')], K.FONT],
+                [[_('_Opacity')], K.OPCT],
+                [[_('Or_ientation')], K.ORNT],
+            ]], 
+            
+            // Behavior group
+            [[[_('Behavior')]], [
+                [[_('_Mobilize'), _('Allow dragging to displace')], K.DRAG],
+                [[_('_Show progress')], K.PRGR],
+                [[_('_Refresh interval'), _('Lower values = smoother but higher CPU usage')], K.SPAN],
+            ]], 
+            
+            // Player group
+            [[[_('Player')]], [
+                [[_('S_ystray position')], K.AREA],
+                [[_('Panel _width'), _('Fixed width of panel lyric in pixels (minimized mode only)')], K.PWID],
+                [[_('Allow _video players'), _('Allow Chromium/Electron-based players to be recognized')], K.AVPL],
+            ]], 
+            
+            // Lyrics Source group
+            [[[_('Lyrics Source')]], [
+                [[_('_Online'), _('Try to download and save the missing lyrics')], K.ONLN],
+                [[_('_Provider'), _('Prefer <a href="%s">lyrics from Mpris metadata</a>').format('https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext')],
+                    new UI.Help(({h}) => [h(_('URL')), [
+                        [_('NetEase Cloud'), `<a href="${URL.NCM}">${URL.NCM}</a>`],
+                        [_('LRCLIB'), `<a href="${URL.LRCLIB}">${URL.LRCLIB}</a>`],
+                    ]]), K.PRVD],
+                [[_('F_allback'), _('Use the first result when searches cannot be matched precisely')], K.FABK],
+                [[_('_Location'), _('Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>')], K.PATH],
+            ]]
+        );
     }
 }
 
