@@ -7,6 +7,7 @@ import Meta from 'gi://Meta';
 import Cairo from 'gi://cairo';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
 import PangoCairo from 'gi://PangoCairo';
 
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
@@ -56,8 +57,12 @@ class PaperBase extends St.DrawingArea {
         F.connect(this, F.theme(), 'changed', (() => this.$onColorChange())[$].call());
     }
 
+    get_context() { // NOTE: workaround for DND since https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3726
+        return Clutter.Actor.prototype.get_context.call(this);
+    }
+
     vfunc_repaint() {
-        let cr = this.get_context(),
+        let cr = St.DrawingArea.prototype.get_context.call(this),
             [w, h] = this.get_surface_size(),
             pl = PangoCairo.create_layout(cr);
         this.$setupLayout(cr, h, pl);
