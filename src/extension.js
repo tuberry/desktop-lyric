@@ -4,14 +4,14 @@
 import * as T from './util.js';
 import * as M from './menu.js';
 import * as F from './fubar.js';
-import {Key as K} from './const.js';
+import { Key as K } from './const.js';
 
 import Lyric from './lyric.js';
-import Mpris, {PlayerMenu} from './mpris.js';
+import Mpris, { PlayerMenu } from './mpris.js';
 import * as Paper from './paper.js';
 
-const {_} = F;
-const {$, $$} = T;
+const { _ } = F;
+const { $, $$ } = T;
 
 class DesktopLyric extends F.Mortal {
     constructor(gset) {
@@ -40,11 +40,11 @@ class DesktopLyric extends F.Mortal {
             ]),
             sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500);
-        this.$src = F.Source.tie({play, paper, tray, lyric, mpris, sync}, this); // NOTE: `paper` prior `tray` to avoid double free
-        
+        this.$src = F.Source.tie({ play, paper, tray, lyric, mpris, sync }, this); // NOTE: `paper` prior `tray` to avoid double free
+
         // Create player menu manager
         this.playerMenu = new PlayerMenu(this.$src.mpris);
-        
+
         // Add dynamic menu items after mpris is initialized
         this.#updateDynamicMenuItems();
     }
@@ -63,12 +63,12 @@ class DesktopLyric extends F.Mortal {
             sep1: new M.Separator(),
             sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
         }, 'lyric-symbolic', this[K.AREA] ? 0 : 5, ['left', 'center', 'right'][this[K.AREA]] ?? 'left');
-        
+
         // Set fixed width for the main tray menu to prevent expansion
         // (without modifying shared menu.js)
         tray.menu.box.set_style('width: 350px;');
-        
-        return tray[$].set({visible: this.$src?.mpris.active ?? false});
+
+        return tray[$].set({ visible: this.$src?.mpris.active ?? false });
     }
 
     #viewPaper() {
@@ -92,7 +92,7 @@ class DesktopLyric extends F.Mortal {
 
     #onAreaSet() {
         let wasActive = this.$src.mpris.active;
-        if(this[K.MINI]) {
+        if (this[K.MINI]) {
             this.setPlaying(false);
             this.$src.paper.dispel();
         }
@@ -100,11 +100,11 @@ class DesktopLyric extends F.Mortal {
         this.#updateDynamicMenuItems();
         this.#onMiniSet();
         // Restore tray visibility after recreation
-        if(wasActive) F.view(true, this.$src.tray.hub);
+        if (wasActive) F.view(true, this.$src.tray.hub);
     }
 
     #onDragSet(drag) {
-        if(this[K.MINI]) return;
+        if (this[K.MINI]) return;
         this.$src.paper.hub.setDrag(drag);
         this.$src.tray.hub.$menu.drag.setToggleState(drag);
     }
@@ -116,7 +116,7 @@ class DesktopLyric extends F.Mortal {
 
     setActive(active) {
         F.view(active, this.$src.tray.hub);
-        if(active) return;
+        if (active) return;
         this.setPlaying(false);
         this.$src.paper.hub.clearLyric();
         delete this.song;
@@ -127,7 +127,7 @@ class DesktopLyric extends F.Mortal {
     }
 
     setSong(song) {
-        if(T.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
+        if (T.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
             this.$src.paper.hub?.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
             this.$src.sync.revive();
         } else {
@@ -137,16 +137,16 @@ class DesktopLyric extends F.Mortal {
     }
 
     loadLyric(reload) {
-        if(!this.song) return;
-        
+        if (!this.song) return;
+
         // Check if we should search for lyrics (respects manual selection)
-        if(!this.$src.mpris.shouldSearchLyrics()) {
+        if (!this.$src.mpris.shouldSearchLyrics()) {
             // For video players (not manually selected), don't search for lyrics, just show title
             this.setLyric('');
             return;
         }
-        
-        if(this.song.lyric === null) {
+
+        if (this.song.lyric === null) {
             this.setLyric('');
             this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(T.nop);
         } else {
@@ -155,13 +155,13 @@ class DesktopLyric extends F.Mortal {
     }
 
     setLyric(lyrics) {
-        if(!this.$src.paper.active) return;
-        
+        if (!this.$src.paper.active) return;
+
         // Determine if we should show song title
         // Mini mode: always show title
         // Desktop mode: never show title (only show lyrics)
         const songTitle = this[K.MINI] ? Lyric.name(this.song, ' - ', '/') : '';
-        
+
         this.$src.paper.hub[$].song(songTitle)[$]
             .setLength(this.song.length)[$]
             .setLyrics(lyrics);

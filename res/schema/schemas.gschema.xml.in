@@ -10,7 +10,7 @@
         <summary>make lyric draggable or not</summary>
     </key>
     <key type="b" name="online-lyrics">
-        <default>true</default>
+        <default>false</default>
         <summary>auto download missing lyrics</summary>
     </key>
     <key type="u" name="online-provider">
@@ -57,10 +57,7 @@
         <default>(200, 200)</default>
         <summary>desktop lyric place</summary>
     </key>
-    <key type="b" name="allow-video-players">
-        <default>true</default>
-        <summary>allow video players with MPRIS support</summary>
-    </key>
+
     <key type="s" name="preferred-mpris-player">
         <default>""</default>
         <summary>preferred MPRIS player (empty for auto)</summary>
