@@ -33,7 +33,7 @@
     <key type="u" name="lyric-orientation">
         <range min="0" max="1"/>
         <default>0</default>
-        <summary>lyric orientation (0 - horizontal, 1 - vertical)</summary>
+        <summary>desktop lyric orientation (0 - horizontal, 1 - vertical)</summary>
     </key>
     <key type="u" name="refresh-interval">
         <range min="20" max="500"/>
@@ -49,23 +49,37 @@
         <default>50</default>
         <summary>opacity percent of desktop lyric</summary>
     </key>
+    <key type="u" name="decoration-opacity">
+        <range min="0" max="100"/>
+        <default>20</default>
+        <summary>desktop lyric decoration opacity</summary>
+    </key>
+    <key type="u" name="decoration-type">
+        <range min="0" max="1"/>
+        <default>0</default>
+        <summary>desktop lyric decoration type (0 - outline, 1 - background)</summary>
+    </key>
+    <key type="u" name="player-pin-policy">
+        <range min="0" max="1"/>
+        <default>0</default>
+        <summary>player pin policy (0 - prefer, 1 - only)</summary>
+    </key>
+    <key type="u" name="panel-lyric-width">
+        <range min="100" max="800"/>
+        <default>300</default>
+        <summary>panel lyric fixed width (pixels)</summary>
+    </key>
     <key type="s" name="font-name">
         <default>"Sans 32"</default>
         <summary>font name of desktop lyric</summary>
     </key>
-    <key type="(uu)" name="lyric-place">
+    <key type="(ii)" name="lyric-place">
         <default>(200, 200)</default>
         <summary>desktop lyric place</summary>
     </key>
-
-    <key type="s" name="preferred-mpris-player">
-        <default>""</default>
-        <summary>preferred MPRIS player (empty for auto)</summary>
-    </key>
-    <key type="u" name="panel-width">
-        <range min="100" max="800"/>
-        <default>300</default>
-        <summary>panel lyric fixed width (pixels)</summary>
+    <key type="as" name="player-pin-list">
+        <default>[]</default>
+        <summary>player pin list</summary>
     </key>
   </schema>
 </schemalist>

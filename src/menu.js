@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';
+import Gio from 'gi://Gio';
 import Clutter from 'gi://Clutter';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -12,7 +13,7 @@ import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
 import * as T from './util.js';
 import * as F from './fubar.js';
 
-const {$, $_, $$} = T;
+const {$, $_, $s, $$} = T;
 
 export const Separator = PopupMenu.PopupSeparatorMenuItem;
 
@@ -24,19 +25,21 @@ export function upsert(table, insert, list, update, spread = x => x._getMenuItem
     spread(table).forEach((x, i, a) => update(list[i], x, i, a));
 }
 
-export function record(ok, tray, ...args) {
-    if(!tray) return;
-    let {menu, $menu} = tray;
-    T.each(([gen, key, pos]) => {
-        if(T.xnor(ok, $menu[key])) return;
-        if(ok) menu.addMenuItem($menu[key] = gen?.() ?? new Separator(), pos ? menu._getMenuItems().findIndex(x => x === $menu[pos]) : undefined);
-        else F.omit($menu, key);
-    }, args, 3);
+export function altNum(event, item, key = event.get_key_symbol()) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
+    return (event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9)[$$](it =>
+        it && [...item].filter(x => x instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY));
 }
 
-export function altNum(event, item, key = event.get_key_symbol()) { // Ref: https://gitlab.gnome.org/GNOME/mutter/-/blob/main/clutter/clutter/clutter-keysyms.h
-    return T.seq(event.get_state() & Clutter.ModifierType.MOD1_MASK && key >= Clutter.KEY_0 && key <= Clutter.KEY_9,
-        x => x && [...item].filter(y => y instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY));
+export class Icon extends St.Icon {
+    static {
+        T.enrol(this);
+        this.wrap = icon => icon instanceof this ? icon : new St.Icon({iconName: T.str(icon) ? icon : null});
+    }
+
+    constructor(iconName) { // HACK: ? revert for not working since GNOME 50, see also https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/1997
+        super({iconName}).bind_property_full('icon-name', this, 'fallback-gicon',  T.SYNC,
+            (_b, x) => [true, Gio.Icon.new_for_string(`resource:///org/gnome/shell/icons/scalable/status/${x}.svg`)], null);
+    }
 }
 
 export class Systray extends PanelMenu.Button {
@@ -47,9 +50,27 @@ export class Systray extends PanelMenu.Button {
     constructor(menu, icon = '', pos, box, text) {
         let {uuid, metadata: {name}} = F.me();
         super(0.5, text ?? name, !menu)[$].add_child(this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'})[$]
-            .add_child(this.$icon = new St.Icon({iconName: icon, styleClass: 'system-status-icon'})));
-        if(menu) Item.add(this.$menu = menu, this.menu);
+            .add_child(this.$icon = Icon.wrap(icon)[$].set({styleClass: 'system-status-icon'})));
+        if(menu) Item.put(this.menu, this.$menu = menu);
         Main.panel.addToStatusArea(uuid, this, pos, box);
+    }
+
+    $record(ok, ...args) {
+        T.chunk(args).forEach(([key, gen]) => {
+            if(T.xnor(ok, this.$menu[key])) return;
+            if(ok) {
+                let index = 0;
+                for(let k in this.$menu) { // string keys in insert order
+                    if(k === key) break;
+                    if(this.$menu[k]) index++;
+                }
+                this.$menu[key] = gen?.() ?? new Separator();
+                this.menu.addMenuItem(this.$menu[key], index);
+            } else {
+                this.$menu[key].destroy();
+                this.$menu[key] = null;
+            }
+        });
     }
 }
 
@@ -62,35 +83,26 @@ export class Button extends St.Button {
         super({canFocus: true})[$]
             .$buildSources()[$_]
             .$callback(func, func)[$]
-            .set_child(new St.Icon({styleClass: 'popup-menu-icon'}))[$]
+            .set_child(Icon.wrap(icon)[$].set({styleClass: 'popup-menu-icon'}))[$]
             .connect('clicked', (...xs) => this.$callback(...xs))[$_]
-            .setup(icon !== null, icon)[$]
+            .setup(icon !== null && !(icon instanceof Icon), icon)[$]
             .setTip(tip);
     }
 
     $buildSources() {
-        let tip = new F.Source((...xs) => this.#genTip(...xs));
-        let show = F.Source.newTimer(() => [() => this.#showTip(true), 250], true, () => this.#showTip(false));
-        this.$src = F.Source.tie({tip, show}, this);
-    }
-
-    #genTip(text) {
-        let ret = new BoxPointer.BoxPointer(St.Side.TOP)[$].set({$text: text, visible: false, styleClass: 'popup-menu-boxpointer'});
-        F.connect(ret, this, 'notify::hover', x => this.$src.show.toggle(x.hover));
-        ret.bin.set_child(new St.Label({styleClass: 'dash-label'}));
-        return ret;
-    }
-
-    #showTip(show) {
-        if(!this.tip) return;
-        if(show) {
-            if(F.offstage(this.tip)) Main.layoutManager.addTopChrome(this.tip);
-            this.tip[$].setPosition(this, 0.1)[$].open(BoxPointer.PopupAnimation.FULL);
-        } else {
-            if(F.offstage(this.tip)) return;
-            this.tip.close(BoxPointer.PopupAnimation.FADE);
-            Main.layoutManager.removeChrome(this.tip);
-        }
+        this.$src = F.Source.tie(this, {
+            tip: F.Source.new(text => {
+                let ret = new BoxPointer.BoxPointer(St.Side.TOP)[$].set({$text: text, visible: false, styleClass: 'popup-menu-boxpointer'}),
+                    show = F.Source.newTimer(() => [() => {
+                        if(F.offstage(ret)) Main.layoutManager.addTopChrome(ret);
+                        ret[$].setPosition(this, 0.1).open(BoxPointer.PopupAnimation.FULL);
+                    }, 250], true, () => F.offstage(ret) || Main.layoutManager.removeChrome(ret[$].close(BoxPointer.PopupAnimation.FADE))),
+                    hover = F.Source.newHandler(this, 'notify::hover', x => show.toggle(x.hover));
+                F.Source.tie(ret, show, hover);
+                ret.bin.set_child(new St.Label({styleClass: 'dash-label'}));
+                return ret;
+            }),
+        });
     }
 
     setup(icon) {
@@ -135,9 +147,8 @@ export class StateButton extends Button {
 export class Item extends PopupMenu.PopupMenuItem {
     static {
         T.enrol(this);
+        this.put = (menu, items) => menu[$s].addMenuItem(T.unit(items, Object.values).filter(T.id));
     }
-
-    static add = (items, menu) => menu[$$].addMenuItem(T.unit(items, Object.values).filter(T.id));
 
     constructor(text = '', func, param) {
         super(text, param)[$_].$callback(func, func)[$].connect('activate', (...xs) => this.$callback(...xs));
@@ -159,7 +170,7 @@ export class ToolItem extends PopupMenu.PopupBaseMenuItem {
     }
 
     setup(tool) {
-        if(this.$tool) F.omit(this, ...this.$tool);
+        if(this.$tool) F.erase(this, this.$tool);
         this.$tool = T.unit(tool, Object.entries).flatMap(([k, v]) => {
             if(k in this) throw Error(`key conflict: ${k}`);
             else return v ? [(this.add_child(this[k] = v), k)] : [];
@@ -180,9 +191,8 @@ export class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     static {
         T.enrol(this);
+        this.getopt = o => T.omap(o, ([k, v]) => [[v, F._(T.upcase(k))]]);
     }
-
-    static getopt = o => T.omap(o, ([k, v]) => [[v, F._(T.upcase(k))]]);
 
     constructor($category, options, chosen, $callback) {
         super('')[$].set({$category, $callback})[$].setup(options, chosen);

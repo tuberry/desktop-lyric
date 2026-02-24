@@ -4,7 +4,7 @@
 project(
   'gnome-shell-extension-desktop-lyric',
   license: 'GPL-3.0-or-later',
-  version: '49.0',
+  version: '50.beta',
   meson_version: '>= 1.4.0',
 )
 

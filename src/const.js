@@ -16,11 +16,13 @@ export const Key = {
     OPCT: 'lyric-opacity',
     PRGR: 'show-progress',
     PATH: 'lyric-location',
+    DCTP: 'decoration-type',
     FABK: 'online-fallback',
+    PLST: 'player-pin-list',
     PRVD: 'online-provider',
     SPAN: 'refresh-interval',
     ORNT: 'lyric-orientation',
-
-    PMPL: 'preferred-mpris-player',
-    PWID: 'panel-width',
+    PLCY: 'player-pin-policy',
+    PNWD: 'panel-lyric-width',
+    DCOP: 'decoration-opacity',
 };
