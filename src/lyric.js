@@ -7,25 +7,29 @@ import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K, URL} from './const.js';
 
-const {$} = T;
+const {$$} = T;
 
-async function getNeteaseSongId(song, client, cancel, fallback) {
+async function queryNCMLyric(param, song, client, cancel, fallback) {
     let singer = song.artist.toSorted(),
-        {songs} = JSON.parse(await T.request('POST', `${URL.NCM}api/search/get/web?`, {s: Lyric.name(song), limit: '30', type: '1'}, cancel, null, client)).result,
-        match = ({name: u, album: {name: v}, artists: w}, {title: x, album: y}, z) => x === u && (!y || y === v) && (!z.length || T.homolog(z, w.map(a => a.name).sort())),
-        {id} = songs[$].sort((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length)).find(x => match(x, song, singer)) ?? (fallback && songs[0]);
-    return id.toString();
+        {songs} = JSON.parse(await T.request('POST', `${URL.NCM}api/search/get/web?`,
+            {s: Lyric.term(song), limit: '30', type: '1'}, cancel, null, client)).result,
+        match = ({name: u, album: {name: v}, artists: w}, {title: x, album: y}, z) =>
+            x === u && (!y || y === v) && (!z.length || T.homolog(z, w.map(a => a.name).sort())),
+        {id} = songs.toSorted((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length))
+            .find(x => match(x, song, singer)) ?? (fallback && songs[0]);
+    return JSON.parse(await T.request('GET', `${URL.NCM}api/song/lyric?`,
+        {id: id.toString(), lv: '1', ...param}, cancel, null, client));
 }
 
 const Provider = [
     class Netease {
-        static async fetch(song, client, cancel, fallback) {
-            return JSON.parse(await T.request('GET', `${URL.NCM}api/song/lyric?`, {id: await getNeteaseSongId(song, client, cancel, fallback), lv: '1'}, cancel, null, client)).lrc.lyric;
+        static async fetch(...args) {
+            return (await queryNCMLyric(null, ...args)).lrc.lyric;
         }
     },
     class NeteaseTrans {
-        static async fetch(song, client, cancel, fallback) {
-            let res = JSON.parse(await T.request('GET', `${URL.NCM}api/song/lyric?`, {id: await getNeteaseSongId(song, client, cancel, fallback), tv: '1', lv: '1'}, cancel, null, client));
+        static async fetch(...args) {
+            let res = await queryNCMLyric({lv: '1'}, ...args);
             return res.tlyric.lyric || res.lrc.lyric;
         }
     },
@@ -40,9 +44,10 @@ const Provider = [
             } catch(e) {
                 if(F.Source.cancelled(e)) throw e;
                 let singer = song.artist.join(' ').length, // HACK: messy separator: e.g. https://lrclib.net/api/search?q=%E5%A4%B1%E7%9C%A0%E9%A3%9E%E8%A1%8C
-                    songs = JSON.parse(await T.request('GET', `${URL.LRCLIB}api/search?`, {q: Lyric.name(song)}, cancel, header, client))
-                        .filter(x => x.syncedLyrics)[$].sort((a, b) => Math.abs(a.duration - length) - Math.abs(b.duration - length)),
-                    match = ({trackName: u, albumName: v, artistName: w}, {title: x, album: y}, z) => x === u && (!y || y === v) && (!z || z === w.length);
+                    songs = JSON.parse(await T.request('GET', `${URL.LRCLIB}api/search?`, {q: Lyric.term(song)}, cancel, header, client))
+                        .filter(x => x.syncedLyrics).sort((a, b) => Math.abs(a.duration - length) - Math.abs(b.duration - length)),
+                    match = ({trackName: u, albumName: v, artistName: w}, {title: x, album: y}, z) =>
+                        x === u && (!y || y === v) && (!z || z === w.length);
                 return (songs.find(x => match(x, song, singer)) ?? (fallback && songs[0])).syncedLyrics;
             }
         }
@@ -50,28 +55,25 @@ const Provider = [
 ];
 
 export default class Lyric extends F.Mortal {
-    static name({title, artist, album}, sepTitle = ' ', sepArtist = ' ', useAlbum = false) {
+    static term({title, artist, album}, sepTitle = ' ', sepArtist = ' ', useAlbum = false) {
         return [title, artist.join(sepArtist), useAlbum ? album : ''].filter(T.id).join(sepTitle);
     }
 
-    constructor(set) {
-        super()[$].$bindSettings(set).$buildSources();
-    }
-
     $bindSettings(set) {
-        this.$set = set.tie([
+        this.$set = set.tie(this, [
             K.PATH, K.FABK, [K.PRVD, x => Provider[x]],
             [K.ONLN, null, x => this.$src.client.toggle(x)],
-        ], this);
+        ]);
     }
 
     $buildSources() {
         let cancel = F.Source.newCancel();
         let client = new F.Source(() => new Soup.Session({timeout: 30}), x => x.abort(), this[K.ONLN]);
-        this.$src = F.Source.tie({cancel, client}, this);
+        this.$src = F.Source.tie(this, {cancel, client});
     }
 
     async load(song, reload, cancel = this.$src.cancel.reborn()) {
+        if(!song.title) return '';
         let file = T.fopen(this.path(song));
         try {
             if(reload) throw Error('dirty');
@@ -91,14 +93,14 @@ export default class Lyric extends F.Mortal {
     }
 
     unload(song) {
-        T.seq(this.path(song), p => T.exist(p) && T.fwrite(p, ' ').catch(T.nop));
+        this.path(song)[$$](p => T.exist(p) && T.fwrite(p, ' ').catch(T.nop));
     }
 
     warn(song) {
-        F.me().getLogger().warn(`Failed to download lyrics for <${Lyric.name(song)}>`);
+        F.me().getLogger().warn(`Failed to download lyrics for <${Lyric.term(song)}>`);
     }
 
     path(song) {
-        return this[K.PATH] && `${this[K.PATH]}/${Lyric.name(song, '-', ',', true).replaceAll('/', '／')}.lrc`;
+        return this[K.PATH] && `${this[K.PATH]}/${Lyric.term(song, '-', ',', true).replaceAll('/', '／')}.lrc`;
     }
 }

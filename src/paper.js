@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';
-import Meta from 'gi://Meta';
 import Cairo from 'gi://cairo';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
@@ -18,7 +17,7 @@ import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
-const {$, $$} = T;
+const {$, $$, $s} = T;
 
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity ?? alpha / 255);
@@ -43,33 +42,79 @@ class PaperBase extends St.DrawingArea {
     }
 
     constructor(set, param) {
-        super(param)[$]
-            .$clearLyric()[$]
-            .$bindSettings(set)[$]
-            .$buildWidgets();
+        super(param)[$].$clearLyric()[$].$bindSettings(set).$buildSources();
     }
 
     $bindSettings(set) {
-        this.$set = set.tie([[K.PRGR, x => !x]], this, () => { this.$lrc = `\u{200b}${this.$lrc}`; this.queue_repaint(); }); // NOTE: force redrawing
+        this.$set = set.tie(this, [[K.PRGR, x => !x]], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
     }
 
-    $buildWidgets() {
-        F.connect(this, F.theme(), 'changed', (() => this.$onColorChange())[$].call());
+    $buildSources() {
+        F.Source.tie(this, F.Source.newHandler(F.theme(), 'changed', (() => this.$onColorChange())[$].call()));
     }
 
-    get_context() { // NOTE: workaround for DND since https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3726
+    $setFont(font) {
+        this.$font = font;
+        let ratio = font.get_size() / Pango.FontDescription.from_string('Sans 12').get_size();
+        this.$title = [30 / ratio, 16 * 4 * ratio, 16 * 3 * ratio];
+    }
+
+    get_context() { // HACK: workaround for DND since https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3726
         return Clutter.Actor.prototype.get_context.call(this);
     }
 
     vfunc_repaint() {
-        let cr = St.DrawingArea.prototype.get_context.call(this),
-            [w, h] = this.get_surface_size(),
-            pl = PangoCairo.create_layout(cr);
-        this.$setupLayout(cr, h, pl);
-        this.$colorLayout(cr, w, pl);
-        this.$showLayout(cr, pl);
+        let cr = St.DrawingArea.prototype.get_context.call(this);
+        let pl = PangoCairo.create_layout(cr);
+        pl.set_font_description(this.$font);
+        pl.set_text(this.$lrc, -1);
+        let [w, h] = pl.get_pixel_size();
+        this.$scroll = w > this.$size;
+        this.$actual = this.$scroll ? this.$size : w; // actual pxiels
+        this.$setupLayout(cr, pl, w, h, this.$scroll, this.$actual);
+        this.$updateLayout(cr, pl, w, h, this.$scroll, this.$actual);
 
         cr.$dispose();
+    }
+
+    $updateLayout(cr, pl, w, h, scroll, L) {
+        let offset = 0;
+        if(this.$pos < 0) { // song title
+            cr.setSourceRGBA(...this.homochromyColor);
+            if(scroll) {
+                let [slowness, delay, gap] = this.$title;
+                offset = Math.min(0, delay - (this.moment / slowness) % (delay + w + gap));
+                let round = offset + w + gap;
+                if(round < L) {
+                    cr.save();
+                    this.$showLayout(cr, pl, round, h);
+                    cr.restore();
+                }
+            }
+        } else {
+            if(scroll) offset = Math.clamp(L / 2 - w * this.$pos, L - w, 0);
+            if(this[K.PRGR]) {
+                cr.setSourceRGBA(...this.homochromyColor);
+            } else {
+                let pos = scroll ? (w * this.$pos + offset) / L : this.$pos;
+                let gd = this.$genLinearGradient(L);
+                gd.addColorStopRGBA(0, ...this.activeColor);
+                gd.addColorStopRGBA(pos, ...this.activeColor);
+                gd.addColorStopRGBA(pos, ...this.inactiveColor);
+                gd.addColorStopRGBA(1, ...this.inactiveColor);
+                cr.setSource(gd);
+            }
+        }
+        this.$showLayout(cr, pl, offset, h);
+    }
+
+    $showLayout(cr, pl, x, _y) {
+        cr.moveTo(x, 0);
+        PangoCairo.show_layout(cr, pl);
+    }
+
+    $genLinearGradient(length) {
+        return new Cairo.LinearGradient(0, 0, length, 0);
     }
 
     $clearLyric() {
@@ -80,34 +125,10 @@ class PaperBase extends St.DrawingArea {
 
     getLyric(now = this.moment) {
         let index = findMaxLE(this.$tags, now);
-        if(index < 0) return [0, this.song];
+        if(index < 0) return [-1, this.song];
         let key = this.$tags[index];
         let [len, lrc] = this.$lrcs.get(key);
         return [len > 0 ? (now - key) / len : 0, lrc];
-    }
-
-    $setupLayout(_cr, _h, pl) {
-        pl.set_font_description(this.$font);
-        pl.set_text(this.$lrc, -1);
-    }
-
-    $colorLayout(cr, w, pl) {
-        let [pw] = pl.get_pixel_size();
-        cr.moveTo(pw > w ? this.$pos * (w - pw) : 0, 0);
-        if(this[K.PRGR]) {
-            cr.setSourceRGBA(...this.homochromyColor);
-        } else {
-            let gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
-            gd.addColorStopRGBA(0, ...this.activeColor);
-            gd.addColorStopRGBA(this.$pos, ...this.activeColor);
-            gd.addColorStopRGBA(this.$pos, ...this.inactiveColor);
-            gd.addColorStopRGBA(1, ...this.inactiveColor);
-            cr.setSource(gd);
-        }
-    }
-
-    $showLayout(cr, pl) {
-        PangoCairo.show_layout(cr, pl);
     }
 
     clearLyric() {
@@ -126,7 +147,7 @@ class PaperBase extends St.DrawingArea {
         this.moment = moment;
         let {$pos, $lrc: $txt} = this;
         [this.$pos, this.$lrc] = this.getLyric();
-        if(!this.visible || (this.$pos === $pos || this[K.PRGR]) && this.$lrc === $txt) return;
+        if(!this.visible || (!this.$scroll && (this.$pos === $pos || this[K.PRGR]) && this.$lrc === $txt)) return;
         this.queue_repaint();
     }
 
@@ -155,267 +176,97 @@ export class Panel extends PaperBase {
     }
 
     $bindSettings(set) {
-        this.$maxWidth = 0; // Initialize before binding to avoid race condition
         super.$bindSettings(set);
-        this.$set.tie([
-            [K.PWID, x => this.$updatePanelWidth(x)],
-        ], this);
+        this.$set.tie(this, [[['$size', K.PNWD], x => this.set_width(x)]]);
     }
 
-    $buildWidgets() {
-        F.connect(this, Main.panel.statusArea.quickSettings, 'style-changed', (() => this.$onStyleChange())[$].call());
-        this.$naturalWidth = 0;
-        this.$scrollOffset = 0; // Current scroll offset for title
-        this.$scrollDelay = 0; // Delay counter before starting scroll
-        // Use F.Source.newTimer for proper cleanup on destroy
-        this.$src = F.Source.tie({scrollTimer: F.Source.newTimer(() => [() => this.#onScrollTick(), 50], false)}, this);
-        super.$buildWidgets();
-    }
-
-    $updatePanelWidth(width) {
-        this.$maxWidth = width;
-        this.set_width(width);
-        this.queue_repaint();
+    $buildSources() {
+        this.$src = F.Source.tie(this, F.Source.newHandler(Main.panel.statusArea.quickSettings,
+            'style-changed', (() => this.$onStyleChange())[$].call()));
+        super.$buildSources();
     }
 
     $onStyleChange() {
         let theme = Main.panel.statusArea.quickSettings.get_theme_node();
-        let [_w, h] = Main.panel.get_size();
-        this[$].$font(theme.get_font())[$]
+        let [w_, h] = Main.panel.get_size();
+        this[$].$setFont(theme.get_font())[$]
             .inactiveColor(color2rgba(theme.get_foreground_color()))[$]
-            .$maxWidth(this[K.PWID])[$]
-            .set_height(h)[$]
-            .$onColorChange();
+            .set_height(h).$onColorChange();
     }
 
-    get homochromyColor() { return this.inactiveColor; }
+    get homochromyColor() {
+        return this.inactiveColor;
+    }
 
     $onColorChange() {
         this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => Util.lerp(x, this.inactiveColor[i], 0.2));
     }
 
-    setMoment(moment) {
-        this.moment = moment;
-        let {$pos, $lrc: $txt} = this;
-        [this.$pos, this.$lrc] = this.getLyric();
-        
-        // Skip if invisible or no changes
-        if(!this.visible || (this.$pos === $pos && this.$lrc === $txt)) return;
-        
-        // Manage title scrolling: only scroll when displaying title (no lyrics)
-        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
-        if (isDisplayingTitle) {
-            this.#startTitleScrolling();
-        } else {
-            this.#stopTitleScrolling();
-        }
-        
-        this.queue_repaint();
-        
-        // Always use fixed max width to prevent pushing other panel components
-        this.set_width(this.$maxWidth);
-    }
-
-    $setupLayout(cr, h, pl) {
-        super.$setupLayout(cr, h, pl);
-        let [pw, ph] = pl.get_pixel_size();
-        this.$naturalWidth = pw;
-        
-        // Set up clipping BEFORE translate to ensure correct coordinate system
-        cr.save();
-        cr.rectangle(0, 0, this.$maxWidth, h);
-        cr.clip();
-        
-        // Now do vertical centering
-        let yOffset = (h - ph) / 2;
-        cr.translate(0, yOffset);
-    }
-
-    #startTitleScrolling() {
-        // Start title scrolling if title is too long
-        if (this.$src.scrollTimer.active) return;
-        
-        // Reset scroll state
-        this.$scrollOffset = 0;
-        this.$scrollDelay = 0;
-        
-        // Start the scrolling timer (20 FPS)
-        this.$src.scrollTimer.revive();
-    }
-
-    #stopTitleScrolling() {
-        if (this.$src.scrollTimer.active) {
-            this.$src.scrollTimer.dispel();
-            this.$scrollOffset = 0;
-            this.$scrollDelay = 0;
-        }
-    }
-
-    #onScrollTick() {
-        if (this.$naturalWidth > this.$maxWidth) {
-            const DELAY_FRAMES = 40; // Wait 2 seconds before scrolling (40 * 50ms)
-            const scrollSpeed = 1; // pixels per frame
-            const gap = 40; // Gap between end and start of looping title
-            
-            // Wait for delay period before starting scroll
-            if (this.$scrollDelay < DELAY_FRAMES) {
-                this.$scrollDelay++;
-                return;
-            }
-            
-            // Title is too long, scroll it
-            this.$scrollOffset += scrollSpeed;
-            
-            // Loop the scrolling: reset when scrolled past one complete cycle
-            // One cycle = when the second title reaches where the first started
-            if (this.$scrollOffset >= this.$naturalWidth + gap) {
-                this.$scrollOffset = 0;
-                this.$scrollDelay = 0; // Reset delay for next cycle
-            }
-            
-            this.queue_repaint();
-        }
-    }
-
-    $colorLayout(cr, w, pl) {
-        let [pw] = pl.get_pixel_size();
-        let offset = 0;
-        let skipMoveTo = false;
-        
-        // Check if displaying title (no lyrics)
-        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
-        
-        if (isDisplayingTitle && pw > w) {
-            // Title scrolling: apply scroll offset
-            // Translate the canvas to create scrolling effect
-            cr.translate(-this.$scrollOffset, 0);
-            skipMoveTo = true; // Don't set moveTo, already translated
-        } else if (pw > w) {
-            // Lyrics wider than panel: scroll to keep progress bar centered
-            let progressPixel = this.$pos * pw; // Current progress position in pixels
-            let centerPoint = w / 2; // Center of the panel
-            
-            // Calculate offset using center formula
-            let centeredOffset = centerPoint - progressPixel;
-            
-            // Stage 1→2 transition: when centeredOffset = 0 (progress bar reaches center naturally)
-            // This happens when progressPixel = w/2
-            let stage1End = w / 2;
-            
-            // Stage 2→3 transition: when centeredOffset = w - pw (would scroll past end)
-            // This happens when progressPixel = pw - w/2
-            let stage2End = pw - w / 2;
-            
-            if (progressPixel <= stage1End) {
-                // Stage 1: Progress bar moving to center, no scroll
-                offset = 0;
-            } else if (progressPixel >= stage2End) {
-                // Stage 3: Show end of lyrics, progress bar moves from center to right
-                offset = w - pw;
-            } else {
-                // Stage 2: Keep progress bar centered, scroll lyrics
-                offset = centeredOffset;
-            }
-        }
-        
-        if (!skipMoveTo) {
-            cr.moveTo(offset, 0);
-        }
-        
-        if(this[K.PRGR]) {
-            cr.setSourceRGBA(...this.homochromyColor);
-        } else {
-            let gd;
-            
-            if (offset !== 0) {
-                // Stage 2 or 3: Adjust gradient to follow lyrics offset
-                gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(offset, 0, pw + offset, 0);
-            } else {
-                // Stage 1: No offset, use normal gradient
-                gd = this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, pw) : new Cairo.LinearGradient(0, 0, pw, 0);
-            }
-            
-            gd.addColorStopRGBA(0, ...this.activeColor);
-            gd.addColorStopRGBA(this.$pos, ...this.activeColor);
-            gd.addColorStopRGBA(this.$pos, ...this.inactiveColor);
-            gd.addColorStopRGBA(1, ...this.inactiveColor);
-            cr.setSource(gd);
-        }
-    }
-
-    $showLayout(cr, pl) {
-        // Check if displaying title and scrolling
-        let isDisplayingTitle = (this.$len === 0 || this.$lrc === this.song);
-        let [pw] = pl.get_pixel_size();
-        
-        if (isDisplayingTitle && pw > this.$maxWidth) {
-            // Draw the scrolling title with seamless loop
-            const gap = 40; // Gap between end and start
-            
-            // Draw first instance of title at (0, 0)
-            // Color was already set in $colorLayout
-            PangoCairo.show_layout(cr, pl);
-            
-            // Draw second instance for seamless loop
-            // Translate to the right of first title
-            // NOTE: Don't use save/restore here as it resets the source color
-            cr.translate(pw + gap, 0);
-            PangoCairo.show_layout(cr, pl);
-            cr.translate(-(pw + gap), 0); // Restore position manually
-        } else {
-            // Normal drawing
-            super.$showLayout(cr, pl);
-        }
-        
-        // Restore the context (matching the save in $setupLayout)
-        cr.restore();
+    $setupLayout(cr, _pl, _w, h) {
+        cr.translate(0, (this.get_surface_size()[1] - h) / 2);
     }
 }
 
 export class Desktop extends PaperBase {
     static {
         T.enrol(this);
+        this.Decor = {OUTLINE: 0, BG: 1};
+        this.Scale = 'text-scaling-factor';
     }
 
     constructor(drag, ...args) {
         super(...args).setDrag(drag);
-    }
-
-    $buildWidgets() {
-        super.$buildWidgets();
         Main.uiGroup.add_child(this);
-        F.connect(this, F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call());
-        this.$src = F.Source.tie({drag: new F.Source(() => this.$genDraggable(), x => x._dragComplete())}, this);
     }
 
     $bindSettings(set) {
         super.$bindSettings(set);
-        this.$setIF = new F.Setting('org.gnome.desktop.interface', [
-            [['scaling', 'text-scaling-factor']],
-        ], this, null, () => this.$onFontSet());
-        this.$set.tie([
-            [K.ORNT, x => this.$onOrientSet(x)],
+        this.$setIF = new F.Setting('org.gnome.desktop.interface', this, [[Desktop.Scale, null, () => this.$onFontSet()]]);
+        this.$set.tie(this, [
+            K.DCTP, [K.FONT, null, () => this.$onFontSet()],
+            [K.DCOP, x => x / 100, x => { this.decorColor[3] = x; }],
             [K.OPCT, x => x / 100, () => this.$onColorChange()],
-            [K.SITE, x => T.seq(x, y => this.set_position(...y)), null, true],
-        ], this).tie([K.FONT], this, null, () => this.$onFontSet());
+        ], [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize());
     }
 
-    get homochromyColor() { return this.activeColor; }
+    $buildSources() {
+        super.$buildSources();
+        this.$src = F.Source.tie(this, {drag: F.Source.new(() => this.$genDraggable())},
+            F.Source.newHandler(F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call()));
+    }
+
+    get homochromyColor() {
+        return this.activeColor;
+    }
 
     $onFontSet() {
-        this.$font = Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 11');
-        this.$font.set_size(this.$font.get_size() * F.theme().scaleFactor * (this.scaling ?? 1));
+        this.$setFont(Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 12')[$$](it =>
+            it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.Scale] ?? 1))));
     }
 
     $genDraggable() {
-        let ret = DND.makeDraggable(this, {dragActorOpacity: 200});
-        ret._dragActorDropped = () => {
-            ret._dragComplete();
-            global.display.set_cursor(Meta.Cursor.DEFAULT);
-            this.$set[$$].set([[K.SITE, this.get_position()], [K.DRAG, false]]);
-            return true;
-        };
-        return ret;
+        let border = F.Source.newInjector([this, {
+            $setupLayout: (a, f, xs) => {
+                let [cr] = xs;
+                cr.save();
+                cr.rectangle(0, 0, ...a.get_surface_size());
+                cr.setSourceRGBA(1, 0, 0, 1);
+                cr.setLineWidth(4);
+                cr.stroke();
+                cr.restore();
+                f.apply(a, xs);
+            },
+        }], true);
+        this.set_position(...global.get_pointer().slice(0, 2));
+        return DND.makeDraggable(this)[$$](it => T.inject(it,
+            'destroy', () => () => { border.destroy(); it._dragComplete(); },
+            '_updateCursor', (f, o) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
+            '_dragActorDropped', () => () => {
+                it.destroy();
+                it._updateCursor(Clutter.CursorType.DEFAULT);
+                this.$set[$s].set([[K.SITE, this.get_position()], [K.DRAG, false]]);
+                return true;
+            }));
     }
 
     setDrag(drag) {
@@ -426,25 +277,54 @@ export class Desktop extends PaperBase {
         Shell.util_set_hidden_from_pick(this, !drag);
     }
 
-    $onOrientSet(orient) {
+    $onResize() {
         let [w, h] = global.display.get_size();
-        orient ? this.set_size(0.18 * w, h) : this.set_size(w, 0.3 * h);
+        if(this[K.ORNT]) this.set_size(0.18 * w, this.$size = Math.max(0, h - this[K.SITE][1]));
+        else this.set_size(this.$size = Math.max(0, w - this[K.SITE][0]), 0.3 * h);
     }
 
     $onColorChange() {
         [this.activeColor, this.inactiveColor] = F.theme().get_accent_color().map(x => color2rgba(x, this[K.OPCT]));
-        this.outlineColor = this.inactiveColor.map(x => 1 - x).with(3, 0.2);
+        this.decorColor = this.inactiveColor.map(x => 1 - x).with(3, this[K.DCOP]);
     }
 
-    $showLayout(cr, pl) {
+    $genLinearGradient(length) {
+        return this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, length) : super.$genLinearGradient(length);
+    }
+
+    $drawBackground(cr, w, h) { // anti-clockwise rounded rectangle
+        let P = Math.PI / 2; // right angle
+        let r = Math.min(w, h) / 8;
+        if(this[K.ORNT]) [w, h] = [h, w];
+        this.$actual -= 2 * r;
+        cr.translate(r, r);
+        cr.newSubPath();
+        cr.arcNegative(0, 0, r, - P, P * 2);
+        cr.arcNegative(0, h, r, P * 2, P);
+        cr.arcNegative(w, h, r, P, 0);
+        cr.arcNegative(w, 0, r, 0, - P);
+        cr.closePath();
+        cr.setSourceRGBA(...this.decorColor);
+        cr.fill();
+    }
+
+    $setupLayout(cr, pl, w_, h, s_, L) {
+        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) this.$drawBackground(cr, L, h);
+        if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
+    }
+
+    $showLayout(cr, pl, x, y) {
         if(this[K.ORNT]) {
-            pl.get_context().set_base_gravity(Pango.Gravity.EAST);
-            cr.moveTo(pl.get_pixel_size().at(1), 0);
+            cr.moveTo(y, x);
             cr.rotate(Math.PI / 2);
+            PangoCairo.show_layout(cr, pl);
+        } else {
+            super.$showLayout(cr, pl, x, y);
         }
-        super.$showLayout(cr, pl);
-        PangoCairo.layout_path(cr, pl);
-        cr.setSourceRGBA(...this.outlineColor);
-        cr.stroke();
+        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.OUTLINE) {
+            PangoCairo.layout_path(cr, pl);
+            cr.setSourceRGBA(...this.decorColor);
+            cr.stroke();
+        }
     }
 }
