@@ -3,8 +3,8 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Soup from 'gi://Soup';
 import GObject from 'gi://GObject';
-import Soup from 'gi://Soup/?version=3.0';
 
 Gio._promisify(Gio.File.prototype, 'copy_async');
 Gio._promisify(Gio.File.prototype, 'delete_async');
@@ -22,12 +22,14 @@ export const PIPE = Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR
 
 export const $ = Symbol('Chain Call');
 export const $s = Symbol('Chain Calls');
-export const $_ = Symbol('Chain If Call'); // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
-export const $$ = Symbol('Chain Seq Call'); // like `also` in kotlin
-Reflect.defineProperty(Object.prototype, $, {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }});
-Reflect.defineProperty(Object.prototype, $s, {get() { return new Proxy(this, {get: (t, k) => xs => (xs?.forEach(x => Array.isArray(x) ? t[k](...x) : t[k](x)), t)}); }});
-Reflect.defineProperty(Object.prototype, $_, {get() { return new Proxy(this, {get: (t, k) => (b, ...xs) => b ? t[$][k](...xs) : t}); }});
-Reflect.defineProperty(Object.prototype, $$, {value(f) { f(this); return this; }});
+export const $_ = Symbol('Chain If Call');
+export const $$ = Symbol('Chain Seq Call');
+Object.defineProperties(Object.prototype, { // NOTE: https://github.com/RedHatter/proposal-cascade-operator & https://en.wikipedia.org/wiki/Method_cascading
+    [$]:  {get() { return new Proxy(this, {get: (t, k) => (...xs) => (t[k] instanceof Function ? t[k](...xs) : ([t[k]] = xs), t)}); }},
+    [$s]: {get() { return new Proxy(this, {get: (t, k) => xs => (xs?.forEach(x => Array.isArray(x) ? t[k](...x) : t[k](x)), t)}); }},
+    [$_]: {get() { return new Proxy(this, {get: (t, k) => (b, ...xs) => b ? t[$][k](...xs) : t}); }},
+    [$$]: {value(f) { f(this); return this; }}, // like `also` in Kotlin
+});
 
 export const id = x => x;
 export const nop = () => {};
@@ -43,6 +45,7 @@ export const unit = (x, f = y => [y]) => Array.isArray(x) ? x : f(x);
 export const array = (n, f = id) => Array.from({length: n}, (_x, i) => f(i));
 export const omap = (o, f) => Object.fromEntries(Object.entries(o).flatMap(f));
 export const essay = (f, g = nop) => { try { return f(); } catch(e) { return g(e); } }; // NOTE: https://github.com/arthurfiorette/proposal-try-operator
+export const inject = (o, ...xs) => chunk(xs).forEach(([k, f]) => { o[k] = f(o[k], o); });
 export const upcase = (s, f = x => x.toLowerCase()) => s.charAt(0).toUpperCase() + f(s.slice(1));
 export const type = x => Object.prototype.toString.call(x).replace(/\[object (\w+)\]/, (_m, p) => p.toLowerCase());
 export const format = (x, f) => x.replace(/\{\{(\w+)\}\}|\{(\w+)\}/g, (m, a, b) => b ? f(b) ?? m : f(a) === undefined ? m : `{${a}}`);
@@ -104,21 +107,6 @@ export function homolog(cat, dog, keys, cmp = (x, y, _k) => x === y) { // cat, d
         default: return cmp(a, b, k);
         }
     })(cat, dog);
-}
-
-export function pickle(value, tuple = true, number = 'u') { // value: JSON-compatible
-    let list = tuple ? x => GLib.Variant.new_tuple(x) : x => new GLib.Variant('av', x);
-    return Y(f => v => {
-        switch(type(v)) {
-        case 'array': return list(v.map(f));
-        case 'object': return new GLib.Variant('a{sv}', vmap(v, f));
-        case 'string': return GLib.Variant.new_string(v);
-        case 'number': return new GLib.Variant(number, v);
-        case 'boolean': return GLib.Variant.new_boolean(v);
-        case 'null': return new GLib.Variant('mv', v);
-        default: return GLib.Variant.new_string(String(v));
-        }
-    })(value);
 }
 
 export async function request(method, url, param, cancel = null, header = null, session = new Soup.Session()) {

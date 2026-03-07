@@ -20,7 +20,7 @@ class Players extends Gtk.MenuButton {
     constructor() {
         super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$]
             .bind_property_full(getv, this.popover, 'child', T.SYNC,
-                (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$s].append(v?.map(x =>
+                (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$s].append(v.map(x =>
                     new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x), cssClasses: ['destructive-action']})[$]
                     .connect('clicked', () => this[setv](this[getv].filter(y => y !== x))))) : new Gtk.Label({label: _G('(None)')})], null);
     }

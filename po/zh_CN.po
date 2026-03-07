@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:364
+#: src/ui.js:365
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:481
+#: src/ui.js:482
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -182,35 +182,35 @@ msgstr "位置(_L)"
 msgid "Filename format: <i>Title-Artist1,Artist2-Album.lrc</i>"
 msgstr "文件名格式: <i>标题-艺术家1,艺术家2-专辑.lrc</i>"
 
-#: src/extension.js:50
+#: src/extension.js:46
 msgid "Hide"
 msgstr "隐藏"
 
-#: src/extension.js:51
+#: src/extension.js:47
 msgid "Minimize"
 msgstr "最小化"
 
-#: src/extension.js:54
+#: src/extension.js:50
 msgid "Unload"
 msgstr "清空文件"
 
-#: src/extension.js:55
+#: src/extension.js:51
 msgid "Reload"
 msgstr "重新下载"
 
-#: src/extension.js:59
+#: src/extension.js:55
 msgid "Settings"
 msgstr "设置"
 
-#: src/extension.js:72
+#: src/extension.js:68
 msgid "Mobilize"
 msgstr "解锁位置"
 
-#: src/mpris.js:124
+#: src/mpris.js:151
 msgid "Player"
 msgstr "播放器"
 
-#: src/mpris.js:139
+#: src/mpris.js:166
 msgid "Clear"
 msgstr "清除"
 

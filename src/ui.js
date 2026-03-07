@@ -6,6 +6,7 @@ import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
+import Json from 'gi://Json';
 import Pango from 'gi://Pango';
 import GioUnix from 'gi://GioUnix';
 import GObject from 'gi://GObject';
@@ -68,7 +69,7 @@ export class Page extends Adw.PreferencesPage {
             gset.bind(key, gobj, prop, Gio.SettingsBindFlags.DEFAULT);
         } else { // HACK: workaround for https://gitlab.gnome.org/GNOME/gjs/-/issues/397
             gobj[prop] = gset.get_value(key).recursiveUnpack();
-            gobj.connect(`notify::${prop}`, () => gset.set_value(key, T.pickle(gobj[prop], false)));
+            gobj.connect(`notify::${prop}`, () => gset.set_value(key, Json.gvariant_deserialize(Json.from_string(JSON.stringify(gobj[prop])), null)));
         }
         this[hub][key] = gobj;
     }
@@ -85,14 +86,14 @@ export class Page extends Adw.PreferencesPage {
             : new Adw.PreferencesGroup()[$$](grp => {
                 let [[[title = '', description = ''], suffix = null], actions, param] = group[$_][0](group[0] === null, [[]]);
                 grp[$].set({title, description, headerSuffix: T.str(suffix) ? this[hub][suffix] : suffix, ...param})[$s]
-                .add(actions.map(action => action instanceof Gtk.Widget ? action : T.str(action) ? this[hub][action]
-                    : new Adw.ActionRow({useUnderline: true})[$$](act => {
-                        let [pfx, [title_, subtitle = ''], ...sfx] = action.map(x => T.str(x) ? this[hub][x] : x)[$_].unshift(Array.isArray(action[0]), null);
-                        sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub], cssClasses: ['dimmed']})] : [x]);
-                        act[$].set({title: title_, subtitle})[$_].add_prefix(pfx, pfx)[$s]
-                            .add_suffix(sfx[$_].forEach(pfx instanceof Check, x => Page.sensitize(pfx, x)))[$]
-                            .set_activatable_widget(pfx instanceof Check ? pfx : sfx.find(x => !(x instanceof Help)) ?? null);
-                    }))[$_].forEach(grp.headerSuffix instanceof Switch, x => Page.sensitize(grp.headerSuffix, x)));
+                    .add(actions.map(action => action instanceof Gtk.Widget ? action : T.str(action) ? this[hub][action]
+                        : new Adw.ActionRow({useUnderline: true})[$$](act => {
+                            let [pfx, [title_, subtitle = ''], ...sfx] = action.map(x => T.str(x) ? this[hub][x] : x)[$_].unshift(Array.isArray(action[0]), null);
+                            sfx = sfx.flatMap(x => x instanceof Spin && x[hub] ? [x, new Gtk.Label({label: x[hub], cssClasses: ['dimmed']})] : [x]);
+                            act[$].set({title: title_, subtitle})[$_].add_prefix(pfx, pfx)[$s]
+                                .add_suffix(sfx[$_].forEach(pfx instanceof Check, x => Page.sensitize(pfx, x)))[$]
+                                .set_activatable_widget(pfx instanceof Check ? pfx : sfx.find(x => !(x instanceof Help)) ?? null);
+                        }))[$_].forEach(grp.headerSuffix instanceof Switch, x => Page.sensitize(grp.headerSuffix, x)));
             })));
     }
 }
@@ -264,7 +265,7 @@ export class DialogButtonBase extends Box {
             .prepend(this.$btn = new Gtk.Button({child, ...param})[$].connect('clicked', () => this.$onClick().then(x => this.$onSetv(x)).catch(T.nop)))[$_]
             .append(reset, reset && new Gtk.Button({iconName: 'edit-undo-symbolic', tooltipText: _G('Reset')})[$$](it => this.bind_property_full(getv, it,
                 'sensitive', T.SYNC, (_b, v) => [true, v !== this[dflt]], null))[$].connect('clicked', () => this[setv]()))[$]
-            .connect('mnemonic-activate', () => this.$btn.activate())[$]
+            .connect('mnemonic-activate', () => this.$btn.activate())
             .$buildDND(ptype(this, 'gvalue'));
     }
 
@@ -326,7 +327,7 @@ export class File extends DialogButtonBase {
     }
 
     constructor(opt = {}, param, icon = 'document-open-symbolic') {
-        if(opt.folder) opt.filter = {mimeTypes:  ['inode/directory']};
+        if(opt.folder) opt.filter = {mimeTypes: ['inode/directory']};
         super(opt, new Sign(icon), true, param)[$_]
             .$filter(opt.filter, opt.filter && new Gtk.FileFilter(opt.filter))[$_]
             .insert_child_after(opt.open, opt.open && new Gtk.Button({iconName: 'document-open-symbolic'})[$]
@@ -421,7 +422,7 @@ export class Keys extends DialogButtonBase {
         enrol(this, ['boxed', GLib.strv_get_type()]);
     }
 
-    static get help()  {
+    static get help() {
         return new Adw.StatusPage({
             iconName: 'preferences-desktop-keyboard-shortcuts-symbolic', title: _G('Enter the new shortcut', 'gnome-control-center-2.0'),
             description: _G('Press Esc to cancel or Backspace to disable the keyboard shortcut', 'gnome-control-center-2.0'),
@@ -432,21 +433,21 @@ export class Keys extends DialogButtonBase {
         return (Gtk.accelerator_valid(keyval, mask) || (keyval === Gdk.KEY_Tab && mask !== 0)) &&
             !(mask === 0 || mask === Gdk.SHIFT_MASK && keycode !== 0 &&
                 ((keyval >= Gdk.KEY_a && keyval <= Gdk.KEY_z) ||
-                (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
-                (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
-                (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
-                (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
-                (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
-                (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
-                (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
-                (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
-                (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
-                (keyval === Gdk.KEY_space && mask === 0) || [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
+                    (keyval >= Gdk.KEY_A && keyval <= Gdk.KEY_Z) ||
+                    (keyval >= Gdk.KEY_0 && keyval <= Gdk.KEY_9) ||
+                    (keyval >= Gdk.KEY_kana_fullstop && keyval <= Gdk.KEY_semivoicedsound) ||
+                    (keyval >= Gdk.KEY_Arabic_comma && keyval <= Gdk.KEY_Arabic_sukun) ||
+                    (keyval >= Gdk.KEY_Serbian_dje && keyval <= Gdk.KEY_Cyrillic_HARDSIGN) ||
+                    (keyval >= Gdk.KEY_Greek_ALPHAaccent && keyval <= Gdk.KEY_Greek_omega) ||
+                    (keyval >= Gdk.KEY_hebrew_doublelowline && keyval <= Gdk.KEY_hebrew_taf) ||
+                    (keyval >= Gdk.KEY_Thai_kokai && keyval <= Gdk.KEY_Thai_lekkao) ||
+                    (keyval >= Gdk.KEY_Hangul_Kiyeog && keyval <= Gdk.KEY_Hangul_J_YeorinHieuh) ||
+                    (keyval === Gdk.KEY_space && mask === 0) || [Gdk.KEY_Home, Gdk.KEY_Left, Gdk.KEY_Up, Gdk.KEY_Right, Gdk.KEY_Down, Gdk.KEY_Page_Up,
                     Gdk.KEY_Page_Down, Gdk.KEY_End, Gdk.KEY_Tab, Gdk.KEY_KP_Enter, Gdk.KEY_Return, Gdk.KEY_Mode_switch].includes(keyval)));
     }
 
     constructor(param) {
-        super(null, new Adw.ShortcutLabel({disabledText: _G('New accelerator…')}), false, {hasFrame: false, ...param})[$]
+        super(null, new Adw.ShortcutLabel({disabledText: _G('New accelerator…')}), false, {hasFrame: false, ...param})
             .bind_property_full(getv, this.$btn.child, 'accelerator', GObject.BindingFlags.DEFAULT, (_b, v) => [true, v.join(' ')], null);
     }
 
@@ -480,9 +481,9 @@ export class Entry extends Gtk.Stack {
             edit = new Gtk.Button({iconName: 'document-edit-symbolic', tooltipText: tip})[$].connect('clicked', () => apply(label, entry)),
             done = new Gtk.Button({cssClasses: ['suggested-action'], iconName: 'object-select-symbolic', tooltipText: _('Click or press ENTER to apply changes')})[$]
                 .connect('clicked', () => apply(entry));
-        this[$].add_controller(new Gtk.EventControllerFocus()[$].connect('leave', () => { if(this.get_visible_child() === done.parent) apply(label); }))[$s]
-            // .connect('mnemonic-activate', () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate())[$s] // FIXME: ? backfire for clicks passthrough hiding widgets since GTK 4.21.5
-            .add_child([[label, edit], [entry, done]].map(x => new Box(x)[$].set({hexpand: true})))[$]
+        this[$].add_controller(new Gtk.EventControllerFocus()[$].connect('leave', () => { if(this.get_visible_child() === done.parent) apply(label); }))[$]
+            .connect('mnemonic-activate', () => this.get_visible_child() === edit.parent ? edit.activate() : done.activate())[$s] // FIXME: ? backfire for clicks passthrough hiding widgets since GTK 4.21.5
+            .add_child([[label, edit], [entry, done]].map(x => new Box(x)[$].set({hexpand: true})))
             .bind_property(getv, label, 'text', T.BIND);
     }
 }

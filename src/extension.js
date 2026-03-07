@@ -13,86 +13,81 @@ import Mpris from './mpris.js';
 import * as Paper from './paper.js';
 
 const {_} = F;
-const {$, $s} = T;
+const {$, $s, $$} = T;
 
 class DesktopLyric extends F.Mortal {
-    constructor(gset) {
-        super()[$].$bindSettings(gset)[$].$buildSources();
-    }
-
     $bindSettings(gset) {
         this.$set = new F.Setting(gset, this, [
-            [K.MINI, null, () => this.#onMiniSet()],
-            [K.DRAG, null, x => this.#onDragSet(x)],
+            [K.MINI, null, x => this.$onMiniSet(x)],
+            [K.DRAG, null, x => this.$onDragSet(x)],
             [K.SPAN, null, x => this.$src.play.reload(x)],
-            [K.AREA, x => [x || 5, ['left', 'center', 'right'][x]], () => this.#onAreaSet()],
+            [K.AREA, x => [(2 - x) ** 4, ['left', 'center', 'right'][x]], x => this.$onAreaSet(x)],
         ]);
     }
 
     $buildSources() {
         let lyric = new Lyric(this.$set),
-            tray = F.Source.new(() => this.#genSystray(), true),
+            tray = F.Source.new(() => this.$genSystray(), true),
             play = F.Source.newTimer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
             paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
             sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await this.$src.mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500),
-            mpris = new Mpris(this.$set, tray.hub)[$s].connect([
+            mpris = new Mpris(this.$set)[$s].connect([
                 ['update', (_p, x) => this.setSong(x)],
                 ['active', (_p, x) => this.setActive(x)],
                 ['status', (_p, x) => this.setPlaying(x)],
                 ['seeked', (_p, x) => this.setPosition(x)],
-            ]);
+            ])[$$](it => tray.hub.$record(true, 'play', () => it.genPlayerItem()));
         this.$src = F.Source.tie(this, {mpris, play, sync, lyric, paper, tray});
     }
 
-    #genSystray() {
+    $genSystray() {
         return new M.Systray({
-            hide: new M.SwitchItem(_('Hide'), false, () => this.#viewPaper()),
+            hide: new M.SwitchItem(_('Hide'), false, () => this.$viewPaper()),
             mini: new M.SwitchItem(_('Minimize'), this[K.MINI], x => this.$set.set(K.MINI, x)),
-            drag: this[K.MINI] ? null : this.#genDragItem(),
+            drag: this[K.MINI] ? null : this.$genDragItem(),
             sep0: new M.Separator(),
             tidy: new M.Item(_('Unload'), () => this[$].setLyric('').$src.lyric.unload(this.song)),
             load: new M.Item(_('Reload'), () => this.loadLyric(true)),
             // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
-            play: null, // init in $src.mpris
+            play: null, // init later
             sep1: new M.Separator(),
             sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
-        }, new M.Icon('lyric-symbolic'), ...this[K.AREA])[$].connect('notify::width', ({width, menu}) => {
+        }, M.Icon.wrap('lyric-symbolic'), ...this[K.AREA])[$].connect('notify::width', ({width, menu}) => {
             let align = width > menu.box.width ? 0 : 0.5;
             if(align !== menu._arrowAlignment) menu._arrowAlignment = align;
             if(align !== menu._boxPointer._sourceAlignment) menu.setSourceAlignment(align);
         })[$].set({visible: false});
     }
 
-    #viewPaper() {
+    $viewPaper() {
         F.view(this.$src.mpris.status && !this.$src.tray.hub.$menu.hide.state, this.$src.paper.hub);
     }
 
-    #genDragItem() {
+    $genDragItem() {
         return new M.SwitchItem(_('Mobilize'), this[K.DRAG], x => this.$set.set(K.DRAG, x));
     }
 
-    #onMiniSet() {
-        this.$src.tray.hub.$record(!this[K.MINI], 'drag', () => this.#genDragItem());
-        this.$src.paper.revive(this[K.MINI]);
+    $onMiniSet(mini) {
+        this.$src.tray.hub.$record(!mini, 'drag', () => this.$genDragItem());
+        this.$src.paper.revive(mini);
         this.loadLyric();
     }
 
-    #onAreaSet() {
-        let [index, pos] = this[K.AREA];
+    $onAreaSet([index, pos]) {
         let {container} = this.$src.tray.hub;
         container.get_parent().remove_child(container);
         Main.panel[`_${pos}Box`].insert_child_at_index(container, index);
     }
 
-    #onDragSet(drag) {
+    $onDragSet(drag) {
         if(this[K.MINI]) return;
         this.$src.paper.hub.setDrag(drag);
         this.$src.tray.hub.$menu.drag.setToggleState(drag);
     }
 
     setPlaying(playing) {
-        this.#viewPaper();
+        this.$viewPaper();
         this.$src.play.toggle(playing && this.$src.paper.hub);
     }
 
@@ -110,7 +105,7 @@ class DesktopLyric extends F.Mortal {
 
     setSong(song) {
         if(T.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
-            this.$src.paper.hub?.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
+            this.$src.paper.hub.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
             this.$src.sync.revive();
         } else {
             this.song = song;
@@ -131,7 +126,7 @@ class DesktopLyric extends F.Mortal {
     setLyric(lyrics) {
         if(!this.$src.paper.active) return;
         this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.term(this.song, ' - ', '/') : '')[$]
-            .setLength(this.song.length)[$]
+            .setLength(this.song.length)
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
         this.$src.sync.revive();

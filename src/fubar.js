@@ -3,6 +3,7 @@
 
 import St from 'gi://St';
 import Gio from 'gi://Gio';
+import IBus from 'gi://IBus';
 import GLib from 'gi://GLib';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -22,19 +23,23 @@ const ruin = o => o.destroy();
 export const _ = Extensions.gettext;
 export const offstage = x => !Main.uiGroup.contains(x);
 export const me = () => Extension.lookupByURL(import.meta.url); // NOTE: https://github.com/tc39/proposal-json-modules
-export const debug = (...xs) => me().getLogger().debug(...xs); // FIXME: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
+// export const debug = (...xs) => me().getLogger().debug(...xs); // FIXME: see https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/491
 export const theme = () => St.ThemeContext.get_for_stage(global.stage);
 export const marks = (x, m) => x.clutterText.set_markup(`\u{200b}${m}`); // HACK: workaround for https://gitlab.gnome.org/GNOME/mutter/-/issues/1324
 export const yank = (o, k) => { let v = o[k]; delete o[k]; return v; };
-export const inject = (o, ...xs) => T.chunk(xs).forEach(([k, f]) => { o[k] = f(o, o[k]); });
 export const erase = (o, ks) => T.unit(ks ?? Object.keys(o)).forEach(k => ruin(yank(o, k)));
 export const view = (v, ...ws) => ws.forEach(w => w && !T.xnor(v, w.visible) && (v ? w.show() : w.hide())); // NOTE: https://github.com/tc39/proposal-optional-chaining-assignment
 export const open = uri => Gio.AppInfo.launch_default_for_uri(uri, global.create_app_launch_context(0, -1));
+export const bracket = text => Main.inputMethod._purpose === IBus.InputPurpose.TERMINAL && text.includes('\n') ? `\x1b[200~${text}\x1b[201~` : text; // Ref: https://en.wikipedia.org/wiki/Bracketed-paste
 export const copy = (text, primary) => St.Clipboard.get_default().set_text(primary ? St.ClipboardType.PRIMARY : St.ClipboardType.CLIPBOARD, text);
 export const paste = primary => new Promise((resolve, reject) => St.Clipboard.get_default().get_text(primary ? St.ClipboardType.PRIMARY
     : St.ClipboardType.CLIPBOARD, (_c, x) => x ? resolve(x) : reject(Error('empty'))));
 
 export class Mortal extends Signals.EventEmitter {
+    constructor(set) {
+        super()[$].$bindSettings?.(set).$buildSources?.();
+    }
+
     destroy() {
         this[$].emit('destroy').disconnectAll();
     }
@@ -63,7 +68,7 @@ export class Source {
     }
 
     static cancelled = error => error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED);
-    static newCancel = (...args) => new Source(() => new Gio.Cancellable(), x => x.cancel(), ...args)[$].reborn(function (...xs) { return this[$].revive(...xs).hub; });
+    static newCancel = (...args) => new Source(() => new Gio.Cancellable(), x => x.cancel(), ...args)[$].reborn(function (...xs) { return this[$].revive(...xs)[hub]; });
 
     static newDBus(host, name, path, ...args) {
         return new Source(() => new Source(x => Gio.DBusExportedObject.wrapJSObject(FileUtils.loadInterfaceXML(name), host)[$].export(x, path),
@@ -116,8 +121,8 @@ export class Source {
     }
 
     constructor(summon, dispel, enable, ...args) {
-        this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$_].call(enable, null, ...args))[$]
-            .dispel(() => { if(this.active) dispel(yank(this, hub));  });
+        this[$].summon(((...xs) => { this[hub] = summon(...xs); })[$_].apply(enable, null, args))[$]
+            .dispel(() => { if(this.active) dispel(yank(this, hub)); });
     }
 
     revive(...xs) { this[$].dispel().summon(...xs); }

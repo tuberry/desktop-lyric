@@ -7,7 +7,7 @@ import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K, URL} from './const.js';
 
-const {$, $$} = T;
+const {$$} = T;
 
 async function queryNCMLyric(param, song, client, cancel, fallback) {
     let singer = song.artist.toSorted(),
@@ -59,10 +59,6 @@ export default class Lyric extends F.Mortal {
         return [title, artist.join(sepArtist), useAlbum ? album : ''].filter(T.id).join(sepTitle);
     }
 
-    constructor(set) {
-        super()[$].$bindSettings(set).$buildSources();
-    }
-
     $bindSettings(set) {
         this.$set = set.tie(this, [
             K.PATH, K.FABK, [K.PRVD, x => Provider[x]],
@@ -77,6 +73,7 @@ export default class Lyric extends F.Mortal {
     }
 
     async load(song, reload, cancel = this.$src.cancel.reborn()) {
+        if(!song.title) return '';
         let file = T.fopen(this.path(song));
         try {
             if(reload) throw Error('dirty');

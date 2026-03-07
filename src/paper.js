@@ -42,17 +42,14 @@ class PaperBase extends St.DrawingArea {
     }
 
     constructor(set, param) {
-        super(param)[$]
-            .$clearLyric()[$]
-            .$bindSettings(set)[$]
-            .$buildWidgets();
+        super(param)[$].$clearLyric()[$].$bindSettings(set).$buildSources();
     }
 
     $bindSettings(set) {
         this.$set = set.tie(this, [[K.PRGR, x => !x]], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
     }
 
-    $buildWidgets() {
+    $buildSources() {
         F.Source.tie(this, F.Source.newHandler(F.theme(), 'changed', (() => this.$onColorChange())[$].call()));
     }
 
@@ -183,10 +180,10 @@ export class Panel extends PaperBase {
         this.$set.tie(this, [[['$size', K.PNWD], x => this.set_width(x)]]);
     }
 
-    $buildWidgets() {
+    $buildSources() {
         this.$src = F.Source.tie(this, F.Source.newHandler(Main.panel.statusArea.quickSettings,
             'style-changed', (() => this.$onStyleChange())[$].call()));
-        super.$buildWidgets();
+        super.$buildSources();
     }
 
     $onStyleChange() {
@@ -194,8 +191,7 @@ export class Panel extends PaperBase {
         let [w_, h] = Main.panel.get_size();
         this[$].$setFont(theme.get_font())[$]
             .inactiveColor(color2rgba(theme.get_foreground_color()))[$]
-            .set_height(h)[$]
-            .$onColorChange();
+            .set_height(h).$onColorChange();
     }
 
     get homochromyColor() {
@@ -220,13 +216,7 @@ export class Desktop extends PaperBase {
 
     constructor(drag, ...args) {
         super(...args).setDrag(drag);
-    }
-
-    $buildWidgets() {
-        super.$buildWidgets();
         Main.uiGroup.add_child(this);
-        this.$src = F.Source.tie(this, {drag: F.Source.new(() => this.#genDraggable())},
-            F.Source.newHandler(F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call()));
     }
 
     $bindSettings(set) {
@@ -239,6 +229,12 @@ export class Desktop extends PaperBase {
         ], [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize());
     }
 
+    $buildSources() {
+        super.$buildSources();
+        this.$src = F.Source.tie(this, {drag: F.Source.new(() => this.$genDraggable())},
+            F.Source.newHandler(F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call()));
+    }
+
     get homochromyColor() {
         return this.activeColor;
     }
@@ -248,7 +244,7 @@ export class Desktop extends PaperBase {
             it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.Scale] ?? 1))));
     }
 
-    #genDraggable() {
+    $genDraggable() {
         let border = F.Source.newInjector([this, {
             $setupLayout: (a, f, xs) => {
                 let [cr] = xs;
@@ -262,9 +258,9 @@ export class Desktop extends PaperBase {
             },
         }], true);
         this.set_position(...global.get_pointer().slice(0, 2));
-        return DND.makeDraggable(this)[$$](it => F.inject(it,
+        return DND.makeDraggable(this)[$$](it => T.inject(it,
             'destroy', () => () => { border.destroy(); it._dragComplete(); },
-            '_updateCursor', (o, f) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
+            '_updateCursor', (f, o) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
             '_dragActorDropped', () => () => {
                 it.destroy();
                 it._updateCursor(Clutter.CursorType.DEFAULT);
@@ -296,7 +292,7 @@ export class Desktop extends PaperBase {
         return this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, length) : super.$genLinearGradient(length);
     }
 
-    #drawBackground(cr, w, h) { // anti-clockwise rounded rectangle
+    $drawBackground(cr, w, h) { // anti-clockwise rounded rectangle
         let P = Math.PI / 2; // right angle
         let r = Math.min(w, h) / 8;
         if(this[K.ORNT]) [w, h] = [h, w];
@@ -313,7 +309,7 @@ export class Desktop extends PaperBase {
     }
 
     $setupLayout(cr, pl, w_, h, s_, L) {
-        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) this.#drawBackground(cr, L, h);
+        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) this.$drawBackground(cr, L, h);
         if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
     }
 

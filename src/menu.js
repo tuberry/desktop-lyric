@@ -15,8 +15,6 @@ import * as F from './fubar.js';
 
 const {$, $_, $s, $$} = T;
 
-export const Separator = PopupMenu.PopupSeparatorMenuItem;
-
 export function upsert(table, insert, list, update, spread = x => x._getMenuItems()) {
     let items = spread(table);
     let delta = list.length - items.length;
@@ -30,15 +28,17 @@ export function altNum(event, item, key = event.get_key_symbol()) { // Ref: http
         it && [...item].filter(x => x instanceof St.Button).at(key - Clutter.KEY_1)?.emit('clicked', Clutter.BUTTON_PRIMARY));
 }
 
+export const Separator = PopupMenu.PopupSeparatorMenuItem;
+
 export class Icon extends St.Icon {
     static {
-        T.enrol(this);
-        this.wrap = icon => icon instanceof this ? icon : new St.Icon({iconName: T.str(icon) ? icon : null});
+        T.enrol(this); // eslint-disable-next-line no-new-wrappers
+        this.wrap = icon => (T.str(icon) ? new String(icon ?? '') : icon)[$].$gicon(true);
     }
 
-    constructor(iconName) { // HACK: ? revert for not working since GNOME 50, see also https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/1997
-        super({iconName}).bind_property_full('icon-name', this, 'fallback-gicon',  T.SYNC,
-            (_b, x) => [true, Gio.Icon.new_for_string(`resource:///org/gnome/shell/icons/scalable/status/${x}.svg`)], null);
+    constructor(icon) { // HACK: ? revert for stale TextureCache since GNOME 50, see also https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/1997
+        super({iconName: T.str(icon) ? String(icon) : null})[$_].bind_property_full(icon?.$gicon, 'icon-name', this, 'fallback-gicon', T.SYNC,
+            (_b, x) => [true, x && Gio.Icon.new_for_string(`resource:///org/gnome/shell/icons/scalable/status/${x}.svg`)], null);
     }
 }
 
@@ -50,7 +50,7 @@ export class Systray extends PanelMenu.Button {
     constructor(menu, icon = '', pos, box, text) {
         let {uuid, metadata: {name}} = F.me();
         super(0.5, text ?? name, !menu)[$].add_child(this.$box = new St.BoxLayout({styleClass: 'panel-status-indicators-box'})[$]
-            .add_child(this.$icon = Icon.wrap(icon)[$].set({styleClass: 'system-status-icon'})));
+            .add_child(this.$icon = new Icon(icon)[$].set({styleClass: 'system-status-icon'})));
         if(menu) Item.put(this.menu, this.$menu = menu);
         Main.panel.addToStatusArea(uuid, this, pos, box);
     }
@@ -79,20 +79,16 @@ export class Button extends St.Button {
         T.enrol(this);
     }
 
-    constructor(func, icon = '', tip) {
-        super({canFocus: true})[$]
-            .$buildSources()[$_]
-            .$callback(func, func)[$]
-            .set_child(Icon.wrap(icon)[$].set({styleClass: 'popup-menu-icon'}))[$]
-            .connect('clicked', (...xs) => this.$callback(...xs))[$_]
-            .setup(icon !== null && !(icon instanceof Icon), icon)[$]
-            .setTip(tip);
+    constructor(func, icon = '', tip, label) {
+        super({canFocus: true})[$].$buildSources()[$_]
+            .setup(func, func, icon, tip, label)
+            .connect('clicked', (...xs) => this.$meta.func(...xs));
     }
 
     $buildSources() {
         this.$src = F.Source.tie(this, {
-            tip: F.Source.new(text => {
-                let ret = new BoxPointer.BoxPointer(St.Side.TOP)[$].set({$text: text, visible: false, styleClass: 'popup-menu-boxpointer'}),
+            tip: F.Source.new(() => {
+                let ret = new BoxPointer.BoxPointer(St.Side.TOP)[$].set({visible: false, styleClass: 'popup-menu-boxpointer'}),
                     show = F.Source.newTimer(() => [() => {
                         if(F.offstage(ret)) Main.layoutManager.addTopChrome(ret);
                         ret[$].setPosition(this, 0.1).open(BoxPointer.PopupAnimation.FULL);
@@ -100,47 +96,35 @@ export class Button extends St.Button {
                     hover = F.Source.newHandler(this, 'notify::hover', x => show.toggle(x.hover));
                 F.Source.tie(ret, show, hover);
                 ret.bin.set_child(new St.Label({styleClass: 'dash-label'}));
+                ret.update = () => ret.bin.child.set_text(this.$meta.tip);
                 return ret;
             }),
         });
     }
 
-    setup(icon) {
-        this.child.set_icon_name(icon);
+    setup(func, icon, tip, label) {
+        this[$].$meta(new Proxy({func}, {get: (t, k) => Array.isArray(t[k]) ? t[k][1 - t.state] : t[k]}))[$].setIcon(icon, label).setTip(tip);
     }
 
-    get tip() {
-        return this.$src.tip.hub;
-    }
-
-    $setTip() {
-        this.tip?.bin.child.set_text(this.tip.$text);
+    setIcon(icon, label) {
+        this[$$](it => Object.assign(it.$meta, {icon, label}, Array.isArray(icon) ? {state: icon.shift()} : null)).$update();
     }
 
     setTip(tip) {
-        this.$src.tip.toggle(tip, tip);
-        this.$setTip();
-    }
-}
-
-export class StateButton extends Button {
-    static {
-        T.enrol(this);
+        this.$src.tip[$].toggle(this.$meta.tip = tip).hub?.update();
     }
 
-    $setTip() {
-        this.tip?.bin.child.set_text(this.tip.$text[this.$state ? 0 : 1]);
+    toggleState(state = !this.$meta.state) {
+        if(state === this.$meta.state) return;
+        this.$meta.state = state;
+        this.$src.tip.hub?.update();
+        this.$update();
     }
 
-    setup(icon) {
-        let [state, ...icons] = icon;
-        this[$].$icon(icons)[$].toggleState(state ?? this.$state);
-    }
-
-    toggleState(state = !this.$state) {
-        if(state === this.$state) return;
-        this.child?.set_icon_name(this.$icon[state ? 0 : 1]);
-        this[$].$state(state)[$].$setTip();
+    $update() {
+        if(this.$meta.label) this.set_label(this.$meta.label);
+        else if(this.child instanceof Icon) this.set_icon_name(this.$meta.icon?.toString());
+        else this.set_child(new Icon(this.$meta.icon)[$].set({styleClass: 'popup-menu-icon'}));
     }
 }
 
@@ -151,7 +135,7 @@ export class Item extends PopupMenu.PopupMenuItem {
     }
 
     constructor(text = '', func, param) {
-        super(text, param)[$_].$callback(func, func)[$].connect('activate', (...xs) => this.$callback(...xs));
+        super(text, param)[$_].$callback(func, func).connect('activate', (...xs) => this.$callback(...xs));
     }
 
     setup(label, callback) {
@@ -169,11 +153,11 @@ export class ToolItem extends PopupMenu.PopupBaseMenuItem {
         super({activate: false, can_focus: false, ...param}).setup(tool);
     }
 
-    setup(tool) {
+    setup([tool, styleClass]) {
         if(this.$tool) F.erase(this, this.$tool);
         this.$tool = T.unit(tool, Object.entries).flatMap(([k, v]) => {
             if(k in this) throw Error(`key conflict: ${k}`);
-            else return v ? [(this.add_child(this[k] = v), k)] : [];
+            else return v ? [(this.add_child(this[k] = new Button(...v)[$].set({xExpand: true, styleClass})), k)] : [];
         });
     }
 }
@@ -194,19 +178,19 @@ export class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
         this.getopt = o => T.omap(o, ([k, v]) => [[v, F._(T.upcase(k))]]);
     }
 
-    constructor($category, options, chosen, $callback) {
-        super('')[$].set({$category, $callback})[$].setup(options, chosen);
+    constructor(category, options, chosen, callback) {
+        super('')[$].$meta({category, callback}).setup(options, chosen);
     }
 
     choose(chosen) {
-        this.$chosen = chosen;
-        this.label.set_text(`${this.$category}: ${this.$options[chosen] ?? ''}`);
+        this.$meta.chosen = chosen;
+        this.label.set_text(`${this.$meta.category}: ${this.$meta.options[chosen] ?? ''}`);
         this.menu._getMenuItems().forEach((x, i) => x.setOrnament(chosen === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NO_DOT));
     }
 
-    setup(options, chosen = this.$chosen) {
-        this.$options = options;
-        upsert(this.menu, x => x.addMenuItem(new Item()), Object.entries(options), ([k, v], x) => x.setup(v, () => this.$callback(k)));
+    setup(options, chosen = this.$meta.chosen) {
+        this.$meta.options = options;
+        upsert(this.menu, x => x.addMenuItem(new Item()), Object.entries(options), ([k, v], x) => x.setup(v, () => this.$meta.callback(k)));
         this.choose(chosen);
     }
 }
@@ -221,16 +205,16 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
             .add_child(this.$btn = new Button(() => this.$onClick())[$].set({styleClass: icon}))[$_]
             .$onActivate(func, func)[$_]
             .setup(datum, datum);
-        this.label[$].add_style_class_name(label)[$]
+        this.label[$].add_style_class_name(label)
             .set({xExpand: true, canFocus: true});
     }
 
-    #click() {
+    $activateTail() {
         if(this.$btn.visible) this.$btn.emit('clicked', Clutter.BUTTON_PRIMARY);
     }
 
     vfunc_key_press_event(event) {
-        if(event.get_key_symbol() === Clutter.KEY_Control_L) this.#click();
+        if(event.get_key_symbol() === Clutter.KEY_Control_L) this.$activateTail();
         return super.vfunc_key_press_event(event);
     }
 
@@ -238,7 +222,7 @@ export class DatumItemBase extends PopupMenu.PopupMenuItem {
         super.activate(event);
         switch(event.type()) {
         case Clutter.EventType.BUTTON_RELEASE:
-        case Clutter.EventType.PAD_BUTTON_RELEASE: if(event.get_button() === Clutter.BUTTON_SECONDARY) return this.#click();
+        case Clutter.EventType.PAD_BUTTON_RELEASE: if(event.get_button() === Clutter.BUTTON_SECONDARY) return this.$activateTail();
         }
         this.$onActivate();
     }
