@@ -18,7 +18,7 @@ async function queryNCMLyric(param, song, client, cancel, fallback) {
         {id} = songs.toSorted((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length))
             .find(x => match(x, song, singer)) ?? (fallback && songs[0]);
     return JSON.parse(await T.request('GET', `${URL.NCM}api/song/lyric?`,
-        {id: id.toString(), lv: '1', ...param}, cancel, null, client));
+        {id: id.toString(), lv: '0', ...param}, cancel, null, client)); // kv/tv/rv/yv
 }
 
 const Provider = [
@@ -29,7 +29,7 @@ const Provider = [
     },
     class NeteaseTrans {
         static async fetch(...args) {
-            let res = await queryNCMLyric({lv: '1'}, ...args);
+            let res = await queryNCMLyric({tv: '0'}, ...args);
             return res.tlyric.lyric || res.lrc.lyric;
         }
     },

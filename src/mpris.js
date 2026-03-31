@@ -64,7 +64,7 @@ export default class Mpris extends F.Mortal {
         let ret = true;
         for(let cat of app.get_app_info()?.get_categories().split(';') ?? []) {
             if(cat === 'WebBrowser' || cat === 'Video') return true;
-            if(cat === 'Audio') ret = false;
+            if(cat === 'Audio' || cat === 'Music') ret = false;
         }
         return ret;
     }

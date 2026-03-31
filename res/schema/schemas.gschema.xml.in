@@ -6,7 +6,7 @@
         <summary>minimize to panel</summary>
     </key>
     <key type="b" name="draggable">
-        <default>false</default>
+        <default>true</default>
         <summary>make lyric draggable or not</summary>
     </key>
     <key type="b" name="online-lyrics">

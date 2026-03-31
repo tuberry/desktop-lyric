@@ -56,7 +56,7 @@ class PaperBase extends St.DrawingArea {
     $setFont(font) {
         this.$font = font;
         let ratio = font.get_size() / Pango.FontDescription.from_string('Sans 12').get_size();
-        this.$title = [30 / ratio, 16 * 4 * ratio, 16 * 3 * ratio];
+        this.$title = [30 / ratio, 16 * 3 * ratio, 16 * 4 * ratio];
     }
 
     get_context() { // HACK: workaround for DND since https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3726
@@ -260,7 +260,7 @@ export class Desktop extends PaperBase {
         this.set_position(...global.get_pointer().slice(0, 2));
         return DND.makeDraggable(this)[$$](it => T.inject(it,
             'destroy', () => () => { border.destroy(); it._dragComplete(); },
-            '_updateCursor', (f, o) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
+            '_updateCursor', (o, f) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
             '_dragActorDropped', () => () => {
                 it.destroy();
                 it._updateCursor(Clutter.CursorType.DEFAULT);
