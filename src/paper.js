@@ -19,6 +19,7 @@ import {Key as K} from './const.js';
 
 const {$, $$, $s} = T;
 
+const RTA = Math.PI / 2; // right angle
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
 const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity ?? alpha / 255);
 
@@ -46,7 +47,7 @@ class PaperBase extends St.DrawingArea {
     }
 
     $bindSettings(set) {
-        this.$set = set.tie(this, [[K.PRGR, x => !x]], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
+        this.$set = set.tie(this, [K.PRGR], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
     }
 
     $buildSources() {
@@ -78,43 +79,37 @@ class PaperBase extends St.DrawingArea {
     }
 
     $updateLayout(cr, pl, w, h, scroll, L) {
+        let source;
         let offset = 0;
         if(this.$pos < 0) { // song title
-            cr.setSourceRGBA(...this.homochromyColor);
             if(scroll) {
                 let [slowness, delay, gap] = this.$title;
                 offset = Math.min(0, delay - (this.moment / slowness) % (delay + w + gap));
                 let round = offset + w + gap;
                 if(round < L) {
                     cr.save();
-                    this.$showLayout(cr, pl, round, h);
+                    this.$showLayout(cr, pl, source, round, h);
                     cr.restore();
                 }
             }
         } else {
             if(scroll) offset = Math.clamp(L / 2 - w * this.$pos, L - w, 0);
             if(this[K.PRGR]) {
-                cr.setSourceRGBA(...this.homochromyColor);
-            } else {
                 let pos = scroll ? (w * this.$pos + offset) / L : this.$pos;
-                let gd = this.$genLinearGradient(L);
-                gd.addColorStopRGBA(0, ...this.activeColor);
-                gd.addColorStopRGBA(pos, ...this.activeColor);
-                gd.addColorStopRGBA(pos, ...this.inactiveColor);
-                gd.addColorStopRGBA(1, ...this.inactiveColor);
-                cr.setSource(gd);
+                source = new Cairo.LinearGradient(0, 0, L, 0);
+                source.addColorStopRGBA(0, ...this.activeColor);
+                source.addColorStopRGBA(pos, ...this.activeColor);
+                source.addColorStopRGBA(pos, ...this.inactiveColor);
+                source.addColorStopRGBA(1, ...this.inactiveColor);
             }
-        }
-        this.$showLayout(cr, pl, offset, h);
+        } // need goto
+        this.$showLayout(cr, pl, source, offset, h);
     }
 
-    $showLayout(cr, pl, x, _y) {
-        cr.moveTo(x, 0);
+    $showLayout(cr, pl, source) {
+        if(source) cr.setSource(source);
+        else cr.setSourceRGBA(...this.homochromyColor);
         PangoCairo.show_layout(cr, pl);
-    }
-
-    $genLinearGradient(length) {
-        return new Cairo.LinearGradient(0, 0, length, 0);
     }
 
     $clearLyric() {
@@ -145,10 +140,9 @@ class PaperBase extends St.DrawingArea {
 
     setMoment(moment) {
         this.moment = moment;
-        let {$pos, $lrc: $txt} = this;
+        let {$pos: pos, $lrc: lrc} = this;
         [this.$pos, this.$lrc] = this.getLyric();
-        if(!this.visible || (!this.$scroll && (this.$pos === $pos || this[K.PRGR]) && this.$lrc === $txt)) return;
-        this.queue_repaint();
+        if(this.visible && (this.$scroll || (this[K.PRGR] && this.$pos !== pos) || this.$lrc !== lrc)) this.queue_repaint();
     }
 
     setLyrics(lyrics) {
@@ -205,13 +199,18 @@ export class Panel extends PaperBase {
     $setupLayout(cr, _pl, _w, h) {
         cr.translate(0, (this.get_surface_size()[1] - h) / 2);
     }
+
+    $showLayout(cr, pl, source, x) {
+        cr.moveTo(x, 0);
+        super.$showLayout(cr, pl, source);
+    }
 }
 
 export class Desktop extends PaperBase {
     static {
         T.enrol(this);
         this.Decor = {OUTLINE: 0, BG: 1};
-        this.Scale = 'text-scaling-factor';
+        this.SCALE = 'text-scaling-factor';
     }
 
     constructor(drag, ...args) {
@@ -221,7 +220,7 @@ export class Desktop extends PaperBase {
 
     $bindSettings(set) {
         super.$bindSettings(set);
-        this.$setIF = new F.Setting('org.gnome.desktop.interface', this, [[Desktop.Scale, null, () => this.$onFontSet()]]);
+        this.$setIF = new F.Setting('org.gnome.desktop.interface', this, [[Desktop.SCALE, null, () => this.$onFontSet()]]);
         this.$set.tie(this, [
             K.DCTP, [K.FONT, null, () => this.$onFontSet()],
             [K.DCOP, x => x / 100, x => { this.decorColor[3] = x; }],
@@ -241,7 +240,7 @@ export class Desktop extends PaperBase {
 
     $onFontSet() {
         this.$setFont(Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 12')[$$](it =>
-            it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.Scale] ?? 1))));
+            it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.SCALE] ?? 1))));
     }
 
     $genDraggable() {
@@ -288,21 +287,16 @@ export class Desktop extends PaperBase {
         this.decorColor = this.inactiveColor.map(x => 1 - x).with(3, this[K.DCOP]);
     }
 
-    $genLinearGradient(length) {
-        return this[K.ORNT] ? new Cairo.LinearGradient(0, 0, 0, length) : super.$genLinearGradient(length);
-    }
-
     $drawBackground(cr, w, h) { // anti-clockwise rounded rectangle
-        let P = Math.PI / 2; // right angle
         let r = Math.min(w, h) / 8;
         if(this[K.ORNT]) [w, h] = [h, w];
         this.$actual -= 2 * r;
         cr.translate(r, r);
         cr.newSubPath();
-        cr.arcNegative(0, 0, r, - P, P * 2);
-        cr.arcNegative(0, h, r, P * 2, P);
-        cr.arcNegative(w, h, r, P, 0);
-        cr.arcNegative(w, 0, r, 0, - P);
+        cr.arcNegative(0, 0, r, - RTA, Math.PI);
+        cr.arcNegative(0, h, r, Math.PI, RTA);
+        cr.arcNegative(w, h, r, RTA, 0);
+        cr.arcNegative(w, 0, r, 0, - RTA);
         cr.closePath();
         cr.setSourceRGBA(...this.decorColor);
         cr.fill();
@@ -313,18 +307,18 @@ export class Desktop extends PaperBase {
         if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
     }
 
-    $showLayout(cr, pl, x, y) {
+    $showLayout(cr, pl, source, x, y) {
         if(this[K.ORNT]) {
             cr.moveTo(y, x);
-            cr.rotate(Math.PI / 2);
-            PangoCairo.show_layout(cr, pl);
+            cr.rotate(RTA);
         } else {
-            super.$showLayout(cr, pl, x, y);
+            cr.moveTo(x, 0);
         }
         if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.OUTLINE) {
             PangoCairo.layout_path(cr, pl);
             cr.setSourceRGBA(...this.decorColor);
-            cr.stroke();
+            cr.strokePreserve();
         }
+        super.$showLayout(cr, pl, source);
     }
 }

@@ -30,8 +30,8 @@ export default class Mpris extends F.Mortal {
     }
 
     $buildSources() {
-        let proxy = F.Source.newDBusProxy(null, '/org/mpris/MediaPlayer2',
-                (...xs) => this.$onProxyReady(...xs),
+        let proxy = F.Source.newDBusProxy(null,
+                '/org/mpris/MediaPlayer2', (...xs) => this.$onProxyReady(...xs),
                 ['g-properties-changed', (...xs) => this.$onProxyChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)],
                 'org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'),
