@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
-import GLib from 'gi://GLib';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
@@ -35,8 +34,8 @@ export default class Mpris extends F.Mortal {
                 ['g-properties-changed', (...xs) => this.$onProxyChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)],
                 'org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'),
-            tap = new F.Source(() => new WeakMap()[$$](it => this.$players.forEach(x => this.$listen(x, it))),
-                x => this.$players.forEach(p => this.$close(p, x)), true),
+            tap = new F.Source(() => new WeakMap()[$$](it => Media.players.forEach(x => this.$listen(x, it))),
+                x => Media.players.forEach(p => this.$close(p, x)), true),
             media = F.Source.newHandler(Media, 'player-added', (_a, p) => { this.$listen(p) && this.$refresh(); },
                 'player-removed', (a, p) => { !a._players.has(p._busName) && this.$close(p) && this.$refresh(); });
         this.$src = F.Source.tie(this, {tap, proxy}, media);
@@ -85,7 +84,7 @@ export default class Mpris extends F.Mortal {
         let best,
             priors = this.$priority.length,
             scores = new Int8Array(priors);
-        out: for(let player of this.$players) {
+        out: for(let player of Media.players) {
             let buf = [],
                 cmp = true,
                 pin = this.$pindex(player);
@@ -105,10 +104,6 @@ export default class Mpris extends F.Mortal {
         this.$src.proxy.switch(best, best);
     }
 
-    get $players() {
-        return Media._players.values();
-    }
-
     get $bus() {
         return this.$src.proxy.hub?.gName;
     }
@@ -126,9 +121,12 @@ export default class Mpris extends F.Mortal {
     }
 
     $onProxyReady(proxy) {
-        if(!proxy) return;
-        this.$activate(true);
-        this.$update(proxy.Metadata);
+        if(proxy) {
+            this.$activate(true);
+            this.$update(proxy.Metadata);
+        } else {
+            this.$src.proxy.dispel();
+        }
     }
 
     $onProxyChange(proxy, prop) {
@@ -157,7 +155,7 @@ export default class Mpris extends F.Mortal {
                         this.$set.set(K.PLST, this.pin.keys().toArray()[$_]
                             .splice(this.pin.has(id), this.pin.size - 1 - this.pin.get(id), 1)[$_]
                             .unshift(!this.pin.has(id) || id !== spot(this.$player), id)))),
-                    this.$players.filter(x => this.$src.tap.hub.has(x)).toArray().sort((a, b) => this.$pindex(b) - this.$pindex(a)),
+                    Media.players.filter(x => this.$src.tap.hub.has(x)).sort((a, b) => this.$pindex(b) - this.$pindex(a)),
                     (player, item) => item[$][hub](spot(player))[$]
                         .setIcon(player.app?.get_icon() ?? 'audio-x-generic-symbolic')[$]
                         .setOrnament(this.pin.has(item[hub]) ? PopupMenu.Ornament.CHECK : PopupMenu.Ornament.NONE)
@@ -170,7 +168,7 @@ export default class Mpris extends F.Mortal {
 
     async getPosition() { // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
         let pos = await Gio.DBus.session.call(this.$bus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties',
-            'Get', new GLib.Variant('(ss)', ['org.mpris.MediaPlayer2.Player', 'Position']), null, Gio.DBusCallFlags.NONE, -1, null);
+            'Get', T.pickle(['org.mpris.MediaPlayer2.Player', 'Position'], '(ss)'), null, Gio.DBusCallFlags.NONE, -1, null);
         return pos.recursiveUnpack().at(0) / 1000;
     }
 
