@@ -4,28 +4,41 @@
 configure_file(
   input: 'metadata.json.in',
   output: 'metadata.json',
-  configuration: metadata,
+  configuration: me,
   install_dir: target_dir,
 )
 
-mpris = configure_file(
+_icon = 'lyric-symbolic.svg'
+_mpris = '@0@.MprisPlayer.xml'.format(me['dbus'])
+_gres = {'icon': _icon, 'mpris': _mpris}
+
+_deps = [] + custom_target(
+  output: _icon,
+  build_by_default: true,
+  build_always_stale: true,
+  build_subdir: 'scalable/status',
+  command: [
+    find_program('gjs'),
+    '-m',
+    '@SOURCE_ROOT@' / 'cli/gen-icon.js',
+    '@OUTDIR@',
+    _icon,
+  ],
+) + configure_file(
   input: 'mpris.xml',
-  output: '@0@.MprisPlayer.xml'.format(metadata['dbus']),
+  output: _mpris,
   copy: true,
 )
 
-subdir('scalable/status') # HACK: for https://github.com/mesonbuild/meson/issues/2320
-
-foreach name: ['extension']
-  gres = configure_file(
-    input: f'@name@.gresource.xml.in',
-    output: f'@name@.gresource.xml',
-    configuration: {'icon': icon, 'mpris': fs.name(mpris.full_path())},
-  )
+foreach x: ['extension']
   gnome.compile_resources(
-    name, gres,
+    x, configure_file(
+      input: f'@x@.gresource.xml.in',
+      output: f'@x@.gresource.xml',
+      configuration: _gres,
+    ),
     source_dir: '@OUTDIR@',
-    dependencies: [mpris, tray],
+    dependencies: _deps,
     gresource_bundle: true,
     install: true,
     install_dir: target_dir / 'resource',

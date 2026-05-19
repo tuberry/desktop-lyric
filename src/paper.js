@@ -67,18 +67,22 @@ class PaperBase extends St.DrawingArea {
     vfunc_repaint() {
         let cr = St.DrawingArea.prototype.get_context.call(this);
         let pl = PangoCairo.create_layout(cr);
-        pl.set_font_description(this.$font);
-        pl.set_text(this.$lrc, -1);
+        this.$initLayout(pl);
         let [w, h] = pl.get_pixel_size();
         this.$scroll = w > this.$size;
         this.$actual = this.$scroll ? this.$size : w; // actual pxiels
-        this.$setupLayout(cr, pl, w, h, this.$scroll, this.$actual);
-        this.$updateLayout(cr, pl, w, h, this.$scroll, this.$actual);
+        this.$setupLayout(cr, h);
+        this.$updateLayout(cr, pl, w, h, this.$actual, this.$scroll);
 
         cr.$dispose();
     }
 
-    $updateLayout(cr, pl, w, h, scroll, L) {
+    $initLayout(pl) {
+        pl.set_font_description(this.$font);
+        pl.set_text(this.$lrc, -1);
+    }
+
+    $updateLayout(cr, pl, w, h, L, scroll) {
         let source;
         let offset = 0;
         if(this.$pos < 0) { // song title
@@ -196,7 +200,7 @@ export class Panel extends PaperBase {
         this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => Util.lerp(x, this.inactiveColor[i], 0.2));
     }
 
-    $setupLayout(cr, _pl, _w, h) {
+    $setupLayout(cr, h) {
         cr.translate(0, (this.get_surface_size()[1] - h) / 2);
     }
 
@@ -287,24 +291,27 @@ export class Desktop extends PaperBase {
         this.decorColor = this.inactiveColor.map(x => 1 - x).with(3, this[K.DCOP]);
     }
 
-    $drawBackground(cr, w, h) { // anti-clockwise rounded rectangle
-        let r = Math.min(w, h) / 8;
-        if(this[K.ORNT]) [w, h] = [h, w];
-        this.$actual -= 2 * r;
-        cr.translate(r, r);
-        cr.newSubPath();
-        cr.arcNegative(0, 0, r, - RTA, Math.PI);
-        cr.arcNegative(0, h, r, Math.PI, RTA);
-        cr.arcNegative(w, h, r, RTA, 0);
-        cr.arcNegative(w, 0, r, 0, - RTA);
-        cr.closePath();
-        cr.setSourceRGBA(...this.decorColor);
-        cr.fill();
+    $initLayout(pl) {
+        super.$initLayout(pl);
+        if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
     }
 
-    $setupLayout(cr, pl, w_, h, s_, L) {
-        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) this.$drawBackground(cr, L, h);
-        if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
+    $setupLayout(cr, h) {
+        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) {
+            let w = this.$actual;
+            let r = Math.min(w, h) / 8;
+            if(this[K.ORNT]) [w, h] = [h, w];
+            this.$actual -= 2 * r;
+            cr.translate(r, r);
+            cr.newSubPath();
+            cr.arcNegative(0, 0, r, - RTA, Math.PI);
+            cr.arcNegative(0, h, r, Math.PI, RTA);
+            cr.arcNegative(w, h, r, RTA, 0);
+            cr.arcNegative(w, 0, r, 0, - RTA);
+            cr.closePath(); // anti-clockwise rounded rectangle
+            cr.setSourceRGBA(...this.decorColor);
+            cr.fill();
+        }
     }
 
     $showLayout(cr, pl, source, x, y) {
