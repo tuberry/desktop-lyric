@@ -13,7 +13,7 @@ import Mpris from './mpris.js';
 import * as Paper from './paper.js';
 
 const {_} = F;
-const {$, $s, $$} = T;
+const {$, $$, $_} = T;
 
 class DesktopLyric extends F.Mortal {
     $bindSettings(gset) {
@@ -32,12 +32,12 @@ class DesktopLyric extends F.Mortal {
             paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
             sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await this.$src.mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500),
-            mpris = new Mpris(this.$set)[$s].connect([
+            mpris = new Mpris(this.$set)[$$].connect([
                 ['update', (_p, x) => this.setSong(x)],
                 ['active', (_p, x) => this.setActive(x)],
                 ['status', (_p, x) => this.setPlaying(x)],
                 ['seeked', (_p, x) => this.setPosition(x)],
-            ])[$$](it => tray.hub.$record(true, 'play', () => it.genPlayerItem()));
+            ])[$_](it => tray.hub.$record(true, 'play', () => it.genPlayerItem()));
         this.$src = F.Source.tie(this, {mpris, play, sync, lyric, paper, tray});
     }
 

@@ -7,7 +7,7 @@ import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K, URL} from './const.js';
 
-const {$$} = T;
+const {$_} = T;
 
 async function queryNCMLyric(param, song, client, cancel, fallback) {
     let singer = song.artist.toSorted(),
@@ -93,7 +93,7 @@ export default class Lyric extends F.Mortal {
     }
 
     unload(song) {
-        this.path(song)[$$](p => T.exist(p) && T.fwrite(p, ' ').catch(T.nop));
+        this.path(song)[$_](p => T.exist(p) && T.fwrite(p, ' ').catch(T.nop));
     }
 
     warn(song) {

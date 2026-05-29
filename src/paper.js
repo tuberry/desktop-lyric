@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import St from 'gi://St';
+import Cogl from 'gi://Cogl';
 import Cairo from 'gi://cairo';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
@@ -11,17 +12,23 @@ import PangoCairo from 'gi://PangoCairo';
 
 import * as DND from 'resource:///org/gnome/shell/ui/dnd.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 
 import * as T from './util.js';
 import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
-const {$, $$, $s} = T;
+const {$, $_, $$} = T;
 
 const RTA = Math.PI / 2; // right angle
 const time2ms = time => Math.round(time.split(':').reduce((p, x) => parseFloat(x) + p * 60, 0) * 1000); // '1:1' => 61000 ms
-const color2rgba = ({red, green, blue, alpha = 255}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity ?? alpha / 255);
+const color2rgba = ({red, green, blue, alpha}, opacity) => [red, green, blue].map(x => x / 255)[$].push(opacity || alpha / 255);
+
+function parseColor(text) {
+    let [ok, color] = Cogl.Color.from_string(text);
+    if(ok) return color2rgba(color);
+    let alpha = parseInt(text);
+    return isNaN(alpha) ? 0 : Math.clamp(alpha / 100, 0, 1);
+}
 
 function findMaxLE(sorted, value, lower = 0, upper = sorted.length - 1) { // sorted: ascending
     if(sorted[upper] <= value) {
@@ -47,7 +54,8 @@ class PaperBase extends St.DrawingArea {
     }
 
     $bindSettings(set) {
-        this.$set = set.tie(this, [K.PRGR], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
+        this.$set = set.tie(this, [[K.ICLR, parseColor], [K.ACLR, parseColor]], () => this.$onColorChange(),
+            [K.PRGR], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
     }
 
     $buildSources() {
@@ -166,6 +174,7 @@ class PaperBase extends St.DrawingArea {
 export class Panel extends PaperBase {
     static {
         T.enrol(this);
+        this.QS = Main.panel.statusArea.quickSettings;
     }
 
     constructor(tray, ...args) {
@@ -179,17 +188,12 @@ export class Panel extends PaperBase {
     }
 
     $buildSources() {
-        this.$src = F.Source.tie(this, F.Source.newHandler(Main.panel.statusArea.quickSettings,
-            'style-changed', (() => this.$onStyleChange())[$].call()));
+        this.$src = F.Source.tie(this, F.Source.newHandler(Panel.QS, 'style-changed', (() => this.$onStyleChange())[$].call()));
         super.$buildSources();
     }
 
     $onStyleChange() {
-        let theme = Main.panel.statusArea.quickSettings.get_theme_node();
-        let [w_, h] = Main.panel.get_size();
-        this[$].$setFont(theme.get_font())[$]
-            .inactiveColor(color2rgba(theme.get_foreground_color()))[$]
-            .set_height(h).$onColorChange();
+        this[$].$setFont(Panel.QS.get_theme_node().get_font())[$].set_height(Main.panel.get_size()[1]).$onColorChange();
     }
 
     get homochromyColor() {
@@ -197,7 +201,10 @@ export class Panel extends PaperBase {
     }
 
     $onColorChange() {
-        this.activeColor = color2rgba(F.theme().get_accent_color()[0]).map((x, i) => Util.lerp(x, this.inactiveColor[i], 0.2));
+        let fgcolor = color2rgba(Panel.QS.get_theme_node().get_foreground_color());
+        let blend = rgba => rgba.map((x, i, a) => x + (fgcolor[i] - x) * (1 - a[3])).with(3, 1);
+        this.activeColor = blend(Array.isArray(this[K.ACLR]) ? this[K.ACLR] : color2rgba(F.theme().get_accent_color()[0], this[K.ACLR]));
+        this.inactiveColor = Array.isArray(this[K.ICLR]) ? blend(this[K.ICLR]) : fgcolor;
     }
 
     $setupLayout(cr, h) {
@@ -227,8 +234,7 @@ export class Desktop extends PaperBase {
         this.$setIF = new F.Setting('org.gnome.desktop.interface', this, [[Desktop.SCALE, null, () => this.$onFontSet()]]);
         this.$set.tie(this, [
             K.DCTP, [K.FONT, null, () => this.$onFontSet()],
-            [K.DCOP, x => x / 100, x => { this.decorColor[3] = x; }],
-            [K.OPCT, x => x / 100, () => this.$onColorChange()],
+            [K.DCLR, parseColor, () => this.$onColorChange()],
         ], [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize());
     }
 
@@ -243,7 +249,7 @@ export class Desktop extends PaperBase {
     }
 
     $onFontSet() {
-        this.$setFont(Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 12')[$$](it =>
+        this.$setFont(Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 12')[$_](it =>
             it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.SCALE] ?? 1))));
     }
 
@@ -261,13 +267,13 @@ export class Desktop extends PaperBase {
             },
         }], true);
         this.set_position(...global.get_pointer().slice(0, 2));
-        return DND.makeDraggable(this)[$$](it => T.inject(it,
+        return DND.makeDraggable(this)[$_](it => T.inject(it,
             'destroy', () => () => { border.destroy(); it._dragComplete(); },
             '_updateCursor', (o, f) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
             '_dragActorDropped', () => () => {
                 it.destroy();
                 it._updateCursor(Clutter.CursorType.DEFAULT);
-                this.$set[$s].set([[K.SITE, this.get_position()], [K.DRAG, false]]);
+                this.$set[$$].set([[K.SITE, this.get_position()], [K.DRAG, false]]);
                 return true;
             }));
     }
@@ -287,8 +293,9 @@ export class Desktop extends PaperBase {
     }
 
     $onColorChange() {
-        [this.activeColor, this.inactiveColor] = F.theme().get_accent_color().map(x => color2rgba(x, this[K.OPCT]));
-        this.decorColor = this.inactiveColor.map(x => 1 - x).with(3, this[K.DCOP]);
+        let accent = F.theme().get_accent_color();
+        [this.activeColor, this.inactiveColor] = [K.ACLR, K.ICLR].map((k, i) => Array.isArray(this[k]) ? this[k] : color2rgba(accent[i], this[k] || 0.8));
+        this.decorColor = Array.isArray(this[K.DCLR]) ? this[K.DCLR] : this.inactiveColor.map(x => 1 - x).with(3, this[K.DCLR]);
     }
 
     $initLayout(pl) {
@@ -297,7 +304,7 @@ export class Desktop extends PaperBase {
     }
 
     $setupLayout(cr, h) {
-        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.BG) {
+        if(this[K.DCLR] && this[K.DCTP] === Desktop.Decor.BG) {
             let w = this.$actual;
             let r = Math.min(w, h) / 8;
             if(this[K.ORNT]) [w, h] = [h, w];
@@ -321,7 +328,7 @@ export class Desktop extends PaperBase {
         } else {
             cr.moveTo(x, 0);
         }
-        if(this[K.DCOP] && this[K.DCTP] === Desktop.Decor.OUTLINE) {
+        if(this[K.DCLR] && this[K.DCTP] === Desktop.Decor.OUTLINE) {
             PangoCairo.layout_path(cr, pl);
             cr.setSourceRGBA(...this.decorColor);
             cr.strokePreserve();

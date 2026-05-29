@@ -14,7 +14,7 @@ import * as F from './fubar.js';
 import {Key as K} from './const.js';
 
 const {_} = F;
-const {$, $$, $s, $_, hub} = T;
+const {$, $_, $$, hub} = T;
 
 const spot = x => x._mprisProxy.Identity;
 const playing = x => x.PlaybackStatus === 'Playing';
@@ -34,7 +34,7 @@ export default class Mpris extends F.Mortal {
                 ['g-properties-changed', (...xs) => this.$onProxyChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)],
                 'org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'),
-            tap = new F.Source(() => new WeakMap()[$$](it => Media.players.forEach(x => this.$listen(x, it))),
+            tap = new F.Source(() => new WeakMap()[$_](it => Media.players.forEach(x => this.$listen(x, it))),
                 x => Media.players.forEach(p => this.$close(p, x)), true),
             media = F.Source.newHandler(Media, 'player-added', (_a, p) => { this.$listen(p) && this.$refresh(); },
                 'player-removed', (a, p) => { !a._players.has(p._busName) && this.$close(p) && this.$refresh(); });
@@ -47,14 +47,14 @@ export default class Mpris extends F.Mortal {
         let info = {time: 0};
         let data = new Proxy(info, {set: (...xs) => { this.$refresh(); return Reflect.set(...xs); }});
         info.id = player._playerProxy.connect('g-properties-changed', (a, p) => {
-            if(p.lookup_value('PlaybackStatus', null)) data.time = playing(a) ? Date.now() : data.time;
+            if(p.lookup_value('PlaybackStatus', null)) data.time = playing(a) ? Temporal.Now.instant().epochMilliseconds : data.time;
         });
         tap.set(player, data);
         return true;
     }
 
     $close(player, tap = this.$src.tap.hub) {
-        return tap.has(player)[$$](x => x && player._playerProxy.disconnect(tap.get(player).id));
+        return tap.has(player)[$_](x => x && player._playerProxy.disconnect(tap.get(player).id));
     }
 
     $nonMusical({_app: app}) {
@@ -147,14 +147,14 @@ export default class Mpris extends F.Mortal {
 
     genPlayerItem() {
         let txt = _('Player');
-        return new PopupMenu.PopupSubMenuMenuItem(txt)[$$](it => {
+        return new PopupMenu.PopupSubMenuMenuItem(txt)[$_](it => {
             this.connect('active', (_a, x) => it.label.set_text(x ? `${txt}: ${this.$player.source.title ?? spot(this.$player)}` : txt));
-            it.menu[$s].addMenuItem([
+            it.menu[$$].addMenuItem([
                 new PopupMenu.PopupMenuSection()[$].connect('open-state-changed', (sub, open) => open && M.upsert(sub,
                     menu => menu.addMenuItem(new PopupMenu.PopupImageMenuItem('', '')[$].connect('activate', ({[hub]: id}) =>
-                        this.$set.set(K.PLST, this.pin.keys().toArray()[$_]
-                            .splice(this.pin.has(id), this.pin.size - 1 - this.pin.get(id), 1)[$_]
-                            .unshift(!this.pin.has(id) || id !== spot(this.$player), id)))),
+                        this.$set.set(K.PLST, this.pin.keys().toArray()[$$]
+                            .splice(this.pin.has(id) && [[this.pin.size - 1 - this.pin.get(id), 1]])[$$]
+                            .unshift(!this.pin.has(id) || id !== spot(this.$player) && [[id]])))),
                     Media.players.filter(x => this.$src.tap.hub.has(x)).sort((a, b) => this.$pindex(b) - this.$pindex(a)),
                     (player, item) => item[$][hub](spot(player))[$]
                         .setIcon(player.app?.get_icon() ?? 'audio-x-generic-symbolic')[$]

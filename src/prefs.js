@@ -9,7 +9,7 @@ import * as UI from './ui.js';
 import * as T from './util.js';
 import {Key as K, URL} from './const.js';
 
-const {$, $s} = T;
+const {$, $$} = T;
 const {_, _G, getv, setv} = UI;
 
 class Players extends Gtk.MenuButton {
@@ -20,7 +20,7 @@ class Players extends Gtk.MenuButton {
     constructor() {
         super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$]
             .bind_property_full(getv, this.popover, 'child', T.SYNC,
-                (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$s].append(v.map(x =>
+                (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$$].append(v.map(x =>
                     new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x), cssClasses: ['destructive-action']})[$]
                     .connect('clicked', () => this[setv](this[getv].filter(y => y !== x))))) : new Gtk.Label({label: _G('(None)')})], null);
     }
@@ -39,10 +39,11 @@ class DesktopLyricPrefs extends UI.Page {
             [K.ONLN, new UI.Switch()],
             [K.PRGR, new UI.Switch()],
             [K.FABK, new UI.Switch()],
-            [K.OPCT, new UI.Spin(20, 100, 5, '%')],
+            [K.DCLR, new UI.Color(_('Decor color'))],
+            [K.ACLR, new UI.Color(_('Active color'))],
+            [K.ICLR, new UI.Color(_('Inactive color'))],
             [K.SPAN, new UI.Spin(20, 500, 10, _('ms'))],
             [K.PLCY, new UI.Drop([_('Prefer'), _('Only')])],
-            [K.DCOP, new UI.Spin(0, 100, 5, '%', _('Opacity'))],
             [K.ORNT, new UI.Drop([_('Horizontal'), _('Vertical')])],
             [K.PATH, new UI.File({folder: true, size: true, open: true})],
             [K.DCTP, new UI.Drop([_('Outline'), _('Background')], _('Type'))],
@@ -60,9 +61,9 @@ class DesktopLyricPrefs extends UI.Page {
             [[_('Play_er')], K.PLCY, K.PLST],
         ]], [[[_('Desktop')]], [
             [[_('_Mobilize'), _('Allow dragging to displace')], K.DRAG],
-            [[_('_Opacity')], K.OPCT],
+            [[_('_Color')], K.ACLR, K.ICLR],
             [[_('_Font')], K.FONT],
-            [[_('_Decoration')], K.DCTP, K.DCOP],
+            [[_('_Decoration')], K.DCTP, K.DCLR],
             [[_('Or_ientation')], K.ORNT],
         ]], [[[_('Online'), _('Try to download and save the missing lyrics')], K.ONLN], [
             [[_('_Provider'), _('Prefer <a href="%s">lyrics from Mpris metadata</a>').format('https://www.freedesktop.org/wiki/Specifications/mpris-spec/metadata/#xesam:astext')],
