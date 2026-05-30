@@ -126,20 +126,20 @@ msgid "Play_er"
 msgstr "播放器(_E)"
 
 #: src/prefs.js:62
+msgid "_Color"
+msgstr "前景色(_C)"
+
+#: src/prefs.js:63
 msgid "Desktop"
 msgstr "桌面"
 
-#: src/prefs.js:63
+#: src/prefs.js:64
 msgid "_Mobilize"
 msgstr "解锁位置(_M)"
 
-#: src/prefs.js:63
+#: src/prefs.js:64
 msgid "Allow dragging to displace"
 msgstr "允许拖拽以变更位置"
-
-#: src/prefs.js:64
-msgid "_Color"
-msgstr "颜色(_C)"
 
 #: src/prefs.js:65
 msgid "_Font"

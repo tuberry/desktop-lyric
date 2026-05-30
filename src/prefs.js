@@ -18,11 +18,10 @@ class Players extends Gtk.MenuButton {
     }
 
     constructor() {
-        super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$]
-            .bind_property_full(getv, this.popover, 'child', T.SYNC,
-                (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$$].append(v.map(x =>
-                    new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x), cssClasses: ['destructive-action']})[$]
-                    .connect('clicked', () => this[setv](this[getv].filter(y => y !== x))))) : new Gtk.Label({label: _G('(None)')})], null);
+        super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$].bind_property_full(getv,
+            this.popover, 'child', T.SYNC, (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$$]
+                .append(v.map(x => new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x), cssClasses: ['destructive-action']})[$]
+                .connect('clicked', () => this[setv](this[getv].filter(y => y !== x))))) : new Gtk.Button({label: _G('(None)'), sensitive: false})], null);
     }
 }
 
@@ -58,10 +57,10 @@ class DesktopLyricPrefs extends UI.Page {
             [[_('_Show progress')], K.PRGR],
             [[_('_Refresh interval')], K.SPAN],
             [[_('S_ystray')], K.AREA, K.PNWD],
+            [[_('_Color')], K.ACLR, K.ICLR],
             [[_('Play_er')], K.PLCY, K.PLST],
         ]], [[[_('Desktop')]], [
             [[_('_Mobilize'), _('Allow dragging to displace')], K.DRAG],
-            [[_('_Color')], K.ACLR, K.ICLR],
             [[_('_Font')], K.FONT],
             [[_('_Decoration')], K.DCTP, K.DCLR],
             [[_('Or_ientation')], K.ORNT],

@@ -43,7 +43,7 @@ export default class Mpris extends F.Mortal {
     }
 
     $listen(player, tap = this.$src.tap.hub) {
-        if(tap.has(player) || this.$nonMusical(player)) return false;
+        if(tap.has(player) || this.$noisy(player)) return false;
         let info = {time: 0};
         let data = new Proxy(info, {set: (...xs) => { this.$refresh(); return Reflect.set(...xs); }});
         info.id = player._playerProxy.connect('g-properties-changed', (a, p) => {
@@ -57,7 +57,7 @@ export default class Mpris extends F.Mortal {
         return tap.has(player)[$_](x => x && player._playerProxy.disconnect(tap.get(player).id));
     }
 
-    $nonMusical({_app: app}) {
+    $noisy({_app: app}) {
         if(app === undefined) return true;
         if(app === null) return false; // terminal
         let ret = true;
