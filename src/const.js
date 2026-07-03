@@ -14,7 +14,6 @@ export const Key = {
     ACLR: 'active-color',
     AREA: 'systray-area',
     ONLN: 'online-lyrics',
-    OPCT: 'lyric-opacity',
     PRGR: 'show-progress',
     ICLR: 'inactive-color',
     PATH: 'lyric-location',

@@ -14,14 +14,16 @@ const {_, _G, getv, setv} = UI;
 
 class Players extends Gtk.MenuButton {
     static {
-        UI.enrol(this, ['boxed', GLib.strv_get_type()]);
+        UI.enrol(this, GLib.strv_get_type());
     }
 
     constructor() {
-        super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$].bind_property_full(getv,
-            this.popover, 'child', T.SYNC, (_b, v) => [true, v?.length ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$$]
-                .append(v.map(x => new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x), cssClasses: ['destructive-action']})[$]
-                .connect('clicked', () => this[setv](this[getv].filter(y => y !== x))))) : new Gtk.Button({label: _G('(None)'), sensitive: false})], null);
+        super({valign: Gtk.Align.CENTER, label: _('Pinned'), popover: new Gtk.Popover()})[$]
+            .bind_property_full(getv, this.popover, 'child', T.SYNC, (_b, v) => [true, v?.length
+                ? new Adw.WrapBox({childSpacing: 8, lineSpacing: 8, naturalLineLength: 256})[$$]
+                .append(v.map(x => new Gtk.Button({child: new UI.Sign('window-close-symbolic', true)[$].setup('', x)})[$]
+                    .add_css_class('destructive-action')[$].connect('clicked', () => this[setv](this[getv].filter(y => y !== x)))))
+                : new Gtk.Button({label: _G('(None)'), sensitive: false})], null);
     }
 }
 

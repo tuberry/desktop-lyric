@@ -49,23 +49,44 @@ class PaperBase extends St.DrawingArea {
         T.enrol(this);
     }
 
-    constructor(set, param) {
-        super(param)[$].$clearLyric()[$].$bindSettings(set).$buildSources();
+    constructor(gset, $surface) {
+        super()[$].$clearLyric()[$].$bindSettings(gset)[$].$buildSources()[$].set({$surface}).$sync({font: true, color: true});
     }
 
-    $bindSettings(set) {
-        this.$set = set.tie(this, [[K.ICLR, parseColor], [K.ACLR, parseColor]], () => this.$onColorChange(),
-            [K.PRGR], () => { this.$scroll = true; this.queue_repaint(); }); // NOTE: force redrawing
+    $bindSettings(gset) {
+        this.$set = gset.tie(this, [K.PRGR], null, () => this.$sync(),
+            [[K.ICLR, parseColor], [K.ACLR, parseColor]], null, () => this.$sync({color: true}));
     }
 
     $buildSources() {
-        F.Source.tie(this, F.Source.newHandler(F.theme(), 'changed', (() => this.$onColorChange())[$].call()));
+        F.Source.tie(this, new F.Source.Handler(F.theme(), 'changed', () => this.$sync({color: true})));
     }
 
-    $setFont(font) {
-        this.$font = font;
-        let ratio = font.get_size() / Pango.FontDescription.from_string('Sans 12').get_size();
-        this.$title = [30 / ratio, 16 * 3 * ratio, 16 * 4 * ratio];
+    get homochromy() { return !this[K.PRGR] || this.$pos < 0; }
+
+    $updateSurfaces() {
+        let pl = this.$genLayout(this.$lrc);
+        let [w, h] = pl.get_pixel_size();
+        Object.assign(this.$surface, {W: w, H: h, active: this.$genSurface(true, pl, w, h), inactive: this.$genSurface(false, pl,  w, h)});
+        this.$syncSize();
+    }
+
+    $syncSize() {
+        this.$surface.L = Math.min(this.$size, this.$surface.W); // actual pxiels
+        this.$surface.SCROLL = this.$surface.W > this.$size;
+    }
+
+    $sync({font, color} = {}) {
+        if(font) this.$syncFont();
+        if(color) this.$syncColor();
+        this.$updateSurfaces();
+        this.queue_repaint();
+    }
+
+    $setFont(font, scale = 1) {
+        this.$font = scale ? font : font[$].set_size(font.get_size() * scale);
+        let ratio = font.get_size() / Pango.SCALE / 12;
+        this.$title = {slowness: 30 / ratio, delay: 3 * 16 * ratio, gap: 4 * 16 * ratio};
     }
 
     get_context() { // HACK: workaround for DND since https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/3726
@@ -74,60 +95,78 @@ class PaperBase extends St.DrawingArea {
 
     vfunc_repaint() {
         let cr = St.DrawingArea.prototype.get_context.call(this);
-        let pl = PangoCairo.create_layout(cr);
-        this.$initLayout(pl);
-        let [w, h] = pl.get_pixel_size();
-        this.$scroll = w > this.$size;
-        this.$actual = this.$scroll ? this.$size : w; // actual pxiels
-        this.$setupLayout(cr, h);
-        this.$updateLayout(cr, pl, w, h, this.$actual, this.$scroll);
+        this.$transform(cr);
+        this.$composite(cr);
 
         cr.$dispose();
     }
 
-    $initLayout(pl) {
-        pl.set_font_description(this.$font);
-        pl.set_text(this.$lrc, -1);
+    $genImageSurface(w = 1, h = 1) {
+        let scale = this.get_resource_scale();
+        let ret = new Cairo.ImageSurface(Cairo.Format.ARGB32, w * scale, h * scale);
+        ret.setDeviceScale(scale, scale);
+        return ret;
     }
 
-    $updateLayout(cr, pl, w, h, L, scroll) {
-        let source;
+    $genLayout() {
+        let sf = this.$genImageSurface(),
+            cr = new Cairo.Context(sf),
+            ret = PangoCairo.create_layout(cr);
+        ret.set_font_description(this.$font);
+        ret.set_text(this.$lrc, -1);
+
+        cr.$dispose(); // NOTE: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
+
+        return ret;
+    }
+
+    $composite(cr) {
         let offset = 0;
+        let {homochromy, W, H, L, SCROLL} = this.$surface;
         if(this.$pos < 0) { // song title
-            if(scroll) {
-                let [slowness, delay, gap] = this.$title;
-                offset = Math.min(0, delay - (this.moment / slowness) % (delay + w + gap));
-                let round = offset + w + gap;
+            if(SCROLL) {
+                let {slowness, delay, gap} = this.$title;
+                offset = Math.min(0, delay - (this.moment / slowness) % (delay + W + gap));
+                let round = offset + W + gap;
                 if(round < L) {
-                    cr.save();
-                    this.$showLayout(cr, pl, source, round, h);
-                    cr.restore();
+                    cr.setSourceSurface(homochromy, Math.round(round), 0);
+                    cr.paint();
                 }
             }
         } else {
-            if(scroll) offset = Math.clamp(L / 2 - w * this.$pos, L - w, 0);
+            if(SCROLL) offset = Math.clamp(L / 2 - W * this.$pos, L - W, 0);
             if(this[K.PRGR]) {
-                let pos = scroll ? (w * this.$pos + offset) / L : this.$pos;
-                source = new Cairo.LinearGradient(0, 0, L, 0);
-                source.addColorStopRGBA(0, ...this.activeColor);
-                source.addColorStopRGBA(pos, ...this.activeColor);
-                source.addColorStopRGBA(pos, ...this.inactiveColor);
-                source.addColorStopRGBA(1, ...this.inactiveColor);
+                let pos = Math.round(SCROLL ? W * this.$pos + offset : this.$pos * L);
+                cr.rectangle(0, 0, pos, H);
+                cr.setSourceSurface(this.$surface.active, Math.round(offset), 0);
+                cr.fill();
+                cr.rectangle(pos, 0, L - pos, H);
+                cr.setSourceSurface(this.$surface.inactive, Math.round(offset), 0);
+                cr.fill();
+                return;
             }
-        } // need goto
-        this.$showLayout(cr, pl, source, offset, h);
-    }
-
-    $showLayout(cr, pl, source) {
-        if(source) cr.setSource(source);
-        else cr.setSourceRGBA(...this.homochromyColor);
-        PangoCairo.show_layout(cr, pl);
+        }
+        cr.setSourceSurface(homochromy, Math.round(offset), 0);
+        cr.paint();
     }
 
     $clearLyric() {
-        this.$len = 0;
-        this.setLyrics(this.song = '');
+        this.$len = this.$pos = 0;
+        this.setLyrics(this.song = this.$lrc = '');
+    }
+
+    clearLyric() {
+        this.$clearLyric();
+        this.$sync();
+    }
+
+    setMoment(moment) {
+        this.moment = moment;
+        if(!this.visible) return;
+        let {$pos: pos, $lrc: lrc} = this;
         [this.$pos, this.$lrc] = this.getLyric();
+        if(this.$lrc !== lrc) this.$sync();
+        else if(this.$surface.SCROLL || (this[K.PRGR] && this.$pos !== pos)) this.queue_repaint();
     }
 
     getLyric(now = this.moment) {
@@ -138,23 +177,11 @@ class PaperBase extends St.DrawingArea {
         return [len > 0 ? (now - key) / len : 0, lrc];
     }
 
-    clearLyric() {
-        this.$clearLyric();
-        this.queue_repaint();
-    }
-
     setLength(len) {
         this.$len = len;
         if(!this.$lrcs.size) return;
         let end = this.$tags.at(-1);
         this.$lrcs.set(end, [Math.max(len - end, 0), this.$lrcs.get(end).at(-1)]);
-    }
-
-    setMoment(moment) {
-        this.moment = moment;
-        let {$pos: pos, $lrc: lrc} = this;
-        [this.$pos, this.$lrc] = this.getLyric();
-        if(this.visible && (this.$scroll || (this[K.PRGR] && this.$pos !== pos) || this.$lrc !== lrc)) this.queue_repaint();
     }
 
     setLyrics(lyrics) {
@@ -166,7 +193,7 @@ class PaperBase extends St.DrawingArea {
                 x.slice(0, i).match(/(?<=\[)[.:\d]+(?=])/g)?.forEach(t => p.push([time2ms(t), l]));
                 return p;
             }, []).sort(([x], [y]) => x - y)
-            .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len, t)) - t, l]), new Map());
+            .reduce((p, [t, l], i, a) => p.set(t, [(a[i + 1]?.[0] ?? Math.max(this.$len ?? 0, t)) - t, l]), new Map());
         this.$tags = this.$lrcs.keys().toArray();
     }
 }
@@ -177,87 +204,83 @@ export class Panel extends PaperBase {
         this.QS = Main.panel.statusArea.quickSettings;
     }
 
-    constructor(tray, ...args) {
-        super(...args);
+    constructor(tray, set) {
+        super(set, {get homochromy() { return this.inactive; }})
+            .add_constraint(new Clutter.BindConstraint({coordinate: Clutter.BindCoordinate.HEIGHT, source: Main.panel}));
         tray.$box.add_child(this);
     }
 
     $bindSettings(set) {
         super.$bindSettings(set);
-        this.$set.tie(this, [[['$size', K.PNWD], x => this.set_width(x)]]);
+        this.$set.tie(this, [[['$size', K.PNWD], x => this.set_width(x), () => this.$syncSize()]]);
     }
 
     $buildSources() {
-        this.$src = F.Source.tie(this, F.Source.newHandler(Panel.QS, 'style-changed', (() => this.$onStyleChange())[$].call()));
+        this.$src = F.Source.tie(this, new F.Source.Handler(Panel.QS, 'style-changed', () => this.$sync({font: true, color: true})));
         super.$buildSources();
     }
 
-    $onStyleChange() {
-        this[$].$setFont(Panel.QS.get_theme_node().get_font())[$].set_height(Main.panel.get_size()[1]).$onColorChange();
+    $genSurface(active, layout, w, h) {
+        if(this.homochromy && active) return;
+        let ret = this.$genImageSurface(w, h);
+        let cr = new Cairo.Context(ret);
+        cr.setSourceRGBA(...active ? this.activeColor : this.inactiveColor);
+        PangoCairo.show_layout(cr, layout);
+
+        cr.$dispose();
+
+        return ret;
     }
 
-    get homochromyColor() {
-        return this.inactiveColor;
+    $syncFont() {
+        this.$setFont(Panel.QS.get_theme_node().get_font());
     }
 
-    $onColorChange() {
+    $syncColor() {
         let fgcolor = color2rgba(Panel.QS.get_theme_node().get_foreground_color());
         let blend = rgba => rgba.map((x, i, a) => x + (fgcolor[i] - x) * (1 - a[3])).with(3, 1);
         this.activeColor = blend(Array.isArray(this[K.ACLR]) ? this[K.ACLR] : color2rgba(F.theme().get_accent_color()[0], this[K.ACLR]));
         this.inactiveColor = Array.isArray(this[K.ICLR]) ? blend(this[K.ICLR]) : fgcolor;
     }
 
-    $setupLayout(cr, h) {
-        cr.translate(0, (this.get_surface_size()[1] - h) / 2);
-    }
-
-    $showLayout(cr, pl, source, x) {
-        cr.moveTo(x, 0);
-        super.$showLayout(cr, pl, source);
+    $transform(cr) {
+        cr.translate(0, Math.round((this.get_surface_size()[1] - this.$surface.H) / 2));
     }
 }
 
 export class Desktop extends PaperBase {
     static {
         T.enrol(this);
-        this.Decor = {OUTLINE: 0, BG: 1};
         this.SCALE = 'text-scaling-factor';
+        this.Decor = {NONE: -1, OUTLINE: 0, BG: 1};
     }
 
-    constructor(drag, ...args) {
-        super(...args).setDrag(drag);
+    constructor(drag, gset) {
+        super(gset, {get homochromy() { return this.active; }}).setDrag(drag);
         Main.uiGroup.add_child(this);
     }
 
-    $bindSettings(set) {
-        super.$bindSettings(set);
-        this.$setIF = new F.Setting('org.gnome.desktop.interface', this, [[Desktop.SCALE, null, () => this.$onFontSet()]]);
-        this.$set.tie(this, [
-            K.DCTP, [K.FONT, null, () => this.$onFontSet()],
-            [K.DCLR, parseColor, () => this.$onColorChange()],
-        ], [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize());
+    $bindSettings(gset) {
+        super.$bindSettings(gset);
+        this.$setIF = new F.Setting('org.gnome.desktop.interface').tie(this, [[Desktop.SCALE, null, () => this.$sync({font: true})]]);
+        this.$set.tie(this, [[K.FONT, null, () => this.$sync({font: true})]],
+            [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize(), () => this.$sync(),
+            [K.DCTP, [K.DCLR, parseColor, () => this.$syncColor()]], () => { this.$decor = this[K.DCLR] ? this[K.DCTP] : Desktop.Decor.NONE; }, () => this.$sync());
     }
 
     $buildSources() {
         super.$buildSources();
-        this.$src = F.Source.tie(this, {drag: F.Source.new(() => this.$genDraggable())},
-            F.Source.newHandler(F.theme(), 'notify::scale-factor', (() => this.$onFontSet())[$].call()));
-    }
-
-    get homochromyColor() {
-        return this.activeColor;
-    }
-
-    $onFontSet() {
-        this.$setFont(Pango.FontDescription.from_string(this[K.FONT] ?? 'Sans 12')[$_](it =>
-            it.set_size(it.get_size() * F.theme().scaleFactor * (this[Desktop.SCALE] ?? 1))));
+        this.$src = F.Source.tie(this, {drag: new F.Source(() => this.$genDraggable())},
+            new F.Source.Handler(F.theme(), 'notify::scale-factor', () => this.$onFontSet()));
     }
 
     $genDraggable() {
-        let border = F.Source.newInjector([this, {
-            $setupLayout: (a, f, xs) => {
+        let offset = 0;
+        let border = new F.Source.Injector([this, {
+            $transform: (a, f, xs) => {
                 let [cr] = xs;
                 cr.save();
+                cr.setDash([11, 5], this.$src.drag.hub._grab ? offset : offset = (offset + 1) % 16);
                 cr.rectangle(0, 0, ...a.get_surface_size());
                 cr.setSourceRGBA(1, 0, 0, 1);
                 cr.setLineWidth(4);
@@ -287,28 +310,53 @@ export class Desktop extends PaperBase {
     }
 
     $onResize() {
-        let [w, h] = global.display.get_size();
+        let {width: w, height: h} = Main.layoutManager.findMonitorForActor(this);
         if(this[K.ORNT]) this.set_size(0.18 * w, this.$size = Math.max(0, h - this[K.SITE][1]));
         else this.set_size(this.$size = Math.max(0, w - this[K.SITE][0]), 0.3 * h);
     }
 
-    $onColorChange() {
+    $syncFont() {
+        this.$setFont(Pango.FontDescription.from_string(this[K.FONT] || 'Sans 12'), F.theme().scaleFactor * (this[Desktop.SCALE] ?? 1));
+    }
+
+    $syncColor() {
         let accent = F.theme().get_accent_color();
         [this.activeColor, this.inactiveColor] = [K.ACLR, K.ICLR].map((k, i) => Array.isArray(this[k]) ? this[k] : color2rgba(accent[i], this[k] || 0.8));
         this.decorColor = Array.isArray(this[K.DCLR]) ? this[K.DCLR] : this.inactiveColor.map(x => 1 - x).with(3, this[K.DCLR]);
     }
 
-    $initLayout(pl) {
-        super.$initLayout(pl);
-        if(this[K.ORNT]) pl.get_context().set_base_gravity(Pango.Gravity.EAST);
+    $genLayout() {
+        let ret = super.$genLayout();
+        if(this[K.ORNT]) ret.get_context().set_base_gravity(Pango.Gravity.EAST);
+        return ret;
     }
 
-    $setupLayout(cr, h) {
-        if(this[K.DCLR] && this[K.DCTP] === Desktop.Decor.BG) {
-            let w = this.$actual;
-            let r = Math.min(w, h) / 8;
+    $genSurface(active, layout, w, h) {
+        if(this.homochromy && !active) return;
+        let ret = this.$genImageSurface(w, h);
+        let cr = new Cairo.Context(ret);
+        if(this.$decor === Desktop.Decor.OUTLINE) {
+            PangoCairo.layout_path(cr, layout);
+            cr.setSourceRGBA(...this.decorColor);
+            cr.stroke();
+        }
+        cr.setSourceRGBA(...active ? this.activeColor : this.inactiveColor);
+        PangoCairo.show_layout(cr, layout);
+
+        cr.$dispose();
+
+        return ret;
+    }
+
+    $updateSurfaces() {
+        super.$updateSurfaces();
+        if(this.$decor === Desktop.Decor.BG) {
+            let {W: l, H: h} = this.$surface,
+                r = this.$surface.R = Math.floor(Math.min(l, h) / 8),
+                w = this.$surface.L = Math.min(l, this.$size - 2 * r);
             if(this[K.ORNT]) [w, h] = [h, w];
-            this.$actual -= 2 * r;
+            this.$surface.SCROLL = w < l;
+            let cr = new Cairo.Context(this.$surface.bg = this.$genImageSurface(w + 2 * r, h + 2 * r));
             cr.translate(r, r);
             cr.newSubPath();
             cr.arcNegative(0, 0, r, - RTA, Math.PI);
@@ -318,21 +366,22 @@ export class Desktop extends PaperBase {
             cr.closePath(); // anti-clockwise rounded rectangle
             cr.setSourceRGBA(...this.decorColor);
             cr.fill();
+
+            cr.$dispose();
+        } else {
+            this.$surface.bg = null;
         }
     }
 
-    $showLayout(cr, pl, source, x, y) {
+    $transform(cr) {
+        if(this.$decor === Desktop.Decor.BG) {
+            cr.setSourceSurface(this.$surface.bg, 0, 0);
+            cr.paint();
+            cr.translate(this.$surface.R, this.$surface.R);
+        }
         if(this[K.ORNT]) {
-            cr.moveTo(y, x);
+            cr.translate(this.$surface.H, 0);
             cr.rotate(RTA);
-        } else {
-            cr.moveTo(x, 0);
         }
-        if(this[K.DCLR] && this[K.DCTP] === Desktop.Decor.OUTLINE) {
-            PangoCairo.layout_path(cr, pl);
-            cr.setSourceRGBA(...this.decorColor);
-            cr.strokePreserve();
-        }
-        super.$showLayout(cr, pl, source);
     }
 }

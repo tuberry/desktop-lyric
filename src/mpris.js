@@ -1,6 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: tuberry
 // SPDX-FileCopyrightText: NowLoadY
-// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -29,15 +29,15 @@ export default class Mpris extends F.Mortal {
     }
 
     $buildSources() {
-        let proxy = F.Source.newDBusProxy(null,
+        let proxy = new F.Source.Proxy(null,
                 '/org/mpris/MediaPlayer2', (...xs) => this.$onProxyReady(...xs),
                 ['g-properties-changed', (...xs) => this.$onProxyChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)],
                 'org.gnome.Shell.Extensions.DesktopLyric.MprisPlayer'),
             tap = new F.Source(() => new WeakMap()[$_](it => Media.players.forEach(x => this.$listen(x, it))),
                 x => Media.players.forEach(p => this.$close(p, x)), true),
-            media = F.Source.newHandler(Media, 'player-added', (_a, p) => { this.$listen(p) && this.$refresh(); },
-                'player-removed', (a, p) => { !a._players.has(p._busName) && this.$close(p) && this.$refresh(); });
+            media = new F.Source.Handler(Media, 'player-added', (_a, p) => { this.$listen(p) && this.$refresh(); },
+                'player-removed', (a, p) => { if(!a._players.has(p._busName)) this.$close(p) && this.$refresh(); });
         this.$src = F.Source.tie(this, {tap, proxy}, media);
         this.$buildWidgets();
     }
@@ -59,7 +59,7 @@ export default class Mpris extends F.Mortal {
 
     $noisy({_app: app}) {
         if(app === undefined) return true;
-        if(app === null) return false; // terminal
+        if(app === null) return false; // assuming terminal app
         let ret = true;
         for(let cat of app.get_app_info()?.get_categories().split(';') ?? []) {
             if(cat === 'WebBrowser' || cat === 'Video') return true;
@@ -104,13 +104,9 @@ export default class Mpris extends F.Mortal {
         this.$src.proxy.switch(best, best);
     }
 
-    get $bus() {
-        return this.$src.proxy.hub?.gName;
-    }
+    get $bus() { return this.$src.proxy.hub?.gName; }
 
-    get $player() {
-        return Media._players.get(this.$bus);
-    }
+    get $player() { return Media._players.get(this.$bus); }
 
     $pindex(player) {
         return this.pin.get(spot(player)) ?? -1;
@@ -154,7 +150,7 @@ export default class Mpris extends F.Mortal {
                     menu => menu.addMenuItem(new PopupMenu.PopupImageMenuItem('', '')[$].connect('activate', ({[hub]: id}) =>
                         this.$set.set(K.PLST, this.pin.keys().toArray()[$$]
                             .splice(this.pin.has(id) && [[this.pin.size - 1 - this.pin.get(id), 1]])[$$]
-                            .unshift(!this.pin.has(id) || id !== spot(this.$player) && [[id]])))),
+                            .unshift((!this.pin.has(id) || id !== spot(this.$player)) && [[id]])))),
                     Media.players.filter(x => this.$src.tap.hub.has(x)).sort((a, b) => this.$pindex(b) - this.$pindex(a)),
                     (player, item) => item[$][hub](spot(player))[$]
                         .setIcon(player.app?.get_icon() ?? 'audio-x-generic-symbolic')[$]

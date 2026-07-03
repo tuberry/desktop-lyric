@@ -17,7 +17,7 @@ const {$, $$, $_} = T;
 
 class DesktopLyric extends F.Mortal {
     $bindSettings(gset) {
-        this.$set = new F.Setting(gset, this, [
+        this.$set = new F.Setting(gset).tie(this, [
             [K.MINI, null, x => this.$onMiniSet(x)],
             [K.DRAG, null, x => this.$onDragSet(x)],
             [K.SPAN, null, x => this.$src.play.reload(x)],
@@ -27,10 +27,10 @@ class DesktopLyric extends F.Mortal {
 
     $buildSources() {
         let lyric = new Lyric(this.$set),
-            tray = F.Source.new(() => this.$genSystray(), true),
-            play = F.Source.newTimer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
-            paper = F.Source.new(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
-            sync = F.Source.newDefer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
+            tray = new F.Source(() => this.$genSystray(), true),
+            play = new F.Source.Timer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
+            paper = new F.Source(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
+            sync = new F.Source.Defer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
                 async n => (x => this.$pos !== x && [x])(await this.$src.mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500),
             mpris = new Mpris(this.$set)[$$].connect([
                 ['update', (_p, x) => this.setSong(x)],
@@ -50,7 +50,7 @@ class DesktopLyric extends F.Mortal {
             tidy: new M.Item(_('Unload'), () => this[$].setLyric('').$src.lyric.unload(this.song)),
             load: new M.Item(_('Reload'), () => this.loadLyric(true)),
             // sync: new M.Item(_('Resynchronize'), () => this.$src.sync.revive()),
-            play: null, // init later
+            play: null, // lateinit
             sep1: new M.Separator(),
             sets: new M.Item(_('Settings'), () => F.me().openPreferences()),
         }, M.Icon.wrap('lyric-symbolic'), ...this[K.AREA])[$].connect('notify::width', ({width, menu}) => {
@@ -115,17 +115,13 @@ class DesktopLyric extends F.Mortal {
 
     loadLyric(reload) {
         if(!this.song) return;
-        if(this.song.lyric === null) {
-            this.setLyric('');
-            this.$src.lyric.load(this.song, reload).then(x => this.setLyric(x)).catch(T.nop);
-        } else {
-            this.setLyric(this.song.lyric);
-        }
+        if(this.song.lyric !== null) this.setLyric(this.song.lyric);
+        else this.$src.lyric.load(this.song, () => this.setLyric(''), reload).then(x => this.setLyric(x)).catch(T.nop);
     }
 
     setLyric(lyrics) {
         if(!this.$src.paper.active) return;
-        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.term(this.song, ' - ', '/') : '')[$]
+        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.title(this.song, ' - ', '/') : '')[$]
             .setLength(this.song.length)
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);

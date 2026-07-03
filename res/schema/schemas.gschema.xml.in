@@ -1,87 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="@gettext@">
-  <schema id="@rdnn@" path="@path@">
-    <key type="b" name="minimize">
-        <default>false</default>
-        <summary>minimize to panel</summary>
-    </key>
-    <key type="b" name="draggable">
-        <default>true</default>
-        <summary>make lyric draggable or not</summary>
-    </key>
-    <key type="b" name="online-lyrics">
-        <default>false</default>
-        <summary>auto download missing lyrics</summary>
-    </key>
-    <key type="b" name="online-fallback">
-        <default>false</default>
-        <summary>fallback the 1st result if no match</summary>
-    </key>
-    <key type="b" name="show-progress">
-        <default>true</default>
-        <summary>show lyric playing progress</summary>
-    </key>
-    <key type="u" name="online-provider">
-        <range min="0" max="2"/>
-        <default>0</default>
-        <summary>online lyric provider (0 - ncm, 1 - ncm (trans), 2 - lrclib)</summary>
-    </key>
-    <key type="u" name="systray-area">
-        <default>0</default>
-        <summary>systray status area (0 - left, 1 - center, 2 - right)</summary>
-    </key>
-    <key type="u" name="lyric-orientation">
-        <range min="0" max="1"/>
-        <default>0</default>
-        <summary>desktop lyric orientation (0 - horizontal, 1 - vertical)</summary>
-    </key>
-    <key type="u" name="refresh-interval">
-        <range min="20" max="500"/>
-        <default>60</default>
-        <summary>lyric refresh interval (ms)</summary>
-    </key>
-    <key type="u" name="decoration-type">
-        <range min="0" max="1"/>
-        <default>0</default>
-        <summary>desktop lyric decoration type (0 - outline, 1 - background)</summary>
-    </key>
-    <key type="u" name="player-pin-policy">
-        <range min="0" max="1"/>
-        <default>0</default>
-        <summary>player pin policy (0 - prefer, 1 - only)</summary>
-    </key>
-    <key type="u" name="panel-lyric-width">
-        <range min="100" max="800"/>
-        <default>300</default>
-        <summary>panel lyric fixed width (pixels)</summary>
-    </key>
-    <key type="s" name="active-color">
-        <default>"80"</default>
-        <summary>desktop lyric active color</summary>
-    </key>
-    <key type="s" name="inactive-color">
-        <default>"80"</default>
-        <summary>desktop lyric inactive color</summary>
-    </key>
-    <key type="s" name="decoration-color">
-        <default>"20"</default>
-        <summary>desktop lyric decoration color</summary>
-    </key>
-    <key type="s" name="font-name">
-        <default>"Sans 32"</default>
-        <summary>font name of desktop lyric</summary>
-    </key>
-    <key type="s" name="lyric-location">
-        <default>""</default>
-        <summary>location to save and read lyrics</summary>
-    </key>
-    <key type="(ii)" name="lyric-place">
-        <default>(200, 200)</default>
-        <summary>desktop lyric place</summary>
-    </key>
-    <key type="as" name="player-pin-list">
-        <default>[]</default>
-        <summary>player pin list</summary>
-    </key>
-  </schema>
+    <schema id="@rdnn@" path="@path@">
+        <key type="b" name="minimize">
+            <default>false</default>
+            <summary>minimize to panel</summary>
+        </key>
+        <key type="b" name="draggable">
+            <default>false</default>
+            <summary>make lyric draggable or not</summary>
+        </key>
+        <key type="b" name="online-lyrics">
+            <default>false</default>
+            <summary>auto download missing lyrics</summary>
+        </key>
+        <key type="b" name="online-fallback">
+            <default>false</default>
+            <summary>fallback the 1st result if no match</summary>
+        </key>
+        <key type="b" name="show-progress">
+            <default>true</default>
+            <summary>show lyric playing progress</summary>
+        </key>
+        <key type="u" name="online-provider">
+            <range min="0" max="2"/>
+            <default>0</default>
+            <summary>online lyric provider (0 - ncm, 1 - ncm (trans), 2 - lrclib)</summary>
+        </key>
+        <key type="u" name="systray-area">
+            <default>0</default>
+            <summary>systray status area (0 - left, 1 - center, 2 - right)</summary>
+        </key>
+        <key type="u" name="lyric-orientation">
+            <range min="0" max="1"/>
+            <default>0</default>
+            <summary>desktop lyric orientation (0 - horizontal, 1 - vertical)</summary>
+        </key>
+        <key type="u" name="refresh-interval">
+            <range min="20" max="500"/>
+            <default>60</default>
+            <summary>lyric refresh interval (ms)</summary>
+        </key>
+        <key type="u" name="decoration-type">
+            <range min="0" max="1"/>
+            <default>0</default>
+            <summary>desktop lyric decoration type (0 - outline, 1 - background)</summary>
+        </key>
+        <key type="u" name="player-pin-policy">
+            <range min="0" max="1"/>
+            <default>0</default>
+            <summary>player pin policy (0 - prefer, 1 - only)</summary>
+        </key>
+        <key type="u" name="panel-lyric-width">
+            <range min="100" max="800"/>
+            <default>300</default>
+            <summary>panel lyric fixed width (pixels)</summary>
+        </key>
+        <key type="s" name="active-color">
+            <default>"80"</default>
+            <summary>desktop lyric active color</summary>
+        </key>
+        <key type="s" name="inactive-color">
+            <default>"80"</default>
+            <summary>desktop lyric inactive color</summary>
+        </key>
+        <key type="s" name="decoration-color">
+            <default>"20"</default>
+            <summary>desktop lyric decoration color</summary>
+        </key>
+        <key type="s" name="font-name">
+            <default>"Sans 32"</default>
+            <summary>font name of desktop lyric</summary>
+        </key>
+        <key type="s" name="lyric-location">
+            <default>""</default>
+            <summary>location to save and read lyrics</summary>
+        </key>
+        <key type="(ii)" name="lyric-place">
+            <default>(200, 200)</default>
+            <summary>desktop lyric place</summary>
+        </key>
+        <key type="as" name="player-pin-list">
+            <default>[]</default>
+            <summary>player pin list</summary>
+        </key>
+    </schema>
 </schemalist>

@@ -13,14 +13,13 @@ _mpris = '@0@.MprisPlayer.xml'.format(me['dbus'])
 _gres = {'icon': _icon, 'mpris': _mpris}
 
 _deps = [] + custom_target(
+  input: ['../../cli/gen-icon.js'],
   output: _icon,
-  build_by_default: true,
-  build_always_stale: true,
   build_subdir: 'scalable/status',
   command: [
     find_program('gjs'),
     '-m',
-    '@SOURCE_ROOT@' / 'cli/gen-icon.js',
+    '@INPUT@',
     '@OUTDIR@',
     _icon,
   ],
