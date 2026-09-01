@@ -49,17 +49,13 @@ class PaperBase extends St.DrawingArea {
         T.enrol(this);
     }
 
-    constructor(gset, $surface) {
-        super()[$].$clearLyric()[$].$bindSettings(gset)[$].$buildSources()[$].set({$surface}).$sync({font: true, color: true});
-    }
-
-    $bindSettings(gset) {
+    constructor(gset, parent, surface) {
+        super().$clearLyric();
+        parent.add_child(this[$].$surface(surface));
         this.$set = gset.tie(this, [K.PRGR], null, () => this.$sync(),
             [[K.ICLR, parseColor], [K.ACLR, parseColor]], null, () => this.$sync({color: true}));
-    }
-
-    $buildSources() {
         F.Source.tie(this, new F.Source.Handler(F.theme(), 'changed', () => this.$sync({color: true})));
+        this[$].$bindSettings()[$].$buildSources().$sync({font: true, color: true});
     }
 
     get homochromy() { return !this[K.PRGR] || this.$pos < 0; }
@@ -103,17 +99,12 @@ class PaperBase extends St.DrawingArea {
 
     $genImageSurface(w = 1, h = 1) {
         let scale = this.get_resource_scale();
-        let ret = new Cairo.ImageSurface(Cairo.Format.ARGB32, w * scale, h * scale);
-        ret.setDeviceScale(scale, scale);
-        return ret;
+        return new Cairo.ImageSurface(Cairo.Format.ARGB32, w * scale, h * scale)[$].setDeviceScale(scale, scale);
     }
 
     $genLayout() {
-        let sf = this.$genImageSurface(),
-            cr = new Cairo.Context(sf),
-            ret = PangoCairo.create_layout(cr);
-        ret.set_font_description(this.$font);
-        ret.set_text(this.$lrc, -1);
+        let cr = new Cairo.Context(this.$genImageSurface());
+        let ret = PangoCairo.create_layout(cr)[$].set_font_description(this.$font)[$].set_text(this.$lrc, -1);
 
         cr.$dispose(); // NOTE: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/using
 
@@ -205,26 +196,22 @@ export class Panel extends PaperBase {
     }
 
     constructor(tray, set) {
-        super(set, {get homochromy() { return this.inactive; }})
+        super(set, tray.$box, {get homochromy() { return this.inactive; }})
             .add_constraint(new Clutter.BindConstraint({coordinate: Clutter.BindCoordinate.HEIGHT, source: Main.panel}));
-        tray.$box.add_child(this);
     }
 
-    $bindSettings(set) {
-        super.$bindSettings(set);
+    $bindSettings() {
         this.$set.tie(this, [[['$size', K.PNWD], x => this.set_width(x), () => this.$syncSize()]]);
     }
 
     $buildSources() {
         this.$src = F.Source.tie(this, new F.Source.Handler(Panel.QS, 'style-changed', () => this.$sync({font: true, color: true})));
-        super.$buildSources();
     }
 
     $genSurface(active, layout, w, h) {
         if(this.homochromy && active) return;
         let ret = this.$genImageSurface(w, h);
-        let cr = new Cairo.Context(ret);
-        cr.setSourceRGBA(...active ? this.activeColor : this.inactiveColor);
+        let cr = new Cairo.Context(ret)[$].setSourceRGBA(...active ? this.activeColor : this.inactiveColor);
         PangoCairo.show_layout(cr, layout);
 
         cr.$dispose();
@@ -256,20 +243,19 @@ export class Desktop extends PaperBase {
     }
 
     constructor(drag, gset) {
-        super(gset, {get homochromy() { return this.active; }}).setDrag(drag);
-        Main.uiGroup.add_child(this);
+        super(gset, Main.uiGroup, {get homochromy() { return this.active; }}).setDrag(drag);
     }
 
-    $bindSettings(gset) {
-        super.$bindSettings(gset);
-        this.$setIF = new F.Setting('org.gnome.desktop.interface').tie(this, [[Desktop.SCALE, null, () => this.$sync({font: true})]]);
+    $bindSettings() {
+        this.$setIF = new F.Setting('org.gnome.desktop.interface')
+            .tie(this, [[Desktop.SCALE, null, () => this.$sync({font: true})]]);
         this.$set.tie(this, [[K.FONT, null, () => this.$sync({font: true})]],
-            [K.ORNT, [K.SITE, x => { if(!this[K.SITE]) this.set_position(...x); }]], () => this.$onResize(), () => this.$sync(),
-            [K.DCTP, [K.DCLR, parseColor, () => this.$syncColor()]], () => { this.$decor = this[K.DCLR] ? this[K.DCTP] : Desktop.Decor.NONE; }, () => this.$sync());
+            [K.ORNT, K.SITE], () => this.$reshape(), () => this.$sync(),
+            [K.DCTP, [K.DCLR, parseColor, () => this.$syncColor()]],
+            () => { this.$decor = this[K.DCLR] ? this[K.DCTP] : Desktop.Decor.NONE; }, () => this.$sync());
     }
 
     $buildSources() {
-        super.$buildSources();
         this.$src = F.Source.tie(this, {drag: new F.Source(() => this.$genDraggable())},
             new F.Source.Handler(F.theme(), 'notify::scale-factor', () => this.$onFontSet()));
     }
@@ -289,7 +275,7 @@ export class Desktop extends PaperBase {
                 f.apply(a, xs);
             },
         }], true);
-        this.set_position(...global.get_pointer().slice(0, 2));
+        this.$reshape(global.get_pointer());
         return DND.makeDraggable(this)[$_](it => T.inject(it,
             'destroy', () => () => { border.destroy(); it._dragComplete(); },
             '_updateCursor', (o, f) => x => f.call(o, x === Clutter.CursorType.NO_DROP ? Clutter.CursorType.MOVE : x),
@@ -309,10 +295,11 @@ export class Desktop extends PaperBase {
         Shell.util_set_hidden_from_pick(this, !drag);
     }
 
-    $onResize() {
-        let {width: w, height: h} = Main.layoutManager.findMonitorForActor(this);
-        if(this[K.ORNT]) this.set_size(0.18 * w, this.$size = Math.max(0, h - this[K.SITE][1]));
-        else this.set_size(this.$size = Math.max(0, w - this[K.SITE][0]), 0.3 * h);
+    $reshape([x, y] = this[K.SITE]) {
+        this.set_position(x, y);
+        let {width: w, height: h} = Main.layoutManager.findMonitorForPoint(x, y) ?? global.stage;
+        if(this[K.ORNT]) this.set_size(0.18 * w, this.$size = Math.max(0, h - y));
+        else this.set_size(this.$size = Math.max(0, w - x), 0.3 * h);
     }
 
     $syncFont() {
