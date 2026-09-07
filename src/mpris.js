@@ -1,8 +1,10 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
 // SPDX-FileCopyrightText: tuberry
 // SPDX-FileCopyrightText: NowLoadY
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
@@ -15,9 +17,6 @@ import {Key as K} from './const.js';
 
 const {_} = F;
 const {$, $_, $$, hub} = T;
-
-const spot = x => x._mprisProxy.Identity;
-const playing = x => x.PlaybackStatus === 'Playing';
 
 const Pin = {PREFER: 0, ONLY: 1};
 
@@ -47,7 +46,7 @@ export default class Mpris extends F.Mortal {
         let info = {time: 0};
         let data = new Proxy(info, {set: (...xs) => { this.$refresh(); return Reflect.set(...xs); }});
         info.id = player._playerProxy.connect('g-properties-changed', (a, p) => {
-            if(p.lookup_value('PlaybackStatus', null)) data.time = playing(a) ? Temporal.Now.instant().epochMilliseconds : data.time;
+            if(p.lookup_value('PlaybackStatus', null)) data.time = a.PlaybackStatus === 'Playing' ? GLib.get_monotonic_time() : data.time;
         });
         tap.set(player, data);
         return true;
@@ -59,7 +58,7 @@ export default class Mpris extends F.Mortal {
 
     $noisy({_app: app}) {
         if(app === undefined) return true;
-        if(app === null) return false; // assuming terminal app
+        if(app === null) return false; // assuming terminal music app
         let ret = true;
         for(let cat of app.get_app_info()?.get_categories().split(';') ?? []) {
             if(cat === 'WebBrowser' || cat === 'Video') return true;
@@ -73,9 +72,9 @@ export default class Mpris extends F.Mortal {
         this.$priority = [
             (p, t, i) => t.has(p) && !(this.pin.size && i < 0 && this[K.PLCY] === Pin.ONLY) || -1, // musical
             (p, t, i) => i >= 0, // pinned
-            p => playing(p._playerProxy), // playing
+            p => p._playerProxy.PlaybackStatus === 'Playing', // playing
             (p, t, i) => i < 0 ? t.get(p).time : i, // recent
-            p => Object.hasOwn(p._playerProxy.Metadata, 'xesam::asText'), // lyrics
+            p => !!p._playerProxy.get_cached_property('Metadata').lookup_value('xesam::asText', null), // lyrics, https://gitlab.gnome.org/GNOME/gnome-shell/-/work_items/9394
         ];
         this.$refresh();
     }
@@ -100,7 +99,7 @@ export default class Mpris extends F.Mortal {
             if(!cmp) scores = buf;
         }
         if(best === this.$bus) return;
-        this.$activate(false);
+        this.emit('active', false);
         this.$src.proxy.switch(best, best);
     }
 
@@ -109,29 +108,27 @@ export default class Mpris extends F.Mortal {
     get $player() { return Media._players.get(this.$bus); }
 
     $pindex(player) {
-        return this.pin.get(spot(player)) ?? -1;
-    }
-
-    $activate(active) {
-        this.emit('active', this.active = active);
+        return this.pin.get(player._mprisProxy.Identity) ?? -1;
     }
 
     $onProxyReady(proxy) {
         if(proxy) {
-            this.$activate(true);
-            this.$update(proxy.Metadata);
+            this.emit('active', true);
+            this.$update(proxy.get_cached_property('Metadata'));
         } else {
             this.$src.proxy.dispel();
         }
     }
 
     $onProxyChange(proxy, prop) {
-        if(prop.lookup_value('Metadata', null)) this.$update(proxy.Metadata);
-        if(prop.lookup_value('PlaybackStatus', null)) this.emit('status', playing(proxy));
+        this.$update(prop.lookup_value('Metadata', null));
+        if(prop.lookup_value('PlaybackStatus', null)) this.emit('status', this.status);
     }
 
     $update(metadata) {
-        let [title, artist, lyric, album, length] = this.$metadata.map(x => metadata[x]?.deepUnpack());
+        if(!metadata) return;
+        let metadict = GLib.VariantDict.new(metadata);
+        let [title, artist, lyric, album, length] = this.$metadata.map(x => metadict.lookup(x, null, true));
         this.emit('update', {
             title: T.str(title) ? title : '',
             album: T.str(album) ? album : '',
@@ -143,6 +140,7 @@ export default class Mpris extends F.Mortal {
 
     genPlayerItem() {
         let txt = _('Player');
+        let spot = x => x._mprisProxy.Identity;
         return new PopupMenu.PopupSubMenuMenuItem(txt)[$_](it => {
             this.connect('active', (_a, x) => it.label.set_text(x ? `${txt}: ${this.$player.source.title ?? spot(this.$player)}` : txt));
             it.menu[$$].addMenuItem([
@@ -165,10 +163,10 @@ export default class Mpris extends F.Mortal {
     async getPosition() { // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
         let pos = await Gio.DBus.session.call(this.$bus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties',
             'Get', T.pickle(['org.mpris.MediaPlayer2.Player', 'Position'], '(ss)'), null, Gio.DBusCallFlags.NONE, -1, null);
-        return pos.recursiveUnpack().at(0) / 1000;
+        return pos.recursiveUnpack()[0] / 1000;
     }
 
     get status() {
-        return this.$src.proxy.active && playing(this.$src.proxy.hub);
+        return this.$src.proxy.hub?.PlaybackStatus === 'Playing';
     }
 }
