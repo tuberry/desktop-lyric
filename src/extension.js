@@ -121,7 +121,7 @@ class DesktopLyric extends F.Mortal {
 
     setLyric(lyrics) {
         if(!this.$src.paper.active) return;
-        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.title(this.song, ' - ', '/') : '')[$]
+        this.$src.paper.hub[$].song(this[K.MINI] ? Lyric.term(this.song, ' - ', '/') : '')[$]
             .setLength(this.song.length)
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);

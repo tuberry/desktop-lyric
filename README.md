@@ -2,12 +2,13 @@
 SPDX-FileCopyrightText: tuberry
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+
 # desktop-lyric
 
 GNOME Shell extension to show the singing lyric on the desktop.
 
->很多歌消失了。 —— *汪曾祺 《徙》*\
-[![license]](/LICENSE.md)
+> 很多歌消失了。 —— _汪曾祺 《徙》_\
+> [![license]](/LICENSE.md)
 
 ![bee](https://user-images.githubusercontent.com/17917040/107332354-08111f80-6aef-11eb-9c7a-f8799c834501.png)
 
@@ -20,7 +21,7 @@ The latest and supported version should only work on the [current stable version
 ```bash
 git clone https://github.com/tuberry/desktop-lyric.git && cd desktop-lyric
 just install || (meson setup build && meson compile -C build && meson install -C build)
-# meson setup build -Dtarget=system && meson install -C build # system-wide
+# meson setup build -Dtarget=system && meson compile -C build && meson install -C build # system-wide
 ```
 
 For older versions, it's recommended to install via:
@@ -38,13 +39,13 @@ It's quite the same as installing from:
 
 ## Notes
 
-* Draw at an even pace so that exact synchronization with the song is not guaranteed;
+- [Word-level lyrics] (😬) are not yet supported.
 
 ## Contributions
 
-Feel free to open an issue in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
+Feel free to open issues/discussions in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
 
-Also, *just* so you know:
+Also, _just_ so you know:
 
 ```bash
 just --list
@@ -53,10 +54,11 @@ just --list
 
 ## Acknowledgements
 
-* [lyrics-finder]: online lyrics
-* [osdlyrics]: some names
+- [lyrics-finder]: online lyrics
+- [osdlyrics]: some names
 
-[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
-[lyrics-finder]:https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
-[osdlyrics]:https://github.com/osdlyrics/osdlyrics
-[EGO]:https://extensions.gnome.org/extension/4006/desktop-lyric/
+[license]: https://img.shields.io/badge/license-GPLv3+-green.svg
+[lyrics-finder]: https://github.com/TheWeirdDev/lyrics-finder-gnome-ext
+[osdlyrics]: https://github.com/osdlyrics/osdlyrics
+[EGO]: https://extensions.gnome.org/extension/4006/desktop-lyric/
+[Word-level lyrics]: https://github.com/marz1877/LRCv2#other-synced-lyric-formats

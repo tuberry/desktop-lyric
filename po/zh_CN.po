@@ -17,11 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:375
-msgid "Mismatched filetype"
-msgstr "文件类型不匹配"
-
-#: src/ui.js:564
+#: src/ui.js:567
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -214,13 +210,17 @@ msgstr "设置"
 msgid "Mobilize"
 msgstr "解锁位置"
 
-#: src/mpris.js:145
+#: src/mpris.js:142
 msgid "Player"
 msgstr "播放器"
 
-#: src/mpris.js:160
+#: src/mpris.js:158
 msgid "Clear"
 msgstr "清除"
+
+#, javascript-format
+#~ msgid "Expected filetype: %s"
+#~ msgstr "预期文件类型: %s"
 
 #~ msgid "Opacity"
 #~ msgstr "不透明度"

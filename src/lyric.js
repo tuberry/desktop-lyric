@@ -11,14 +11,14 @@ const {$_} = T;
 
 async function queryNCMLyric(param, song, client, cancel, fallback) {
     let singer = song.artist.toSorted(),
-        {songs} = JSON.parse(await T.request('POST', `${URL.NCM}api/search/get/web?`,
-            {s: Lyric.title(song), limit: '30', type: '1'}, cancel, null, client)).result,
+        {songs} = JSON.parse(await T.request(`${URL.NCM}api/search/get/web?`,
+            cancel, {s: Lyric.term(song), limit: '30', type: '1'}, {client})).result,
         match = ({name: u, album: {name: v}, artists: w}, {title: x, album: y}, z) =>
             x === u && (!y || y === v) && (!z.length || T.homolog(z, w.map(a => a.name).sort())),
         {id} = songs.toSorted((a, b) => Math.abs(a.duration - song.length) - Math.abs(b.duration - song.length))
             .find(x => match(x, song, singer)) ?? (fallback && songs[0]);
-    return JSON.parse(await T.request('GET', `${URL.NCM}api/song/lyric?`,
-        {id: id.toString(), lv: '0', ...param}, cancel, null, client)); // kv/tv/rv/yv
+    return JSON.parse(await T.request(`${URL.NCM}api/song/lyric?`,
+        cancel, {id: id.toString(), lv: '0', ...param}, {client})); // kv/tv/rv/yv
 }
 
 const Provider = [
@@ -36,15 +36,15 @@ const Provider = [
     class LRCLIB { // Ref: https://lrclib.net/docs
         static async fetch(song, client, cancel, fallback) {
             let length = song.length / 1000; // ms to s
-            let header = {'User-Agent': 'Desktop Lyric/v0.1 (https://github.com/tuberry/desktop-lyric)'}; // TODO: ? import metadata.json
+            let params = {client, header: {'User-Agent': 'Desktop Lyric/v0.1 (https://github.com/tuberry/desktop-lyric)'}}; // TODO: ? import metadata.json
             try {
                 let {title: track_name, artist, album: album_name} = song;
-                return JSON.parse(await T.request('GET', `${URL.LRCLIB}api/get?`,
-                    {track_name, artist_name: artist.join(', '), album_name, duration: String(length)}, cancel, header, client)).syncedLyrics;
+                return JSON.parse(await T.request(`${URL.LRCLIB}api/get?`, cancel,
+                    {track_name, artist_name: artist.join(', '), album_name, duration: String(length)}, params)).syncedLyrics;
             } catch(e) {
                 if(F.Source.Cancel.expected(e)) throw e;
-                let singer = song.artist.join(' ').length, // HACK: messy separator: e.g. https://lrclib.net/api/search?q=%E5%A4%B1%E7%9C%A0%E9%A3%9E%E8%A1%8C
-                    songs = JSON.parse(await T.request('GET', `${URL.LRCLIB}api/search?`, {q: Lyric.title(song)}, cancel, header, client))
+                let singer = song.artist.join(' ').length, // HACK: messy separator, e.g. https://lrclib.net/api/search?q=%E5%A4%B1%E7%9C%A0%E9%A3%9E%E8%A1%8C
+                    songs = JSON.parse(await T.request(`${URL.LRCLIB}api/search?`, cancel, {q: Lyric.term(song)}, params))
                         .filter(x => x.syncedLyrics).sort((a, b) => Math.abs(a.duration - length) - Math.abs(b.duration - length)),
                     match = ({trackName: u, albumName: v, artistName: w}, {title: x, album: y}, z) =>
                         x === u && (!y || y === v) && (!z || z === w.length);
@@ -55,7 +55,7 @@ const Provider = [
 ];
 
 export default class Lyric extends F.Mortal {
-    static title({title, artist, album}, sepTitle = ' ', sepArtist = ' ', useAlbum = false) {
+    static term({title, artist, album}, sepTitle = ' ', sepArtist = ' ', useAlbum = false) {
         return [title, artist.join(sepArtist), useAlbum ? album : ''].filter(T.id).join(sepTitle);
     }
 
@@ -77,17 +77,16 @@ export default class Lyric extends F.Mortal {
         let file = T.fopen(this.path(song));
         try {
             if(reload) throw Error('dirty');
-            let [contents] = await T.fread(file, cancel);
-            return T.decode(contents);
+            return T.decode((await T.fread(file, cancel))[0]);
         } catch(e) {
             doze();
             if(F.Source.Cancel.expected(e) || !this.$src.client.active) throw e;
             try {
-                let lyric = await this[K.PRVD].fetch(song, this.$src.client.hub, cancel, this[K.FABK]);
-                T.fwrite(file, lyric || ' ').catch(T.nop);
-                return lyric;
+                let ret = await this[K.PRVD].fetch(song, this.$src.client.hub, cancel, this[K.FABK]) || ' ';
+                T.fwrite(file, ret).catch(T.nop);
+                return ret;
             } catch(e1) {
-                if(reload) T.fdelete(file).catch(T.nop), F.me().getLogger().warn(`Failed to download lyrics for <${Lyric.title(song)}>`);
+                if(reload) T.fdelete(file).catch(T.nop), F.me().getLogger().warn(`Failed to download lyrics for <${Lyric.term(song)}>`);
                 throw e1;
             }
         }
@@ -98,6 +97,6 @@ export default class Lyric extends F.Mortal {
     }
 
     path(song) {
-        return `${this[K.PATH]}/${Lyric.title(song, '-', ',', true).replaceAll('/', '／')}.lrc`;
+        return `${this[K.PATH]}/${Lyric.term(song, '-', ',', true).replaceAll('/', '／')}.lrc`;
     }
 }

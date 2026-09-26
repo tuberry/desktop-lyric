@@ -74,7 +74,7 @@ export default class Mpris extends F.Mortal {
             (p, t, i) => i >= 0, // pinned
             p => p._playerProxy.PlaybackStatus === 'Playing', // playing
             (p, t, i) => i < 0 ? t.get(p).time : i, // recent
-            p => !!p._playerProxy.get_cached_property('Metadata').lookup_value('xesam::asText', null), // lyrics, https://gitlab.gnome.org/GNOME/gnome-shell/-/work_items/9394
+            p => !!p._playerProxy.get_cached_property('Metadata').lookup_value('xesam::asText', null), // lyrics, cf. https://gitlab.gnome.org/GNOME/gnome-shell/-/work_items/9394
         ];
         this.$refresh();
     }
