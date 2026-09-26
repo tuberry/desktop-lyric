@@ -58,12 +58,10 @@ class PaperBase extends St.DrawingArea {
         this[$].$bindSettings()[$].$buildSources().$sync({font: true, color: true});
     }
 
-    get homochromy() { return !this[K.PRGR] || this.$pos < 0; }
-
     $updateSurfaces() {
         let pl = this.$genLayout(this.$lrc);
         let [w, h] = pl.get_pixel_size();
-        Object.assign(this.$surface, {W: w, H: h, active: this.$genSurface(true, pl, w, h), inactive: this.$genSurface(false, pl,  w, h)});
+        Object.assign(this.$surface, {W: w, H: h, active: this.$genSurface(true, pl, w, h), inactive: this.$genSurface(false, pl, w, h)});
         this.$syncSize();
     }
 
@@ -113,14 +111,14 @@ class PaperBase extends St.DrawingArea {
 
     $composite(cr) {
         let offset = 0;
-        let {homochromy, W, H, L, SCROLL} = this.$surface;
+        let {mono, W, H, L, SCROLL} = this.$surface;
         if(this.$pos < 0) { // song title
             if(SCROLL) {
                 let {slowness, delay, gap} = this.$title;
                 offset = Math.min(0, delay - (this.moment / slowness) % (delay + W + gap));
                 let round = offset + W + gap;
                 if(round < L) {
-                    cr.setSourceSurface(homochromy, Math.round(round), 0);
+                    cr.setSourceSurface(mono, Math.round(round), 0);
                     cr.paint();
                 }
             }
@@ -137,7 +135,7 @@ class PaperBase extends St.DrawingArea {
                 return;
             }
         }
-        cr.setSourceSurface(homochromy, Math.round(offset), 0);
+        cr.setSourceSurface(mono, Math.round(offset), 0);
         cr.paint();
     }
 
@@ -196,7 +194,7 @@ export class Panel extends PaperBase {
     }
 
     constructor(tray, set) {
-        super(set, tray.$box, {get homochromy() { return this.inactive; }})
+        super(set, tray.$box, {get mono() { return this.inactive; }})
             .add_constraint(new Clutter.BindConstraint({coordinate: Clutter.BindCoordinate.HEIGHT, source: Main.panel}));
     }
 
@@ -209,7 +207,7 @@ export class Panel extends PaperBase {
     }
 
     $genSurface(active, layout, w, h) {
-        if(this.homochromy && active) return;
+        if(!this[K.PRGR] && active) return;
         let ret = this.$genImageSurface(w, h);
         let cr = new Cairo.Context(ret)[$].setSourceRGBA(...active ? this.activeColor : this.inactiveColor);
         PangoCairo.show_layout(cr, layout);
@@ -243,7 +241,7 @@ export class Desktop extends PaperBase {
     }
 
     constructor(drag, gset) {
-        super(gset, Main.uiGroup, {get homochromy() { return this.active; }}).setDrag(drag);
+        super(gset, Main.uiGroup, {get mono() { return this.active; }}).setDrag(drag);
     }
 
     $bindSettings() {
@@ -319,7 +317,7 @@ export class Desktop extends PaperBase {
     }
 
     $genSurface(active, layout, w, h) {
-        if(this.homochromy && !active) return;
+        if(!this[K.PRGR] && !active) return;
         let ret = this.$genImageSurface(w, h);
         let cr = new Cairo.Context(ret);
         if(this.$decor === Desktop.Decor.OUTLINE) {
