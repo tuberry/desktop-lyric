@@ -28,10 +28,10 @@ class DesktopLyric extends F.Mortal {
     $buildSources() {
         let lyric = new Lyric(this.$set),
             tray = new F.Source(() => this.$genSystray(), true),
-            play = new F.Source.Timer((x = this[K.SPAN]) => [() => this.setPosition(this.$src.paper.hub.moment + x + 0.225), x], false),
+            play = new F.Source.Timer((x = this[K.SPAN]) => [() => this.setPosition(this.$pos + x + 0.225), x], false),
+            sync = new F.Source.Defer(T.nop, async (n, p) => (x => (n > 5 || Math.abs(x - p) > 6000)[$_](it =>
+                (it || !n) && this.setPosition(x)))(await this.$src.mpris.getPosition().catch(T.nop)), 400), // HACK: workaround for stale positions from buggy mpris when changing songs
             paper = new F.Source(() => this[K.MINI] ? new Paper.Panel(tray.hub, this.$set) : new Paper.Desktop(this[K.DRAG], this.$set), true),
-            sync = new F.Source.Defer(x => x.length && this.setPosition(this.$pos = x.at(0)), // HACK: workaround for stale positions from buggy NCM mpris when changing songs
-                async n => (x => this.$pos !== x && [x])(await this.$src.mpris.getPosition().catch(T.nop)) || (n > 5 && []), 500),
             mpris = new Mpris(this.$set)[$$].connect([
                 ['update', (_p, x) => this.setSong(x)],
                 ['active', (_p, x) => this.setActive(x)],
@@ -40,6 +40,8 @@ class DesktopLyric extends F.Mortal {
             ])[$_](it => tray.hub.$record(true, 'play', () => it.genPlayerItem()));
         this.$src = F.Source.tie(this, {mpris, play, sync, lyric, paper, tray});
     }
+
+    get $pos() { return this.$src.paper.hub.moment; }
 
     $genSystray() {
         return new M.Systray({
@@ -106,7 +108,7 @@ class DesktopLyric extends F.Mortal {
     setSong(song) {
         if(T.homolog(this.song, song, ['title', 'album', 'lyric', 'artist'])) {
             this.$src.paper.hub.setLength(this.song.length = song.length); // HACK: workaround for jumping lengths from NCM mpris
-            this.$src.sync.revive();
+            this.$src.sync.revive(this.$pos);
         } else {
             this.song = song;
             this.loadLyric();
@@ -125,7 +127,7 @@ class DesktopLyric extends F.Mortal {
             .setLength(this.song.length)
             .setLyrics(lyrics);
         this.setPlaying(this.$src.mpris.status);
-        this.$src.sync.revive();
+        this.$src.sync.revive(this.$pos);
     }
 }
 

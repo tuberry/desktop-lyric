@@ -133,17 +133,17 @@ export class Source {
 
     static Defer = class extends this {
         constructor(callback, check, interval, clear, ...args) { // polling until...
-            super(() => new Source.Timer(x => [x, interval], true, clear)[$_](async (timer, until, count = 0) => {
-                while(!(until = await check(count++))) await new Promise(resolve => timer.revive(resolve)); callback(until);
+            super((...xs) => new Source.Timer(x => [x, interval], true, clear)[$_](async (timer, count = 0, until) => {
+                while(!(until = await check(count++, ...xs))) await new Promise(resolve => timer.revive(resolve)); callback(until);
             }), ...args);
         }
     };
 
     static Handler = class extends this {
         constructor(...args) { // enable by default
-            super(() => T.chunk(args, x => x.connectObject).map(([o, ...xs]) => [o, ...T.chunk(xs, (_x, i) => typeof xs[i - 1] === 'function')
-                .flatMap(ys => T.chunk(ys, T.str, 0, ys.length - 1).map(([s, a]) => o[a === GObject.ConnectFlags.AFTER ? o instanceof GObject.Object
-                    ? 'connect_after' : 'connectAfter' : 'connect'](s, ys.at(-1))).toArray())]).toArray(),
+            super(() => Array.from(T.chunk(args, x => x.connectObject), ([o, ...xs]) => [o, ...T.chunk(xs, (_x, i) => typeof xs[i - 1] === 'function')
+                .flatMap(ys => Array.from(T.chunk(ys, T.str, 0, ys.length - 1), ([s, a]) => o[a === GObject.ConnectFlags.AFTER ? o instanceof GObject.Object
+                    ? 'connect_after' : 'connectAfter' : 'connect'](s, ys.at(-1))))]),
             x => x.forEach(([o, ...is]) => is.forEach(i => o.disconnect(i))), args.at(-1) !== false);
         }
     };

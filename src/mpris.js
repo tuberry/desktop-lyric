@@ -28,7 +28,8 @@ export default class Mpris extends F.Mortal {
     }
 
     $buildSources() {
-        let proxy = new F.Source.Proxy(null,
+        let abort = new F.Source.Cancel(),
+            proxy = new F.Source.Proxy(null,
                 '/org/mpris/MediaPlayer2', (...xs) => this.$onProxyReady(...xs),
                 ['g-properties-changed', (...xs) => this.$onProxyChange(...xs)],
                 ['Seeked', (_p, _s, [pos]) => this.emit('seeked', pos / 1000)],
@@ -37,7 +38,7 @@ export default class Mpris extends F.Mortal {
                 x => Media.players.forEach(p => this.$close(p, x)), true),
             media = new F.Source.Handler(Media, 'player-added', (_a, p) => { this.$listen(p) && this.$refresh(); },
                 'player-removed', (a, p) => { if(!a._players.has(p._busName)) this.$close(p) && this.$refresh(); });
-        this.$src = F.Source.tie(this, {tap, proxy}, media);
+        this.$src = F.Source.tie(this, {abort, tap, proxy}, media);
         this.$buildWidgets();
     }
 
@@ -161,12 +162,10 @@ export default class Mpris extends F.Mortal {
     }
 
     async getPosition() { // Ref: https://www.andyholmes.ca/articles/dbus-in-gjs.html
-        let pos = await Gio.DBus.session.call(this.$bus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties',
-            'Get', T.pickle(['org.mpris.MediaPlayer2.Player', 'Position'], '(ss)'), null, Gio.DBusCallFlags.NONE, -1, null);
+        let pos = await Gio.DBus.session.call(this.$bus, '/org/mpris/MediaPlayer2', 'org.freedesktop.DBus.Properties', 'Get',
+            T.pickle(['org.mpris.MediaPlayer2.Player', 'Position'], '(ss)'), null, Gio.DBusCallFlags.NONE, -1, this.$src.abort.reborn());
         return pos.recursiveUnpack()[0] / 1000;
     }
 
-    get status() {
-        return this.$src.proxy.hub?.PlaybackStatus === 'Playing';
-    }
+    get status() { return this.$src.proxy.hub?.PlaybackStatus === 'Playing'; }
 }
