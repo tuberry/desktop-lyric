@@ -4,6 +4,7 @@
 
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -57,11 +58,14 @@ export default class Mpris extends F.Mortal {
         return tap.has(player)[$_](x => x && player._playerProxy.disconnect(tap.get(player).id));
     }
 
-    $noisy({_app: app}) {
-        if(app === undefined) return true;
-        if(app === null) return false; // assuming terminal music app
+    $noisy({_app: app, _mprisProxy: {Identity: id = ''} = {}}) {
+        if(app === undefined)  return true;  // uninitialized
+        if(app === null) { // HACK: workaround for terminal musical app & inferior mpris impl like https://issues.chromium.org/issues/40794216 or GNOME Web
+            let apps = new Set(id ? Shell.AppSystem.search(id).flat() : []);
+            return Shell.AppSystem.get_default().get_running().filter(x => apps.has(x.get_id())).some(x => this.$noisy({_app: x}));
+        }
         let ret = true;
-        for(let cat of app.get_app_info()?.get_categories().split(';') ?? []) {
+        for(let cat of app.appInfo?.get_categories().split(';') ?? []) {
             if(cat === 'WebBrowser' || cat === 'Video') return true;
             if(cat === 'Audio' || cat === 'Music') ret = false;
         }
