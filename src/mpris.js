@@ -59,10 +59,10 @@ export default class Mpris extends F.Mortal {
     }
 
     $noisy({_app: app, _mprisProxy: {Identity: id = ''} = {}}) {
-        if(app === undefined)  return true;  // uninitialized
+        if(app === undefined) return true; // uninitialized
         if(app === null) { // HACK: workaround for terminal musical app & inferior mpris impl like https://issues.chromium.org/issues/40794216 or GNOME Web
             let apps = new Set(id ? Shell.AppSystem.search(id).flat() : []);
-            return Shell.AppSystem.get_default().get_running().filter(x => apps.has(x.get_id())).some(x => this.$noisy({_app: x}));
+            return apps.size > 0 && Shell.AppSystem.get_default().get_running().some(x => apps.has(x.get_id()) && this.$noisy({_app: x}));
         }
         let ret = true;
         for(let cat of app.appInfo?.get_categories().split(';') ?? []) {
